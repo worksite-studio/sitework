@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \":root\\\\|--ink\\\\|--mid\\\\|--muted\\\\|--bg\\\\|--surface\\\\|--accent\\\\|--pos\\\\|--neg\\\\|--warn\\\\|--rule\\\\|jak\\\\|inter\\\\|mono\\\\|fontFamily\\\\|fontSize\\\\|borderRadius\\\\|background-color\\\\|#[0-9A-Fa-f]\\\\{3,6\\\\}\" \"/Users/andrewcamilleri/Downloads/SITEWORK - SaaS/sitework.html\")",
+      "Bash(open \"/Users/andrewcamilleri/Downloads/SITEWORK - SaaS/sitework.html\")",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_in_Chrome__browser_batch",
+      "Bash(gh auth *)",
+      "Bash(brew --version)",
+      "Bash(npm --version)",
+      "Bash(git --version)",
+      "Bash(curl --version)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git remote *)",
+      "Bash(mv sitework.html index.html)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
+    ]
+  }
+}
