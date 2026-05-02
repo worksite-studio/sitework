@@ -3,7 +3,7 @@
 
 > **Working principle:** Each session has a defined scope. Nothing gets added mid-session unless it's a blocker.
 > All changes are committed and pushed to GitHub Pages at the end of every session.
-> Developer handoff is a first-class concern at every phase — code stays readable.
+> We are building the entire platform — no external developer handoff. Code stays clean and well-documented so it scales with us.
 
 ---
 
@@ -109,15 +109,14 @@
 
 ---
 
-## Phase 2 — Developer Handoff Prep
-*Goal: A developer can open this codebase and understand it within 30 minutes.*
-*Estimated: 1 session (~1.5 hours) — do this BEFORE migrating to React scaffold*
+## Phase 2 — Architecture Documentation
+*Goal: The codebase is fully mapped and understood before we migrate to a proper scaffold. This is for us — so future sessions move faster and the React migration in Phase 4 is clean.*
+*Estimated: 1 session (~1.5 hours) — do this BEFORE Phase 4 scaffold*
 
-- ⬜ **ARCHITECTURE.md**: document the single-file structure, component map (minified names → module names), data model, reducer actions
-- ⬜ **DATA_MODEL.md**: define every entity (Project, Client, Invoice, Variation, etc.) with field names, types, and relationships — written as if briefing a backend developer
-- ⬜ **Inline comments**: add brief comments above each major component block in `index.html` so a developer can navigate the file
-- ⬜ **Seed data review**: ensure seed data covers all realistic scenarios (cost-plus and fixed-price projects, various claim statuses, retention examples)
-- ⬜ **Settings persistence**: confirm localStorage keys are documented
+- ⬜ **ARCHITECTURE.md**: component map (minified names → module names), reducer actions, data flow between modules
+- ⬜ **DATA_MODEL.md**: every entity (Project, Client, Invoice, Variation, etc.) with field names, types, and relationships — becomes the PostgreSQL schema blueprint for Phase 5
+- ⬜ **Inline comments**: brief comments above each major component in `index.html` so any session can navigate the file quickly
+- ⬜ **Seed data review**: ensure seed data covers all realistic scenarios (cost-plus + fixed-price, various claim statuses, retention examples)
 - ⬜ Commit all docs to repo
 
 ---
@@ -135,7 +134,7 @@
 ---
 
 ## Phase 4 — Scaffold Proper React Project
-*Goal: Move from single HTML file to a maintainable, contractor-ready codebase.*
+*Goal: Move from single HTML file to a clean, scalable codebase we can build the full product on.*
 *Estimated: 2 sessions — plan carefully before starting, this is a one-way door*
 
 - ⬜ Vite + React + TypeScript scaffold
@@ -143,24 +142,25 @@
 - ⬜ Extract design tokens and shared components (`/src/design/`)
 - ⬜ Extract reducer and state types (`/src/state/`)
 - ⬜ Set up ESLint + Prettier
-- ⬜ CI/CD pipeline (GitHub Actions → deploy to Vercel or GitHub Pages)
+- ⬜ CI/CD pipeline (GitHub Actions → auto-deploy to Vercel on every push)
 - ⬜ All existing functionality verified in new scaffold before retiring HTML file
 
-> **Note:** Architecture.md from Phase 2 is the blueprint for this migration. Do not start Phase 4 without it.
+> **Rule:** Do not start Phase 4 without ARCHITECTURE.md from Phase 2 complete. That document is the migration blueprint.
 
 ---
 
 ## Phase 5 — Backend, Auth & Multi-user
-*Goal: Data lives server-side, multiple builders can use the product.*
+*Goal: Data lives server-side. Multiple builders can sign up, log in, and see only their own data.*
 *Estimated: 3–4 sessions*
+*You will need to: create a free Supabase account and paste the project URL + anon key when prompted.*
 
-- ⬜ Choose and set up Supabase project
-- ⬜ Schema design — map DATA_MODEL.md to PostgreSQL tables
+- ⬜ Set up Supabase project (you create the account, we wire it up)
+- ⬜ Schema design — DATA_MODEL.md becomes the PostgreSQL table structure
 - ⬜ Authentication — email/password + Google OAuth
-- ⬜ Row-level security (each organisation sees only their data)
-- ⬜ API layer — REST or Supabase client SDK
-- ⬜ Migrate frontend from localStorage → API calls
-- ⬜ Organisation / workspace model (one builder firm = one workspace)
+- ⬜ Row-level security — each builder firm sees only their own data
+- ⬜ Supabase client SDK wired into frontend
+- ⬜ Migrate all state from localStorage → Supabase
+- ⬜ Organisation / workspace model (one builder firm = one workspace, multiple users per org)
 
 ---
 
@@ -187,13 +187,14 @@
 ---
 
 ## Phase 8 — Billing & Go-Live
-*Goal: Paying subscribers, onboarding, production infrastructure.*
+*Goal: Paying subscribers, smooth onboarding, production-grade infrastructure.*
 *Estimated: 2–3 sessions*
+*You will need to: create a Stripe account and provide API keys. Terms of service and privacy policy require legal review (Australian law) — we can draft them but recommend a lawyer signs off.*
 
 - ⬜ Stripe — subscription tiers (Solo Builder / Small Team / Enterprise)
 - ⬜ Onboarding flow — first project setup wizard
-- ⬜ Trial period logic (14-day free trial)
-- ⬜ Terms of service + privacy policy (Australian law)
+- ⬜ Trial period logic (14-day free trial, no credit card required)
+- ⬜ Terms of service + privacy policy drafts
 - ⬜ Production domain, SSL, error monitoring (Sentry)
 - ⬜ Support documentation / help centre
 
