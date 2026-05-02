@@ -1,123 +1,201 @@
 # SITEWORK — Construction Finance
 ## Product Roadmap
 
+> **Working principle:** Each session has a defined scope. Nothing gets added mid-session unless it's a blocker.
+> All changes are committed and pushed to GitHub Pages at the end of every session.
+> Developer handoff is a first-class concern at every phase — code stays readable.
+
 ---
 
-## Phase 0 — UX Audit & Polish ← current
-*Goal: Every module works correctly, consistently, and handles edge cases gracefully before any new features are added.*
+## Status Key
+- ✅ Done
+- 🔄 In progress / partially done
+- ⬜ Not started
+- 🚫 Blocked (depends on another item)
 
-### Modules to audit
-- [ ] Dashboard — alerts, project health, lead pipeline
-- [ ] Project Overview — contract vs cost KPIs, margin erosion
-- [ ] BOQ & Budget — cost codes, line items, variations overlay
-- [ ] Variations register
-- [ ] Invoices — GST, subcontractor linking, approval flow
-- [ ] Purchase Orders — GST, subcontractor linking, receive flow
-- [ ] Progress Claims — claim periods, certified vs paid
-- [ ] Retention & FFC — retention tracking, DLP, FFC certificate
-- [ ] Cash Flow — 12-month forecast
-- [ ] Site Diary — entries, weather, labour
-- [ ] Schedule / Milestones — dates, completion %
-- [ ] Subcontractors — compliance register, expiry alerts
-- [ ] Leads Pipeline — Kanban, stages
-- [ ] Estimating — cost codes, promote to project
-- [ ] Clients, BOQ Templates, Help & Education
+---
 
-### Global patterns
-- [ ] Empty states — new user with no data
-- [ ] Form consistency — inputs, modals, validation
-- [ ] Cross-module data flow — do approved invoices update BOQ committed costs?
-- [ ] Navigation — active states, project context
-- [ ] Typography & spacing consistency
+## Phase 0 — UI/UX Polish & Module Audit
+*Goal: Every module works correctly, displays real data consistently, and handles edge cases before new features are added.*
+
+### 0-A: Completed this far ✅
+- ✅ Navigation: Progress Claims before Invoices, Defects tab (was Retention & FFC), BOQ Templates removed from sidebar, Settings added
+- ✅ Branding: JW → WS avatar, Jake Walsh → Worksite, greeting updated
+- ✅ Dashboard: Portfolio Margin KPI, Budget & Margin panel, clickable project rows, compliance bar moved out
+- ✅ Variations: Requested By field added to form and initial state
+- ✅ Invoices: Comments column header added
+- ✅ Clients: expandable rows showing contact detail
+- ✅ Settings module: business name, default contract type, margin %, GST toggle (localStorage)
+- ✅ Seed data: `contractType` field on all projects
+
+---
+
+### 0-B: Quick Fixes — Session Next ← START HERE
+*~1 hour. Finish all loose ends from prior sessions before adding anything new.*
+
+- ⬜ **Variations table row**: render `requestedBy` value in the Requested By column cell (field exists in state, header exists — cell is empty)
+- ⬜ **Invoices form**: add Comments textarea before the Save button
+- ⬜ **Client Selections (N1)**: rename "Category" label → "Cost Code" in the form
+- ⬜ **WS avatar**: make it clickable — navigate to Settings module
+- ⬜ **Estimating**: merge/absorb BOQ Templates UI into Estimating module (remove BOQ Templates as a separate module)
+
+---
+
+### 0-C: Dashboard & Project Overview Audit
+*~1.5 hours.*
+
+- ⬜ **Project Overview KPIs**: verify contract value, cost to date, margin erosion, forecast final cost are all accurate against seed data
+- ⬜ **Dashboard clickthrough**: verify clicking project health rows navigates correctly
+- ⬜ **Contract type display**: show contract type badge (Cost Plus / Fixed Price) on project overview header
+- ⬜ **BOQ & Budget**: verify cost codes show correct committed vs budget, variation overlay works
+- ⬜ **Margin calculation**: ensure margin is consistent across Dashboard, Project Overview, and BOQ views
+
+---
+
+### 0-D: Financial Workflow Audit
+*~1.5 hours.*
+
+- ⬜ **Variations full flow**: draft → pending → approved/rejected, approved amount rolls into contract value
+- ⬜ **Invoices approval flow**: pending → approved → paid, approved invoices update committed costs in BOQ
+- ⬜ **Purchase Orders flow**: draft → sent → received, received POs update committed costs
+- ⬜ **Cross-module data flow**: confirm invoices + POs together drive "committed" in D1v2 and BOQ view
+- ⬜ **GST handling**: verify GST display is consistent (ex-GST vs inc-GST labels where appropriate)
+
+---
+
+### 0-E: Progress Claims & Retention
+*~1.5 hours.*
+
+- ⬜ **Progress Claims**: claim number sequencing, claim period selector, certified vs submitted vs paid status
+- ⬜ **Retention deduction**: verify retention % is applied correctly to each claim
+- ⬜ **Defects module** (was Retention & FFC): DLP period, retention release, FFC certificate workflow
+- ⬜ **Cash flow**: confirm approved claims and invoices feed into the 12-month forecast
+
+---
+
+### 0-F: Operations Modules Audit
+*~1.5 hours.*
+
+- ⬜ **Site Diary**: entries, weather, labour — verify data persists and displays correctly
+- ⬜ **Schedule / Milestones**: dates, completion %, link to cash flow
+- ⬜ **Subcontractors**: compliance register, expiry date alerts, SWMS status
+- ⬜ **Timesheets**: labour entries, link to cost codes
+- ⬜ **RFIs**: log, response tracking, link to project
+
+---
+
+### 0-G: Supporting Modules & Global UX
+*~1.5 hours.*
+
+- ⬜ **Leads Pipeline**: stage progression, value tracking, convert to project flow
+- ⬜ **Estimating** (post-merge with BOQ Templates): cost code templates, promote to live project
+- ⬜ **Clients**: verify projects link correctly, contact detail complete
+- ⬜ **Help & Education**: placeholder content, structure
+- ⬜ **Empty states**: new user sees helpful prompts, not blank tables, in every module
+- ⬜ **Form validation**: required fields highlighted, no silent failures
+- ⬜ **Typography & spacing**: consistent padding, heading sizes, table density across all modules
 
 ---
 
 ## Phase 1 — LocalStorage Persistence
-*Goal: Data survives browser refresh and tab close. Required before any real user testing.*
+*Goal: Data survives browser refresh. Required before any real user testing.*
+*Estimated: 1 session (~1 hour)*
 
-- [ ] Wrap useReducer with localStorage read on init
-- [ ] Write state to localStorage on every dispatch
-- [ ] Handle first-run (no stored data) gracefully
-- [ ] Add "Reset to demo data" option in settings
+- ⬜ Wrap `Z1` reducer with localStorage read on init
+- ⬜ Write full state to localStorage on every dispatch
+- ⬜ Handle first-run gracefully (no stored data → load seed data)
+- ⬜ Add "Reset to demo data" button in Settings
+- ⬜ Test: refresh page, verify all data intact
 
 ---
 
-## Phase 2 — PDF & Print Export
+## Phase 2 — Developer Handoff Prep
+*Goal: A developer can open this codebase and understand it within 30 minutes.*
+*Estimated: 1 session (~1.5 hours) — do this BEFORE migrating to React scaffold*
+
+- ⬜ **ARCHITECTURE.md**: document the single-file structure, component map (minified names → module names), data model, reducer actions
+- ⬜ **DATA_MODEL.md**: define every entity (Project, Client, Invoice, Variation, etc.) with field names, types, and relationships — written as if briefing a backend developer
+- ⬜ **Inline comments**: add brief comments above each major component block in `index.html` so a developer can navigate the file
+- ⬜ **Seed data review**: ensure seed data covers all realistic scenarios (cost-plus and fixed-price projects, various claim statuses, retention examples)
+- ⬜ **Settings persistence**: confirm localStorage keys are documented
+- ⬜ Commit all docs to repo
+
+---
+
+## Phase 3 — PDF & Print Export
 *Goal: Print-ready documents for client-facing use.*
+*Estimated: 1–2 sessions*
 
-- [ ] Print CSS stylesheet (hide nav, format for A4)
-- [ ] Progress Claim PDF — claim schedule, certified amounts, retention
-- [ ] BOQ Export — cost codes, budget vs actual, variance
-- [ ] Retention / FFC Certificate
-- [ ] Invoice summary
-
----
-
-## Phase 3 — Progress Claims Workflow
-*Goal: Complete end-to-end claim submission flow.*
-
-- [ ] Claim schedule tied to milestones
-- [ ] Claim period selector (claim 1, 2, 3...)
-- [ ] Certified vs submitted vs paid status
-- [ ] Retention deduction calculated automatically
-- [ ] Link to PDF export
-- [ ] Cash flow updated from approved claims
+- ⬜ Print CSS stylesheet (hide nav, A4 format)
+- ⬜ Progress Claim PDF — claim schedule, certified amounts, retention line
+- ⬜ BOQ Export — cost codes, budget vs actual, variance
+- ⬜ Retention / FFC Certificate
+- ⬜ Invoice / Tax Invoice
 
 ---
 
 ## Phase 4 — Scaffold Proper React Project
-*Goal: Move from single HTML file to maintainable codebase a contractor can work with.*
+*Goal: Move from single HTML file to a maintainable, contractor-ready codebase.*
+*Estimated: 2 sessions — plan carefully before starting, this is a one-way door*
 
-- [ ] Vite + React + TypeScript scaffold
-- [ ] Extract components into separate files
-- [ ] Set up ESLint, Prettier
-- [ ] CI/CD pipeline (GitHub Actions → auto-deploy)
-- [ ] Contractor handover documentation
+- ⬜ Vite + React + TypeScript scaffold
+- ⬜ Extract each module into its own file (`/src/modules/Dashboard.tsx`, etc.)
+- ⬜ Extract design tokens and shared components (`/src/design/`)
+- ⬜ Extract reducer and state types (`/src/state/`)
+- ⬜ Set up ESLint + Prettier
+- ⬜ CI/CD pipeline (GitHub Actions → deploy to Vercel or GitHub Pages)
+- ⬜ All existing functionality verified in new scaffold before retiring HTML file
+
+> **Note:** Architecture.md from Phase 2 is the blueprint for this migration. Do not start Phase 4 without it.
 
 ---
 
-## Phase 5 — Backend, Auth & Database
-*Goal: Multi-user, data persisted server-side, subscription-ready.*
+## Phase 5 — Backend, Auth & Multi-user
+*Goal: Data lives server-side, multiple builders can use the product.*
+*Estimated: 3–4 sessions*
 
-- [ ] Choose stack (Supabase recommended — PostgreSQL + Auth + API in one)
-- [ ] Schema design — projects, users, organisations
-- [ ] Authentication — email/password + Google OAuth
-- [ ] Row-level security (each builder sees only their data)
-- [ ] API layer
-- [ ] Migrate frontend from localStorage to API calls
+- ⬜ Choose and set up Supabase project
+- ⬜ Schema design — map DATA_MODEL.md to PostgreSQL tables
+- ⬜ Authentication — email/password + Google OAuth
+- ⬜ Row-level security (each organisation sees only their data)
+- ⬜ API layer — REST or Supabase client SDK
+- ⬜ Migrate frontend from localStorage → API calls
+- ⬜ Organisation / workspace model (one builder firm = one workspace)
 
 ---
 
 ## Phase 6 — Xero Integration
-*Goal: Two-way sync between SITEWORK and Xero.*
+*Goal: Approved invoices and POs sync to Xero automatically.*
+*Estimated: 1–2 sessions (requires Phase 5 backend)*
 
-- [ ] OAuth 2.0 flow (requires backend)
-- [ ] Map Xero contacts → SITEWORK subcontractors
-- [ ] Push approved invoices to Xero as bills
-- [ ] Pull payment status back from Xero
-- [ ] Map Xero accounts to cost code categories
+- ⬜ OAuth 2.0 flow (requires backend for token storage)
+- ⬜ Map Xero contacts → SITEWORK subcontractors/clients
+- ⬜ Push approved invoices to Xero as bills
+- ⬜ Pull payment status back from Xero → update invoice status
+- ⬜ Map Xero chart of accounts to cost code categories
 
 ---
 
 ## Phase 7 — Rawlinson Rate Lookup
 *Goal: Benchmark cost data in BOQ and Estimating.*
+*Estimated: 1 session*
 
-- [ ] Integrate Rawlinson API or static dataset
-- [ ] Rate lookup in line item form
-- [ ] Regional multipliers (NSW, VIC, QLD, WA, etc.)
-- [ ] Rate history / edition tracking
+- ⬜ Rawlinson API or static dataset (confirm licensing)
+- ⬜ Rate lookup in line item / BOQ form
+- ⬜ Regional multipliers (NSW, VIC, QLD, WA, etc.)
 
 ---
 
 ## Phase 8 — Billing & Go-Live
-*Goal: Paying subscribers, onboarding flow, support.*
+*Goal: Paying subscribers, onboarding, production infrastructure.*
+*Estimated: 2–3 sessions*
 
-- [ ] Stripe integration — subscription tiers
-- [ ] Onboarding flow — first project setup wizard
-- [ ] Trial period logic
-- [ ] Terms of service, privacy policy
-- [ ] Support documentation
-- [ ] Production infrastructure (domain, SSL, monitoring)
+- ⬜ Stripe — subscription tiers (Solo Builder / Small Team / Enterprise)
+- ⬜ Onboarding flow — first project setup wizard
+- ⬜ Trial period logic (14-day free trial)
+- ⬜ Terms of service + privacy policy (Australian law)
+- ⬜ Production domain, SSL, error monitoring (Sentry)
+- ⬜ Support documentation / help centre
 
 ---
 
@@ -126,13 +204,27 @@
 | Layer | Choice | Reason |
 |---|---|---|
 | Frontend | React + TypeScript + Vite | Standard, contractor-friendly |
-| Styling | CSS-in-JS (existing pattern) | Consistent with prototype |
+| Styling | Tailwind or CSS Modules | Replace inline styles at Phase 4 |
 | Backend | Supabase | Auth + DB + API, minimal ops overhead |
-| Hosting | Vercel (frontend) + Supabase (backend) | Both have free tiers, scale well |
+| Hosting | Vercel (frontend) + Supabase (backend) | Free tiers, scale well |
 | Payments | Stripe | Industry standard |
-| PDF | React-PDF or print CSS | Depends on complexity needed |
+| PDF | react-pdf or print CSS | Decide at Phase 3 |
 | Xero | Xero API v2 | Official API |
 
 ---
 
-*Last updated: 2026-04-28*
+## Session Log
+
+| Session | Date | Phase | What was done |
+|---|---|---|---|
+| 1 | 2026-04-28 | 0-A | Initial build in Claude Chat — all modules scaffolded |
+| 2 | 2026-04-28 | 0-A | Migrated to Claude Code CLI, GitHub Pages deploy |
+| 3 | 2026-04-29 | 0-A | Nav, branding, routing fixes; BOQ committed cost fix |
+| 4 | 2026-04-30 | 0-A | Dashboard overhaul, Settings module, expandable Clients |
+| 5 | — | 0-B | Quick fixes (variations row, invoice comments, labels, avatar) |
+| 6 | — | 0-C | Dashboard & Project Overview audit |
+| ... | — | ... | ... |
+
+---
+
+*Last updated: 2026-05-02*
