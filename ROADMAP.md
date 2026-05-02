@@ -59,17 +59,16 @@
 
 ---
 
-### 0-E: Progress Claims & Retention ← NEXT
-*~1.5 hours.*
+### 0-E: Progress Claims & Retention ✅
 
-- ⬜ **Progress Claims**: claim number sequencing, claim period selector, certified vs submitted vs paid status
-- ⬜ **Retention deduction**: verify retention % is applied correctly to each claim
-- ⬜ **Defects module** (was Retention & FFC): DLP period, retention release, FFC certificate workflow
-- ⬜ **Cash flow**: confirm approved claims and invoices feed into the 12-month forecast
+- ✅ **Progress Claims**: row-click edit modal (pre-fills all fields), status changes (Pending → Approved/Paid) update Outstanding KPI live; UPDATE_CLAIM reducer added
+- ✅ **Retention deduction**: Retention column added (−5% of claim amount, rate from retention seed data); Net Certified column added (amount × (1−rate%) × 1.1 incl GST)
+- ✅ **Defects module**: 3 seed items display correctly — Open/Rectified statuses, Edit buttons on each row, rectified date shown
+- ✅ **Cash flow**: confirmed j1v2 tracks outflow (approved invoices + POs due); Progress Claims are client income — correctly excluded from outflow view (noted as future income-side enhancement)
 
 ---
 
-### 0-F: Operations Modules Audit
+### 0-F: Operations Modules Audit ← NEXT
 *~1.5 hours.*
 
 - ⬜ **Site Diary**: entries, weather, labour — verify data persists and displays correctly
@@ -226,5 +225,6 @@
 ---
 
 | 8 | 2026-05-03 | 0-D | Financial workflow audit — variation edit modal, PO receive button, invoice flow verified, GST labels confirmed |
+| 9 | 2026-05-03 | 0-E | Progress Claims & Retention — retention/net certified columns, row-click edit modal, UPDATE_CLAIM reducer, defects audit, cash flow scope confirmed |
 
-*Last updated: 2026-05-03 (session 8)*
+*Last updated: 2026-05-03 (session 9)*
