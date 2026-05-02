@@ -68,20 +68,20 @@
 
 ---
 
-### 0-F: Operations Modules Audit ← NEXT
-*~1.5 hours.*
+### 0-F: Operations Modules Audit ✅
 
-- ⬜ **Site Diary**: entries, weather, labour — verify data persists and displays correctly
-- ⬜ **Schedule / Milestones**: dates, completion %, link to cash flow
-- ⬜ **Subcontractors**: compliance register, expiry date alerts, SWMS status
-- ⬜ **Timesheets**: labour entries, link to cost codes
-- ⬜ **RFIs**: log, response tracking, link to project
+- ✅ **Site Diary**: 5 entries display correctly — date, weather, worker count + hours, sub tags, notes; + Add Entry form opens with all fields including sub toggles and incident checkbox
+- ✅ **Schedule / Milestones**: 7 milestones, 5/7 complete count accurate, COMPLETE/IN PROGRESS/UPCOMING status dots, Edit buttons, progress bar correct
+- ✅ **Subcontractors**: 6 registered, 5 compliance issues flagged; Current/Expiring/EXPIRED/Required statuses correct; trade filter tabs work; note — no row edit flow yet (added to 0-G)
+- ✅ **Timesheets**: 3 entries, hours × rate totals correct ($760+$570+$675=$2,005), cost codes linked, delete (×) buttons present
+- ✅ **RFIs**: 3 RFIs, 1 overdue correctly highlighted (row + Required By date in red), OPEN/CLOSED statuses, responded date shows "—" for open items
 
 ---
 
-### 0-G: Supporting Modules & Global UX
+### 0-G: Supporting Modules & Global UX ← NEXT
 *~1.5 hours.*
 
+- ⬜ **Subcontractors edit flow**: row-click edit modal (carried over from 0-F — display correct, edit missing)
 - ⬜ **Leads Pipeline**: stage progression, value tracking, convert to project flow
 - ⬜ **Estimating** (post-merge with BOQ Templates): cost code templates, promote to live project
 - ⬜ **Clients**: verify projects link correctly, contact detail complete
@@ -226,5 +226,6 @@
 
 | 8 | 2026-05-03 | 0-D | Financial workflow audit — variation edit modal, PO receive button, invoice flow verified, GST labels confirmed |
 | 9 | 2026-05-03 | 0-E | Progress Claims & Retention — retention/net certified columns, row-click edit modal, UPDATE_CLAIM reducer, defects audit, cash flow scope confirmed |
+| 10 | 2026-05-03 | 0-F | Operations modules audit — Site Diary, Schedule, Subcontractors, Timesheets, RFIs all verified; subs edit flow noted for 0-G |
 
-*Last updated: 2026-05-03 (session 9)*
+*Last updated: 2026-05-03 (session 10)*
