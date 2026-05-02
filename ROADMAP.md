@@ -39,18 +39,17 @@
 
 ---
 
-### 0-C: Dashboard & Project Overview Audit ← NEXT
-*~1.5 hours.*
+### 0-C: Dashboard & Project Overview Audit ✅
 
-- ⬜ **Project Overview KPIs**: verify contract value, cost to date, margin erosion, forecast final cost are all accurate against seed data
-- ⬜ **Dashboard clickthrough**: verify clicking project health rows navigates correctly
-- ⬜ **Contract type display**: show contract type badge (Cost Plus / Fixed Price) on project overview header
-- ⬜ **BOQ & Budget**: verify cost codes show correct committed vs budget, variation overlay works
-- ⬜ **Margin calculation**: ensure margin is consistent across Dashboard, Project Overview, and BOQ views
+- ✅ **Project Overview KPIs**: Contract Value, Cost to Date, Margin Erosion all accurate. D1 shows base CV + target margin; D1v2 shows adj. CV (incl. variations) + live margin vs target. "Cost to Complete" label fixed → "Cost to Date"
+- ✅ **Dashboard clickthrough**: clicking project health rows navigates correctly to project overview
+- ✅ **Contract type display**: COST PLUS / FIXED PRICE badge added to project overview header (D1 component)
+- ✅ **BOQ & Budget**: cost codes show correct adj. budget vs actual, variation overlay working, OVER/ON BUDGET status correct
+- ✅ **Margin calculation**: Dashboard 16% (portfolio, base CV), D1 "target X% margin", D1v2 live current margin — all correct and clearly labelled
 
 ---
 
-### 0-D: Financial Workflow Audit
+### 0-D: Financial Workflow Audit ← NEXT
 *~1.5 hours.*
 
 - ⬜ **Variations full flow**: draft → pending → approved/rejected, approved amount rolls into contract value
@@ -222,9 +221,9 @@
 | 4 | 2026-04-30 | 0-A | Dashboard overhaul, Settings module, expandable Clients |
 | 5 | 2026-05-02 | 0-B | Variations row, invoice comments, selections label, WS avatar nav |
 | 6 | 2026-05-02 | 0-B | BOQ Templates tab inside Estimating — 6 templates, Use Template modal, reducer action |
-| 7 | — | 0-C | Dashboard & Project Overview audit |
+| 7 | 2026-05-02 | 0-C | Dashboard & Project Overview audit — KPIs verified, contract type badge added, Cost to Date label, target margin label |
 | ... | — | ... | ... |
 
 ---
 
-*Last updated: 2026-05-02 (session 6)*
+*Last updated: 2026-05-02 (session 7)*
