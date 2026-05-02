@@ -49,18 +49,17 @@
 
 ---
 
-### 0-D: Financial Workflow Audit ← NEXT
-*~1.5 hours.*
+### 0-D: Financial Workflow Audit ✅
 
-- ⬜ **Variations full flow**: draft → pending → approved/rejected, approved amount rolls into contract value
-- ⬜ **Invoices approval flow**: pending → approved → paid, approved invoices update committed costs in BOQ
-- ⬜ **Purchase Orders flow**: draft → sent → received, received POs update committed costs
-- ⬜ **Cross-module data flow**: confirm invoices + POs together drive "committed" in D1v2 and BOQ view
-- ⬜ **GST handling**: verify GST display is consistent (ex-GST vs inc-GST labels where appropriate)
+- ✅ **Variations full flow**: added row-click edit modal to B1 — status changes (Pending → Approved/Rejected) now work; approved amount rolls into contract value via D1v2 (tested: +$1,200 var raised CV from $352,279 → $353,479)
+- ✅ **Invoices approval flow**: O1v2 row-click → edit form (InvFormV2) with Pending/Approved/Paid dropdown → UPDATE_INVOICE; dashboard Outstanding Invoices updates live
+- ✅ **Purchase Orders flow**: added "Receive" button to M1v2 rows with ORDERED status → dispatches RECEIVE_PURCHASE; header "received of committed" updates immediately
+- ✅ **Cross-module data flow**: D1v2 "Cost to Date" correctly combines invoices (not Rejected) + POs (not cancelled); both tabs feed same committed figure
+- ✅ **GST handling**: Amount (ex GST) / GST / Total inc GST columns consistent across Invoices and POs; live GST preview in InvFormV2 edit modal
 
 ---
 
-### 0-E: Progress Claims & Retention
+### 0-E: Progress Claims & Retention ← NEXT
 *~1.5 hours.*
 
 - ⬜ **Progress Claims**: claim number sequencing, claim period selector, certified vs submitted vs paid status
@@ -226,4 +225,6 @@
 
 ---
 
-*Last updated: 2026-05-02 (session 7)*
+| 8 | 2026-05-03 | 0-D | Financial workflow audit — variation edit modal, PO receive button, invoice flow verified, GST labels confirmed |
+
+*Last updated: 2026-05-03 (session 8)*
