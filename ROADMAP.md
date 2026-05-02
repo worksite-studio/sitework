@@ -30,18 +30,16 @@
 
 ---
 
-### 0-B: Quick Fixes — Session Next ← START HERE
-*~1 hour. Finish all loose ends from prior sessions before adding anything new.*
-
-- ⬜ **Variations table row**: render `requestedBy` value in the Requested By column cell (field exists in state, header exists — cell is empty)
-- ⬜ **Invoices form**: add Comments textarea before the Save button
-- ⬜ **Client Selections (N1)**: rename "Category" label → "Cost Code" in the form
-- ⬜ **WS avatar**: make it clickable — navigate to Settings module
-- ⬜ **Estimating**: merge/absorb BOQ Templates UI into Estimating module (remove BOQ Templates as a separate module)
+### 0-B: Quick Fixes ✅
+- ✅ **Variations table row**: Requested By column header + cell rendering correctly
+- ✅ **Invoices form**: Comments textarea added before Save button
+- ✅ **Client Selections (N1)**: "Category" label renamed to "Cost Code"
+- ✅ **WS avatar**: clickable, navigates to Settings module
+- ✅ **BOQ Templates**: already removed — Q1 component gone, sidebar clean. Estimating is the sole estimate/template tool.
 
 ---
 
-### 0-C: Dashboard & Project Overview Audit
+### 0-C: Dashboard & Project Overview Audit ← NEXT
 *~1.5 hours.*
 
 - ⬜ **Project Overview KPIs**: verify contract value, cost to date, margin erosion, forecast final cost are all accurate against seed data
@@ -222,7 +220,7 @@
 | 2 | 2026-04-28 | 0-A | Migrated to Claude Code CLI, GitHub Pages deploy |
 | 3 | 2026-04-29 | 0-A | Nav, branding, routing fixes; BOQ committed cost fix |
 | 4 | 2026-04-30 | 0-A | Dashboard overhaul, Settings module, expandable Clients |
-| 5 | — | 0-B | Quick fixes (variations row, invoice comments, labels, avatar) |
+| 5 | 2026-05-02 | 0-B | Variations row, invoice comments, selections label, WS avatar nav, BOQ Templates confirmed removed |
 | 6 | — | 0-C | Dashboard & Project Overview audit |
 | ... | — | ... | ... |
 
