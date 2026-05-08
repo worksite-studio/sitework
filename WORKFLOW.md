@@ -128,7 +128,7 @@ ROADMAP carries **phase progress**. Memory carries **durable preferences and fac
 
 - `index.html` bracket balance must be `(3, 3, 3)` before every commit.
 - `.bak` / `.xlsx` / `.claude/` never committed (already in `.gitignore` — verify before `git add` if unsure).
-- No secrets in committed files. *Note:* the current `git remote -v` URL contains a GitHub PAT in plaintext — rotate it (see §10).
+- No secrets in committed files. Auth is via SSH key (`~/.ssh/id_ed25519`) — `git remote -v` shows `git@github.com:…`, no token. If you ever set up a new machine, generate a new SSH key per machine; don't copy the private key around.
 - `main` always deploys cleanly. If a merge breaks `main`, revert the merge commit before fixing forward.
 
 ---
@@ -186,12 +186,9 @@ The repo root should contain only files that are **either committed to git or ac
 
 ## 10. Follow-ups parked for later sessions
 
-- **Rotate the GitHub PAT** currently embedded in `git remote -v`. Generate a new PAT in GitHub, revoke the old one, then either:
-  - switch the remote to SSH: `git remote set-url origin git@github.com:worksite-studio/sitework.git`, or
-  - use a credential helper: `git config --global credential.helper osxkeychain` and re-authenticate.
-  *You* must do the rotation in GitHub — Claude can't.
 - **Phase 2 docs**: `ARCHITECTURE.md` and `DATA_MODEL.md` (per ROADMAP) slot into the same root-level docs pattern as this file.
+- **Git identity**: commits currently land as `Andrew Camilleri <andrewcamilleri@Andrews-MacBook-Pro.local>` (the local hostname). For proper GitHub attribution, run once: `git config --global user.email "<your-github-email>"` and `git config --global user.name "<Your Name>"`.
 
 ---
 
-*Last updated: 2026-05-07.*
+*Last updated: 2026-05-08. PAT rotation completed in session 12 — auth now via SSH.*
