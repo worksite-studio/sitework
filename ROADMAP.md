@@ -228,5 +228,6 @@
 | 9 | 2026-05-03 | 0-E | Progress Claims & Retention — retention/net certified columns, row-click edit modal, UPDATE_CLAIM reducer, defects audit, cash flow scope confirmed |
 | 10 | 2026-05-03 | 0-F | Operations modules audit — Site Diary, Schedule, Subcontractors, Timesheets, RFIs all verified; subs edit flow noted for 0-G |
 | 11 | 2026-05-07 | docs | WORKFLOW.md added — operating manual covering repo map, session loop, branch+PR workflow, logging, loose-files cleanup; first dry run of feature-branch + PR loop |
+| 12 | 2026-05-08 | chore | PAT rotated — new ed25519 SSH key, remote swapped to SSH, old PAT revoked; WORKFLOW.md §7/§10 updated to reflect new auth state |
 
-*Last updated: 2026-05-07 (session 11)*
+*Last updated: 2026-05-08 (session 12)*
