@@ -81,7 +81,7 @@
 ### 0-G: Supporting Modules & Global UX ← NEXT
 *~1.5 hours.*
 
-- ⬜ **Subcontractors edit flow**: row-click edit modal (carried over from 0-F — display correct, edit missing)
+- ✅ **Subcontractors edit flow**: row-click edit modal (V1 + z1 + UPDATE_SUB action; mirrors B1/O1v2 pattern, session 13)
 - ⬜ **Leads Pipeline**: stage progression, value tracking, convert to project flow
 - ⬜ **Estimating** (post-merge with BOQ Templates): cost code templates, promote to live project
 - ⬜ **Clients**: verify projects link correctly, contact detail complete
@@ -229,5 +229,6 @@
 | 10 | 2026-05-03 | 0-F | Operations modules audit — Site Diary, Schedule, Subcontractors, Timesheets, RFIs all verified; subs edit flow noted for 0-G |
 | 11 | 2026-05-07 | docs | WORKFLOW.md added — operating manual covering repo map, session loop, branch+PR workflow, logging, loose-files cleanup; first dry run of feature-branch + PR loop |
 | 12 | 2026-05-08 | chore | PAT rotated — new ed25519 SSH key, remote swapped to SSH, old PAT revoked; WORKFLOW.md §7/§10 updated to reflect new auth state |
+| 13 | 2026-05-11 | 0-G | Subcontractors row-click edit modal — UPDATE_SUB reducer action, z1 form accepts `initial` prop, V1 row onClick → edit modal; mirrors B1/O1v2 pattern; smoke-tested locally |
 
-*Last updated: 2026-05-08 (session 12)*
+*Last updated: 2026-05-11 (session 13)*
