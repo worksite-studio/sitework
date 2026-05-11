@@ -84,7 +84,7 @@
 - ✅ **Subcontractors edit flow**: row-click edit modal (V1 + z1 + UPDATE_SUB action; mirrors B1/O1v2 pattern, session 13)
 - ⬜ **Leads Pipeline**: stage progression, value tracking, convert to project flow
 - ⬜ **Estimating** (post-merge with BOQ Templates): cost code templates, promote to live project
-- ⬜ **Clients**: verify projects link correctly, contact detail complete
+- ✅ **Clients**: row-click edit added (UPDATE_CLIENT wired via m1 form); projects link correctly, no orphaned clientIds; contact detail complete (session 14)
 - ⬜ **Help & Education**: placeholder content, structure
 - ⬜ **Empty states**: new user sees helpful prompts, not blank tables, in every module
 - ⬜ **Form validation**: required fields highlighted, no silent failures
@@ -230,5 +230,6 @@
 | 11 | 2026-05-07 | docs | WORKFLOW.md added — operating manual covering repo map, session loop, branch+PR workflow, logging, loose-files cleanup; first dry run of feature-branch + PR loop |
 | 12 | 2026-05-08 | chore | PAT rotated — new ed25519 SSH key, remote swapped to SSH, old PAT revoked; WORKFLOW.md §7/§10 updated to reflect new auth state |
 | 13 | 2026-05-11 | 0-G | Subcontractors row-click edit modal — UPDATE_SUB reducer action, z1 form accepts `initial` prop, V1 row onClick → edit modal; mirrors B1/O1v2 pattern; smoke-tested locally |
+| 14 | 2026-05-11 | 0-G | Clients edit flow — Edit Client button in expanded detail row dispatches UPDATE_CLIENT via existing m1 form; verified 4 projects → 3 clients link with no orphans |
 
-*Last updated: 2026-05-11 (session 13)*
+*Last updated: 2026-05-11 (session 14)*
