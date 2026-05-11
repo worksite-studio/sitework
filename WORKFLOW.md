@@ -9,21 +9,27 @@ Aim: scannable in 2 minutes, executable without thinking.
 ## 1. Repo map — what lives where
 
 **Tracked in git** (committed, pushed to GitHub):
+- `README.md` — landing page; what the repo is and where docs live
 - `index.html` — the entire app (React 19 + app code + seed data, single minified file)
 - `serve.py` — local dev server (`python3 serve.py` → http://127.0.0.1:3456)
 - `CLAUDE.md` — codebase guide for Claude
 - `ROADMAP.md` — phase tracker + session log
 - `WORKFLOW.md` — this file
 - `.gitignore`
+- `docs/` — non-code spec material:
+  - `docs/finance-model/` — preliminary finance model xlsx (v6 historical, v8 current) + parity-audit tracker
+  - `docs/design/` — aesthetic refresh: NB Akademie/NB Form spec, locked decisions, open threads
+  - `docs/reference/` — external domain reference (Rawlinson, Xero, AU construction conventions)
 
 **Not tracked** (gitignored, stays local):
 - `*.bak` — backup snapshots, redundant with git history
-- `*.xlsx` — finance model reference docs
+- `*.xlsx` at the repo root — scratch spreadsheets. The `!docs/finance-model/*.xlsx` negation in `.gitignore` keeps the committed finance models visible to git.
 - `.claude/` — Claude session state, settings, worktrees
 
 **Outside the repo, but matters**:
 - Memory: `~/.claude/projects/-Users-andrewcamilleri-Downloads-SITEWORK---SaaS/memory/` — facts about the project and you that persist across sessions
 - Plans: `~/.claude/plans/` — per-session plan files Claude writes when in plan mode
+- Claude Project on claude.ai — wired to the GitHub repo via the GitHub connector so chat sessions see the same files Claude Code sees
 
 ---
 
@@ -144,43 +150,43 @@ ROADMAP carries **phase progress**. Memory carries **durable preferences and fac
 
 ---
 
-## 9. Loose files in the repo — what they are and how to clean up
+## 9. The `/docs/` folder — non-code spec material
 
-The repo root currently has files that aren't tracked by git but sit alongside the source. They're gitignored, so they never reach GitHub — but they clutter the working directory and create small risks (accidental edits, confusion about source of truth).
+`/docs/` is the home for everything that *informs* the product but isn't code. It's version-controlled like the rest of the repo, which means a Claude Project connected to the GitHub repo can read it the same way it reads source.
 
-### 9a. `sitework.html.bak` (~390 KB)
+### 9a. `docs/finance-model/`
 
-- **What it is**: a snapshot of `index.html` from before some earlier edit. Manual backup.
-- **Why git already replaces it**: every committed version of `index.html` is recoverable via `git log` + `git show <sha>:index.html`. The `.bak` is redundant.
-- **Risk**: low (gitignored), but if you open it by accident and edit it thinking it's `index.html`, you lose work silently.
-- **Recommendation — delete it**:
-  ```bash
-  rm "sitework.html.bak"
-  ```
-  If you ever need that exact pre-rename version: `git log --all --oneline -- index.html` then `git show <sha>:index.html > recovered.html`.
+The preliminary finance model spreadsheets the app is being built from. v8 is current and requires refinement inside the prototype; v6 is historical, kept until the parity audit confirms v8 fully supersedes it.
 
-### 9b. `Preliminary_Finance_Model_v6.xlsx` and `_v8.xlsx`
+Treated as a **spec document being absorbed into the app**, not a permanent fixture:
 
-- **What they are**: financial model spreadsheets that SITEWORK is being built from. Reference/spec material, not source code.
-- **Why they're gitignored**: `*.xlsx` is in `.gitignore`. Treated as private working docs.
+- **Phase A — Parity audit**: walk v8 sheet-by-sheet against `index.html`, mark each line item ✅ / 🟡 / ❌ in `docs/finance-model/parity-audit.md`.
+- **Phase B — Implementation**: lift 🟡 and ❌ items into ROADMAP as new phases.
+- **Phase C — End-state**: once parity is reached, archive the xlsx in `docs/archive/finance-model/`, delete them, or keep them living. Decide at the time.
 
-**Three options — pick one**:
+Until Phase C resolves, **`index.html` and `v8.xlsx` are mutually authoritative**: the app for what's built, v8 for what's still owed.
 
-1. **Move out of the repo** *(recommended)*. Spec material lives where other working docs live. Repo stays focused on code.
-   ```bash
-   mkdir -p ~/Documents/sitework/reference
-   mv Preliminary_Finance_Model_v*.xlsx ~/Documents/sitework/reference/
-   ```
+### 9b. `docs/design/`
 
-2. **Keep them where they are**. They don't pollute git (gitignored). One line of clutter in `ls`. Fine if you cross-reference them constantly.
+Aesthetic refresh spec — locked decisions (NB Akademie type system, NB Form Std splash, pixel→glyph wordmark direction) and open threads (animation mechanics, NB Form placement, colour discipline, wordmark direction, print/PDF surface). Living document, updated as design sessions resolve threads.
 
-3. **Track them in `/docs/` via Git LFS**. Versioned trail of model changes. Removes `*.xlsx` from `.gitignore`, requires `git lfs install` + `git lfs track "*.xlsx"`. Probably overkill until you have collaborators reviewing the model.
+HTML/image mockups, type specimens, colour cards live here when they exist.
 
-**Why option 1**: the v6/v8 versioning suggests these will keep evolving. Each new version sitting in the repo root is more clutter. Keep the latest in a known reference folder, repo stays focused on code.
+### 9c. `docs/reference/`
 
-### 9c. The general principle
+External domain material — Rawlinson rate notes, Xero docs, AU construction conventions. Cited or quoted, not authored by us. Populate as gathered.
 
-The repo root should contain only files that are **either committed to git or actively used by the running app**. `serve.py` and `index.html` are runtime files. `CLAUDE.md`, `ROADMAP.md`, `WORKFLOW.md`, `.gitignore` are committed docs/config. Everything else is clutter or workspace state and should live elsewhere.
+### 9d. General principle
+
+Repo root = code + top-level docs (`README`, `CLAUDE`, `WORKFLOW`, `ROADMAP`).
+`docs/*` = spec material, version-controlled, claude.ai-readable.
+`.claude/` = local session state, never committed.
+
+If a new artefact appears, ask: is it code? (root) is it spec? (`docs/`) is it session state? (`.claude/`). Anything else doesn't belong in the repo.
+
+### 9e. Backups
+
+Don't commit `.bak` snapshots — `.gitignore` blocks them. Every previous `index.html` is already recoverable: `git log --oneline -- index.html` then `git show <sha>:index.html > recovered.html`.
 
 ---
 
@@ -191,4 +197,4 @@ The repo root should contain only files that are **either committed to git or ac
 
 ---
 
-*Last updated: 2026-05-08. PAT rotation completed in session 12 — auth now via SSH.*
+*Last updated: 2026-05-12. `/docs/` structure introduced; finance models brought into the repo; root README added.*

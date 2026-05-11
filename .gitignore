@@ -1,3 +1,4 @@
 *.bak
 *.xlsx
+!docs/finance-model/*.xlsx
 .claude/
