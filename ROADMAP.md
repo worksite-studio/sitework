@@ -86,7 +86,7 @@
 - ✅ **Estimating** (post-merge with BOQ Templates): templates → estimate → project flow verified end-to-end; Edit button added to detail panel (UPDATE_ESTIMATE wired via h1 form with `initial` prop); session 15
 - ✅ **Clients**: row-click edit added (UPDATE_CLIENT wired via m1 form); projects link correctly, no orphaned clientIds; contact detail complete (session 14)
 - ✅ **Help & Education**: 4-tab structure (Start / Modules / Glossary / Rawlinson), 3 getting-started guides, 6 module guides with pro-tips, 14-term glossary of Australian construction finance terms — all real content, not placeholder; content quality verified session 17. Note: help text references Xero + Rawlinson features which aren't live yet (Phases 6/7) — future content pass when those land.
-- ⬜ **Empty states**: new user sees helpful prompts, not blank tables, in every module
+- ✅ **Empty states**: added to Clients (L1), Leads (G1 zero-total case), Estimating (H1 estimates tab); polished Invoices copy. Cl1/k1v2/RF1 (Progress Claims, Defects, RFI Register) still missing — use React.createElement style and need separate treatment, flagged as follow-up (session 18)
 - ⬜ **Form validation**: required fields highlighted, no silent failures
 - ⬜ **Typography & spacing**: consistent padding, heading sizes, table density across all modules
 
@@ -234,5 +234,6 @@
 | 15 | 2026-05-11 | 0-G | Estimating edit modal — UPDATE_ESTIMATE reducer + h1 form `initial` prop + Edit button in H1 detail panel; one mid-session bug (modal render in wrong scope) caught and fixed in same PR via 3 commits (squashed at merge) |
 | 16 | 2026-05-11 | 0-G | Leads Convert-to-Project flow — CONVERT_LEAD_TO_PROJECT reducer (creates fresh project, marks lead won + stores convertedToProjectId ref), new Cv1 modal with client picker, button + green status indicator in G1 detail; one state-vs-setter bug fixed mid-session; spawned task for "sidebar nav doesn't reset module detail view" papercut |
 | 17 | 2026-05-16 | 0-G | Help & Education content quality verified — 4 tabs + seeded content all real, no placeholders; ticked without code change. Forward refs to Xero/Rawlinson noted for future pass when those phases land |
+| 18 | 2026-05-16 | 0-G | Empty states pass — added to Clients, Leads (zero-total banner), Estimating (estimates tab); Invoices copy polished. 3 modules (Cl1, k1v2, RF1) still need empty states but use createElement style — flagged for follow-up |
 
-*Last updated: 2026-05-16 (session 17)*
+*Last updated: 2026-05-16 (session 18)*
