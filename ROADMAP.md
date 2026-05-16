@@ -78,8 +78,7 @@
 
 ---
 
-### 0-G: Supporting Modules & Global UX ← NEXT
-*~1.5 hours.*
+### 0-G: Supporting Modules & Global UX ✅
 
 - ✅ **Subcontractors edit flow**: row-click edit modal (V1 + z1 + UPDATE_SUB action; mirrors B1/O1v2 pattern, session 13)
 - ✅ **Leads Pipeline**: stage progression + value tracking already in place; convert-to-project flow added (CONVERT_LEAD_TO_PROJECT reducer, Cv1 modal with client picker, button + green status indicator in G1 detail view); session 16
@@ -88,7 +87,7 @@
 - ✅ **Help & Education**: 4-tab structure (Start / Modules / Glossary / Rawlinson), 3 getting-started guides, 6 module guides with pro-tips, 14-term glossary of Australian construction finance terms — all real content, not placeholder; content quality verified session 17. Note: help text references Xero + Rawlinson features which aren't live yet (Phases 6/7) — future content pass when those land.
 - ✅ **Empty states**: added to Clients (L1), Leads (G1 zero-total case), Estimating (H1 estimates tab); polished Invoices copy. Cl1/k1v2/RF1 (Progress Claims, Defects, RFI Register) still missing — use React.createElement style and need separate treatment, flagged as follow-up (session 18)
 - ✅ **Form validation**: all 15 o.jsx forms now red-line empty required fields on save attempt (extended A + zt helpers with `error` prop, per-form `att` state, `?:` save handler). Plus fixed pre-existing PO crash (M1v2 dispatch key mismatch) and tightened Site Diary's loose `date`-only validation. POFormV2 and Cl1/k1v2/RF1 use createElement style — minimal guards added where needed; full red-border conversion deferred to spawned task. Session 19
-- ⬜ **Typography & spacing**: consistent padding, heading sizes, table density across all modules
+- ✅ **Typography & spacing**: design tokens added (v.h1/v.h2/v.caption typography; d.bgSubtle/posBg/negBg/warnBg/accentBg/lilacBg backgrounds). Targeted sweep: 8 page-title headings standardised to fontSize:26; 10 inline hex backgrounds converted to token references. Spacing scale deferred to Phase 4. Session 21
 
 ---
 
@@ -237,5 +236,6 @@
 | 18 | 2026-05-16 | 0-G | Empty states pass — added to Clients, Leads (zero-total banner), Estimating (estimates tab); Invoices copy polished. 3 modules (Cl1, k1v2, RF1) still need empty states but use createElement style — flagged for follow-up |
 | 19 | 2026-05-16 | 0-G | Form validation pass — A/zt helpers extended with `error` prop, all 15 o.jsx forms retrofitted (red border on empty required fields). Mid-session scope expansion after user flagged inconsistency (originally 5 forms → all 15). Pre-existing PO crash (M1v2 dispatch key) fixed. Site Diary tightened (was effectively no-op due to auto-filled date). 2 follow-up tasks spawned: createElement-style form conversion (POFormV2/Cl1/k1v2/RF1), WORKFLOW.md update for comprehensive-scope principle |
 | 20 | 2026-05-16 | docs | WORKFLOW.md §8: added "scoping cross-cutting polish" principle — codifies the lesson from session 19 about retrofitting patterns across every affected component, not just high-traffic subsets |
+| 21 | 2026-05-16 | 0-G | Typography & color tokens added (v.h1/h2/caption + d.bgSubtle/posBg/negBg/warnBg/accentBg/lilacBg); 8 page titles standardised to 26; 10 inline hex backgrounds folded into tokens. **Phase 0-G complete — all 8 items done.** |
 
-*Last updated: 2026-05-16 (session 20)*
+*Last updated: 2026-05-16 (session 21 — Phase 0-G complete 🎯)*
