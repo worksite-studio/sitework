@@ -142,6 +142,8 @@ ROADMAP carries **phase progress**. Memory carries **durable preferences and fac
 | New module or cross-cutting change | Plan mode, multiple Explore agents in parallel, written plan reviewed |
 | Phase transition (e.g. Phase 4 React scaffold) | Dedicated session, plan mode mandatory, expect clarifying questions |
 
+**On scoping cross-cutting polish.** When retrofitting a pattern across many components (validation, empty states, typography, error handling), scope to **every** affected component, not just the high-traffic subset. Half-finished polish creates inconsistent UX *worse* than no polish — users develop muscle memory expecting the new behaviour, then get silent failure on a less-common form. Acceptable to stage by **component family** (e.g. all o.jsx forms in one PR, all createElement-style forms in a follow-up), but not by "high-priority subset". Surfaced in session 19 mid-smoke-test when 5 forms were validated and 10 weren't.
+
 ---
 
 ## 9. Loose files in the repo — what they are and how to clean up
@@ -191,4 +193,4 @@ The repo root should contain only files that are **either committed to git or ac
 
 ---
 
-*Last updated: 2026-05-08. PAT rotation completed in session 12 — auth now via SSH.*
+*Last updated: 2026-05-16. Scope principle added in §8 (session 19).*
