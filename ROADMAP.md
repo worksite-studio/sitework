@@ -236,5 +236,6 @@
 | 17 | 2026-05-16 | 0-G | Help & Education content quality verified — 4 tabs + seeded content all real, no placeholders; ticked without code change. Forward refs to Xero/Rawlinson noted for future pass when those phases land |
 | 18 | 2026-05-16 | 0-G | Empty states pass — added to Clients, Leads (zero-total banner), Estimating (estimates tab); Invoices copy polished. 3 modules (Cl1, k1v2, RF1) still need empty states but use createElement style — flagged for follow-up |
 | 19 | 2026-05-16 | 0-G | Form validation pass — A/zt helpers extended with `error` prop, all 15 o.jsx forms retrofitted (red border on empty required fields). Mid-session scope expansion after user flagged inconsistency (originally 5 forms → all 15). Pre-existing PO crash (M1v2 dispatch key) fixed. Site Diary tightened (was effectively no-op due to auto-filled date). 2 follow-up tasks spawned: createElement-style form conversion (POFormV2/Cl1/k1v2/RF1), WORKFLOW.md update for comprehensive-scope principle |
+| 20 | 2026-05-16 | docs | WORKFLOW.md §8: added "scoping cross-cutting polish" principle — codifies the lesson from session 19 about retrofitting patterns across every affected component, not just high-traffic subsets |
 
-*Last updated: 2026-05-16 (session 19)*
+*Last updated: 2026-05-16 (session 20)*
