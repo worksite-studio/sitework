@@ -91,6 +91,22 @@
 
 ---
 
+### 0-H: Statutory Compliance Foundations ⬜
+*Goal: Add the per-project compliance fields and state-aware validation that the Australian construction contract regime requires. See `CONTRACTS_REFERENCE.md` §10 ("Now") for the source.*
+*Estimated: 1 session (~1.5 hours)*
+
+- ⬜ **Project fields**: add `state` (enum: NSW, VIC, QLD, WA, SA, TAS, ACT, NT — defaults from Settings, per-project override), `contractForm` (enum: HIA, MBA, FairTradingNSW, QBCCL1, QBCCL2, ABICMW, ABICSW, AS4000, AS4902, Custom), `contractClassification` (enum: Domestic, Commercial)
+- ⬜ **State-aware validation at project creation**:
+  - VIC + Cost Plus + contract value < $1m + not flagged as renovation-with-unknown-cost → **hard block** with reference to DBCA s.13
+  - QLD + Cost Plus → require acknowledgement of QBCC Home Warranty Scheme non-completion consequence
+  - WA + Cost Plus → default contract title to "Cost Plus Contract" and inject s.14 HBCA acknowledgement clause
+  - Deposit cap warnings per state: NSW 10% / $20k; VIC 10% under $20k, 5% over; WA 6.5%; QLD 5% over $20k, 10% under
+- ⬜ **Invoice / progress claim fields**: add `madeUnderSOPAct` (bool) and `sopActState` (enum) — determines statutory windows, time bars, and required language on the document
+- ⬜ **Variation fields**: add `reasonCategory` (enum: OwnerRequested, LatentCondition, Regulatory, DesignClarification, BuilderFault) and `timeImpactDays` (int)
+- ⬜ **Settings**: holds builder's home state, ABN, licence numbers by state, HBCF/VBA/QBCC registration numbers
+
+---
+
 ## Phase 1 — LocalStorage Persistence
 *Goal: Data survives browser refresh. Required before any real user testing.*
 *Estimated: 1 session (~1 hour)*
@@ -103,12 +119,25 @@
 
 ---
 
+## Phase 1.5 — Compliance Workflows
+*Goal: Ship the cost-plus-administration features that build on the 0-H foundations. See `CONTRACTS_REFERENCE.md` §10 ("Phase 1.5") for the source.*
+*Estimated: 2–3 sessions*
+
+- ⬜ **PC items and PS items as first-class entities** — data model + UI + reconciliation against allowance, margin-on-excess only (not on full cost). PC/PS price changes adjust the next progress claim, NOT a variation.
+- ⬜ **Cost-plus invoice substantiation enforcement** — block claim submission for cost-plus projects without at least one linked supporting document (invoice / receipt / timesheet / subcontractor statement)
+- ⬜ **Statutory warranty calendar** — per-project completion date drives warranty expiry by state (NSW 6yr major / 2yr minor, VIC 10yr flat, QLD 6yr 3mo / 12mo, WA 6yr, SA 5yr, ACT 10yr major / 6yr minor); major/minor distinction where applicable; defects rectification tracked against the right warranty
+- ⬜ **Insurance certificate tracking** — Settings holds builder's HBCF/VBA/QBCC registration; project creation captures "certificate provided to owner on [date]" + file upload
+- ⬜ **Owner-facing open-book report** for cost-plus projects (read-only view: every cost, linked receipts, running total against estimate). Biggest single piece — may warrant its own sub-session
+
+---
+
 ## Phase 2 — Architecture Documentation
 *Goal: The codebase is fully mapped and understood before we migrate to a proper scaffold. This is for us — so future sessions move faster and the React migration in Phase 4 is clean.*
 *Estimated: 1 session (~1.5 hours) — do this BEFORE Phase 4 scaffold*
 
 - ⬜ **ARCHITECTURE.md**: component map (minified names → module names), reducer actions, data flow between modules
 - ⬜ **DATA_MODEL.md**: every entity (Project, Client, Invoice, Variation, etc.) with field names, types, and relationships — becomes the PostgreSQL schema blueprint for Phase 5
+  - Must incorporate the entities sketched in `CONTRACTS_REFERENCE.md` §10 ("Phase 2"): Project (extended with state / contractForm / contractClassification / estimatedValue / isRenovationWithUnknownCost / completionDate / practicalCompletionDate / defectsLiabilityPeriod / retentionRate / retentionCap / hbcfCertificateNumber / hbcfProvidedDate), PrimeCostItem, ProvisionalSum, Variation (extended with reasonCategory / timeImpactDays / signedByOwner / signedByBuilder / workCommencedBeforeSignature), Invoice (extended with madeUnderSOPAct / sopActState / supportingDocs), StatutoryWarranty
 - ⬜ **Inline comments**: brief comments above each major component in `index.html` so any session can navigate the file quickly
 - ⬜ **Seed data review**: ensure seed data covers all realistic scenarios (cost-plus + fixed-price, various claim statuses, retention examples)
 - ⬜ Commit all docs to repo
@@ -155,6 +184,9 @@
 - ⬜ Supabase client SDK wired into frontend
 - ⬜ Migrate all state from localStorage → Supabase
 - ⬜ Organisation / workspace model (one builder firm = one workspace, multiple users per org)
+- ⬜ **Immutable audit log** — every change to contract / variation / invoice / PC-PS reconciliation timestamped with user, before/after state. Soft-delete only, no hard deletes. Drives the 10-year record-keeping horizon required by NSW DBP Act and equivalent state regimes (see `CONTRACTS_REFERENCE.md` §7.7)
+- ⬜ **Owner portal** — read-only mirror of the cost-plus open-book report (every cost, linked receipts, PC/PS reconciliation) and variation history with signatures. Separate from builder portal; row-level security
+- ⬜ **State threshold tables** — `StatutoryRules` keyed by `(state, effectiveDate)` so deposit caps, mandatory clause sets, retention defaults and warranty periods can be updated without code changes. Project compliance is checked against the rules in force at contract signing, not against the current rules
 
 ---
 
@@ -237,5 +269,6 @@
 | 19 | 2026-05-16 | 0-G | Form validation pass — A/zt helpers extended with `error` prop, all 15 o.jsx forms retrofitted (red border on empty required fields). Mid-session scope expansion after user flagged inconsistency (originally 5 forms → all 15). Pre-existing PO crash (M1v2 dispatch key) fixed. Site Diary tightened (was effectively no-op due to auto-filled date). 2 follow-up tasks spawned: createElement-style form conversion (POFormV2/Cl1/k1v2/RF1), WORKFLOW.md update for comprehensive-scope principle |
 | 20 | 2026-05-16 | docs | WORKFLOW.md §8: added "scoping cross-cutting polish" principle — codifies the lesson from session 19 about retrofitting patterns across every affected component, not just high-traffic subsets |
 | 21 | 2026-05-16 | 0-G | Typography & color tokens added (v.h1/h2/caption + d.bgSubtle/posBg/negBg/warnBg/accentBg/lilacBg); 8 page titles standardised to 26; 10 inline hex backgrounds folded into tokens. **Phase 0-G complete — all 8 items done.** |
+| 22 | 2026-05-18 | docs | Integrated CONTRACTS_REFERENCE.md §10 backlog into ROADMAP — added phase 0-H (Statutory Compliance Foundations) and Phase 1.5 (Compliance Workflows); extended Phase 2 data-model scope and Phase 5 backend scope (audit log, owner portal, state threshold tables). CONTRACTS_REFERENCE.md committed to repo root |
 
-*Last updated: 2026-05-16 (session 21 — Phase 0-G complete 🎯)*
+*Last updated: 2026-05-18 (session 22)*
