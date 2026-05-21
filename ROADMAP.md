@@ -91,19 +91,14 @@
 
 ---
 
-### 0-H: Statutory Compliance Foundations ⬜
+### 0-H: Statutory Compliance Foundations ✅
 *Goal: Add the per-project compliance fields and state-aware validation that the Australian construction contract regime requires. See `CONTRACTS_REFERENCE.md` §10 ("Now") for the source.*
-*Estimated: 1 session (~1.5 hours)*
 
-- ⬜ **Project fields**: add `state` (enum: NSW, VIC, QLD, WA, SA, TAS, ACT, NT — defaults from Settings, per-project override), `contractForm` (enum: HIA, MBA, FairTradingNSW, QBCCL1, QBCCL2, ABICMW, ABICSW, AS4000, AS4902, Custom), `contractClassification` (enum: Domestic, Commercial)
-- ⬜ **State-aware validation at project creation**:
-  - VIC + Cost Plus + contract value < $1m + not flagged as renovation-with-unknown-cost → **hard block** with reference to DBCA s.13
-  - QLD + Cost Plus → require acknowledgement of QBCC Home Warranty Scheme non-completion consequence
-  - WA + Cost Plus → default contract title to "Cost Plus Contract" and inject s.14 HBCA acknowledgement clause
-  - Deposit cap warnings per state: NSW 10% / $20k; VIC 10% under $20k, 5% over; WA 6.5%; QLD 5% over $20k, 10% under
-- ⬜ **Invoice / progress claim fields**: add `madeUnderSOPAct` (bool) and `sopActState` (enum) — determines statutory windows, time bars, and required language on the document
-- ⬜ **Variation fields**: add `reasonCategory` (enum: OwnerRequested, LatentCondition, Regulatory, DesignClarification, BuilderFault) and `timeImpactDays` (int)
-- ⬜ **Settings**: holds builder's home state, ABN, licence numbers by state, HBCF/VBA/QBCC registration numbers
+- ✅ **Project fields**: `state`, `contractForm`, `contractClassification`, `estimatedValue`, `isRenovationWithUnknownCost`, `qldHwsAcknowledged` added to project record (seed PRJ-001..004 backfilled + propagated through ADD_PROJECT / PROMOTE_ESTIMATE / CONVERT_LEAD_TO_PROJECT). Plus `contractType` exposed in I0 form (was missing!)
+- ✅ **State-aware validation at project creation**: VIC s.13 hard-block with inline red banner + greyed Save (cost-plus, <$1M, not renovation); QLD QBCC HWS acknowledgement checkbox (cost-plus); WA flag stored (s.14 contract title injection deferred to Phase 3 PDF); deposit cap helper text below state select
+- ✅ **Progress claim fields**: `madeUnderSOPAct` + `sopActState` added to ClaimForm1 + 5 seed claims. (Invoices excluded — those are received from subs, not issued under SOPA)
+- ✅ **Variation fields**: `reasonCategory` (now 6 values inc. Other), `timeImpactDays`, plus consecutive editable ID, Requested By dropdown (Owner/Builder/Architect/Other), conditional comment fields when "Other" picked
+- ✅ **Settings**: home state, ABN, 8 state-keyed licence inputs, 5 insurance registration inputs (HBCF/DBI/VBA/QBCC/HII). Fixed latent focus-loss bug (extracted `m` section helper to module scope as `stSec`). Session 23
 
 ---
 
@@ -270,5 +265,6 @@
 | 20 | 2026-05-16 | docs | WORKFLOW.md §8: added "scoping cross-cutting polish" principle — codifies the lesson from session 19 about retrofitting patterns across every affected component, not just high-traffic subsets |
 | 21 | 2026-05-16 | 0-G | Typography & color tokens added (v.h1/h2/caption + d.bgSubtle/posBg/negBg/warnBg/accentBg/lilacBg); 8 page titles standardised to 26; 10 inline hex backgrounds folded into tokens. **Phase 0-G complete — all 8 items done.** |
 | 22 | 2026-05-18 | docs | Integrated CONTRACTS_REFERENCE.md §10 backlog into ROADMAP — added phase 0-H (Statutory Compliance Foundations) and Phase 1.5 (Compliance Workflows); extended Phase 2 data-model scope and Phase 5 backend scope (audit log, owner portal, state threshold tables). CONTRACTS_REFERENCE.md committed to repo root |
+| 23 | 2026-05-21 | 0-H | Statutory Compliance Foundations shipped — project compliance fields (state/contractForm/contractClassification/estimatedValue/isRenovationWithUnknownCost/qldHwsAcknowledged) + state-aware project validation (VIC s.13 hard-block; QLD QBCC ack; WA flag; deposit cap text); SOPA fields on ClaimForm1 only (not invoices — those are received, not issued); variation reasonCategory + timeImpactDays + consecutive editable ID + Requested By dropdown + Other-comment fields; Settings extended (home state, ABN, 8 licences, 5 insurance regos); fixed latent St1 focus-loss bug. 4 commits squashed |
 
-*Last updated: 2026-05-18 (session 22)*
+*Last updated: 2026-05-21 (session 23 — Phase 0-H complete)*
