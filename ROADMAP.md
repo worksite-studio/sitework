@@ -102,15 +102,15 @@
 
 ---
 
-## Phase 1 — LocalStorage Persistence
+## Phase 1 — LocalStorage Persistence ✅
 *Goal: Data survives browser refresh. Required before any real user testing.*
-*Estimated: 1 session (~1 hour)*
 
-- ⬜ Wrap `Z1` reducer with localStorage read on init
-- ⬜ Write full state to localStorage on every dispatch
-- ⬜ Handle first-run gracefully (no stored data → load seed data)
-- ⬜ Add "Reset to demo data" button in Settings
-- ⬜ Test: refresh page, verify all data intact
+- ✅ Wrapped `Z1` reducer via `Z1Persisted` higher-order reducer that persists full state to `sw_state_v1` on every dispatch (versioned key so future schema changes can migrate)
+- ✅ Lazy initializer in `Pc`'s useReducer reads `sw_state_v1` on mount; try/catch falls back to seed if missing or corrupted JSON
+- ✅ First-run graceful — empty localStorage → seed
+- ✅ "Reset to Demo Data" button in Settings (red outlined, confirm dialog) — removes `sw_state_v1` + `window.location.reload()`
+- ✅ Smoke-tested: project/variation/invoice/milestone all persist across refresh; Settings business name now propagates to header + dashboard greeting; Settings Save now reloads to keep all reads consistent
+- ✅ Fixed 3 latent bugs surfaced by persistence: I0 edit-wipes-data (codes/lineItems/variations/invoices), hardcoded "Worksite" in header + greeting, depositCapText + insurance grid missing TAS/ACT/NT (session 24)
 
 ---
 
@@ -266,5 +266,6 @@
 | 21 | 2026-05-16 | 0-G | Typography & color tokens added (v.h1/h2/caption + d.bgSubtle/posBg/negBg/warnBg/accentBg/lilacBg); 8 page titles standardised to 26; 10 inline hex backgrounds folded into tokens. **Phase 0-G complete — all 8 items done.** |
 | 22 | 2026-05-18 | docs | Integrated CONTRACTS_REFERENCE.md §10 backlog into ROADMAP — added phase 0-H (Statutory Compliance Foundations) and Phase 1.5 (Compliance Workflows); extended Phase 2 data-model scope and Phase 5 backend scope (audit log, owner portal, state threshold tables). CONTRACTS_REFERENCE.md committed to repo root |
 | 23 | 2026-05-21 | 0-H | Statutory Compliance Foundations shipped — project compliance fields (state/contractForm/contractClassification/estimatedValue/isRenovationWithUnknownCost/qldHwsAcknowledged) + state-aware project validation (VIC s.13 hard-block; QLD QBCC ack; WA flag; deposit cap text); SOPA fields on ClaimForm1 only (not invoices — those are received, not issued); variation reasonCategory + timeImpactDays + consecutive editable ID + Requested By dropdown + Other-comment fields; Settings extended (home state, ABN, 8 licences, 5 insurance regos); fixed latent St1 focus-loss bug. 4 commits squashed |
+| 24 | 2026-05-21 | 1 | LocalStorage persistence — Z1Persisted higher-order reducer + lazy init from `sw_state_v1`; Reset to Demo Data button in Settings; smoke-test surfaced 3 latent bugs all fixed in same PR (I0 edit wiping nested arrays; "Worksite" hardcoded in header + greeting; insurance grid + depositCapText missing TAS/ACT/NT). 5 commits squashed. **Phase 1 complete — real user testing unblocked.** |
 
-*Last updated: 2026-05-21 (session 23 — Phase 0-H complete)*
+*Last updated: 2026-05-21 (session 24 — Phase 1 complete)*
