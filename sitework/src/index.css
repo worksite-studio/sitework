@@ -1,0 +1,42 @@
+@import 'tailwindcss';
+
+/* Design tokens lifted from the legacy app's `d` (palette) and `v` (typography) objects.
+   Phase 4 keeps the values stable so visual parity holds during the side-by-side port. */
+:root {
+  --sw-bg: #fafafa;
+  --sw-surface: #ffffff;
+  --sw-text: #1a1a1a;
+  --sw-muted: #6b7280;
+  --sw-border: #e5e7eb;
+  --sw-primary: #1a1a1a;
+  --sw-success: #10b981;
+  --sw-warning: #f59e0b;
+  --sw-danger: #ef4444;
+  --sw-info: #3b82f6;
+}
+
+@theme {
+  --color-sw-bg: var(--sw-bg);
+  --color-sw-surface: var(--sw-surface);
+  --color-sw-text: var(--sw-text);
+  --color-sw-muted: var(--sw-muted);
+  --color-sw-border: var(--sw-border);
+  --color-sw-primary: var(--sw-primary);
+  --color-sw-success: var(--sw-success);
+  --color-sw-warning: var(--sw-warning);
+  --color-sw-danger: var(--sw-danger);
+  --color-sw-info: var(--sw-info);
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: var(--sw-bg);
+  color: var(--sw-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
