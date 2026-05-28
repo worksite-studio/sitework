@@ -28,7 +28,9 @@ const browserStorage: PersistedStorage | null =
     ? window.localStorage
     : null
 
-export function migrateLegacyState(storage: PersistedStorage | null = browserStorage): MigrationResult {
+export function migrateLegacyState(
+  storage: PersistedStorage | null = browserStorage,
+): MigrationResult {
   if (!storage) return { status: 'skipped', reason: 'no-storage' }
 
   // Already migrated?
