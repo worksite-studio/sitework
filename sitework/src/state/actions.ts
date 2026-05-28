@@ -1,0 +1,384 @@
+/**
+ * Discriminated union of all reducer actions. Adding a new action: extend
+ * this union AND add a `case` arm in reducer.ts — TypeScript's exhaustiveness
+ * check (the `assertNever` call at the bottom of the reducer switch) will
+ * flag any missing handlers at compile time.
+ *
+ * 53 actions total — 44 ported verbatim from the legacy `Z1` reducer plus
+ * 9 new actions filling the gaps noted in ARCHITECTURE.md §6.13
+ * (ADD_MILESTONE, UPDATE_MILESTONE, ADD_RFI, UPDATE_RFI, ADD_MATERIAL,
+ *  UPDATE_MATERIAL, ADD_SUPPLIER, UPDATE_SUPPLIER, UPDATE_SETTINGS).
+ */
+
+import type {
+  BoqTemplateId,
+  Client,
+  ClientId,
+  Estimate,
+  CostCode,
+  CostCodeId,
+  DefectId,
+  DiaryEntry,
+  Defect,
+  EstimateCode,
+  EstimateId,
+  Invoice,
+  InvoiceId,
+  Lead,
+  LeadId,
+  LineItem,
+  Material,
+  MaterialId,
+  Milestone,
+  MilestoneId,
+  PrimeCostItem,
+  PrimeCostItemId,
+  ProgressClaim,
+  ProgressClaimId,
+  Project,
+  ProjectId,
+  ProvisionalSum,
+  ProvisionalSumId,
+  Purchase,
+  PurchaseId,
+  Retention,
+  Rfi,
+  RfiId,
+  Selection,
+  SelectionId,
+  Settings,
+  Subcontractor,
+  SubcontractorId,
+  Supplier,
+  SupplierId,
+  Timesheet,
+  TimesheetId,
+  Variation,
+  VariationId,
+} from '@/types'
+
+// ─── Projects ────────────────────────────────────────────────────────────
+
+export type AddProjectAction = { type: 'ADD_PROJECT'; project: Project }
+export type UpdateProjectAction = {
+  type: 'UPDATE_PROJECT'
+  projectId: ProjectId
+  patch: Partial<Project>
+}
+export type DuplicateProjectAction = {
+  type: 'DUPLICATE_PROJECT'
+  projectId: ProjectId
+  newName: string
+}
+
+// ─── Cost codes (nested in Project) ──────────────────────────────────────
+
+export type AddCodeAction = { type: 'ADD_CODE'; projectId: ProjectId; code: CostCode }
+export type UpdateCodeAction = {
+  type: 'UPDATE_CODE'
+  projectId: ProjectId
+  codeId: CostCodeId
+  patch: Partial<CostCode>
+}
+export type DeleteCodeAction = { type: 'DELETE_CODE'; projectId: ProjectId; codeId: CostCodeId }
+export type MoveCodeUpAction = { type: 'MOVE_CODE_UP'; projectId: ProjectId; codeId: CostCodeId }
+export type MoveCodeDownAction = {
+  type: 'MOVE_CODE_DOWN'
+  projectId: ProjectId
+  codeId: CostCodeId
+}
+export type ImportTemplateIntoBoqAction = {
+  type: 'IMPORT_TEMPLATE_INTO_BOQ'
+  projectId: ProjectId
+  templateId: BoqTemplateId
+}
+
+// ─── Line items (nested under CostCode) ──────────────────────────────────
+
+export type AddLineItemAction = {
+  type: 'ADD_LINE_ITEM'
+  projectId: ProjectId
+  ccId: CostCodeId
+  lineItem: LineItem
+}
+
+// ─── Variations ──────────────────────────────────────────────────────────
+
+export type AddVariationAction = {
+  type: 'ADD_VARIATION'
+  projectId: ProjectId
+  variation: Variation
+}
+export type UpdateVariationAction = {
+  type: 'UPDATE_VARIATION'
+  projectId: ProjectId
+  variationId: VariationId
+  patch: Partial<Variation>
+}
+
+// ─── Invoices ────────────────────────────────────────────────────────────
+
+export type AddInvoiceAction = { type: 'ADD_INVOICE'; projectId: ProjectId; invoice: Invoice }
+export type UpdateInvoiceAction = {
+  type: 'UPDATE_INVOICE'
+  projectId: ProjectId
+  invoiceId: InvoiceId
+  patch: Partial<Invoice>
+}
+
+// ─── Purchases / POs ─────────────────────────────────────────────────────
+
+export type AddPurchaseAction = {
+  type: 'ADD_PURCHASE'
+  projectId: ProjectId
+  purchase: Purchase
+}
+export type ReceivePurchaseAction = {
+  type: 'RECEIVE_PURCHASE'
+  projectId: ProjectId
+  purchaseId: PurchaseId
+  receivedDate: string
+}
+
+// ─── Progress claims ─────────────────────────────────────────────────────
+
+export type AddClaimAction = { type: 'ADD_CLAIM'; projectId: ProjectId; claim: ProgressClaim }
+export type UpdateClaimAction = {
+  type: 'UPDATE_CLAIM'
+  projectId: ProjectId
+  claimId: ProgressClaimId
+  patch: Partial<ProgressClaim>
+}
+
+// ─── PC / PS items ───────────────────────────────────────────────────────
+
+export type AddPcItemAction = { type: 'ADD_PC_ITEM'; projectId: ProjectId; item: PrimeCostItem }
+export type UpdatePcItemAction = {
+  type: 'UPDATE_PC_ITEM'
+  projectId: ProjectId
+  itemId: PrimeCostItemId
+  patch: Partial<PrimeCostItem>
+}
+export type DeletePcItemAction = {
+  type: 'DELETE_PC_ITEM'
+  projectId: ProjectId
+  itemId: PrimeCostItemId
+}
+
+export type AddPsItemAction = { type: 'ADD_PS_ITEM'; projectId: ProjectId; item: ProvisionalSum }
+export type UpdatePsItemAction = {
+  type: 'UPDATE_PS_ITEM'
+  projectId: ProjectId
+  itemId: ProvisionalSumId
+  patch: Partial<ProvisionalSum>
+}
+export type DeletePsItemAction = {
+  type: 'DELETE_PS_ITEM'
+  projectId: ProjectId
+  itemId: ProvisionalSumId
+}
+
+// ─── Retention ───────────────────────────────────────────────────────────
+
+export type UpdateRetentionAction = {
+  type: 'UPDATE_RETENTION'
+  projectId: ProjectId
+  patch: Partial<Retention>
+}
+
+// ─── Diary / Defects / Selections / Timesheets ───────────────────────────
+
+export type AddDiaryEntryAction = {
+  type: 'ADD_DIARY_ENTRY'
+  projectId: ProjectId
+  entry: DiaryEntry
+}
+export type AddDefectAction = { type: 'ADD_DEFECT'; projectId: ProjectId; defect: Defect }
+export type UpdateDefectAction = {
+  type: 'UPDATE_DEFECT'
+  projectId: ProjectId
+  defectId: DefectId
+  patch: Partial<Defect>
+}
+export type AddSelectionAction = {
+  type: 'ADD_SELECTION'
+  projectId: ProjectId
+  selection: Selection
+}
+export type ApproveSelectionAction = {
+  type: 'APPROVE_SELECTION'
+  projectId: ProjectId
+  selectionId: SelectionId
+  approvedOption: string
+}
+export type AddTimesheetAction = {
+  type: 'ADD_TIMESHEET'
+  projectId: ProjectId
+  timesheet: Timesheet
+}
+export type DeleteTimesheetAction = {
+  type: 'DELETE_TIMESHEET'
+  projectId: ProjectId
+  timesheetId: TimesheetId
+}
+
+// ─── Milestones (new in Phase 4 — see ARCHITECTURE.md §6.13) ─────────────
+
+export type AddMilestoneAction = {
+  type: 'ADD_MILESTONE'
+  projectId: ProjectId
+  milestone: Milestone
+}
+export type UpdateMilestoneAction = {
+  type: 'UPDATE_MILESTONE'
+  projectId: ProjectId
+  milestoneId: MilestoneId
+  patch: Partial<Milestone>
+}
+
+// ─── RFIs (new in Phase 4) ───────────────────────────────────────────────
+
+export type AddRfiAction = { type: 'ADD_RFI'; projectId: ProjectId; rfi: Rfi }
+export type UpdateRfiAction = {
+  type: 'UPDATE_RFI'
+  projectId: ProjectId
+  rfiId: RfiId
+  patch: Partial<Rfi>
+}
+
+// ─── Subs / Clients / Leads ──────────────────────────────────────────────
+
+export type AddSubAction = { type: 'ADD_SUB'; sub: Subcontractor }
+export type UpdateSubAction = {
+  type: 'UPDATE_SUB'
+  subId: SubcontractorId
+  patch: Partial<Subcontractor>
+}
+
+export type AddClientAction = { type: 'ADD_CLIENT'; client: Client }
+export type UpdateClientAction = {
+  type: 'UPDATE_CLIENT'
+  clientId: ClientId
+  patch: Partial<Client>
+}
+
+export type AddLeadAction = { type: 'ADD_LEAD'; lead: Lead }
+export type UpdateLeadAction = { type: 'UPDATE_LEAD'; leadId: LeadId; patch: Partial<Lead> }
+export type ConvertLeadToProjectAction = {
+  type: 'CONVERT_LEAD_TO_PROJECT'
+  leadId: LeadId
+  project: Project
+  /** Optional Client to create at the same time. */
+  client?: Client
+}
+
+// ─── Materials / Suppliers (new in Phase 4) ──────────────────────────────
+
+export type AddMaterialAction = { type: 'ADD_MATERIAL'; material: Material }
+export type UpdateMaterialAction = {
+  type: 'UPDATE_MATERIAL'
+  materialId: MaterialId
+  patch: Partial<Material>
+}
+export type AddSupplierAction = { type: 'ADD_SUPPLIER'; supplier: Supplier }
+export type UpdateSupplierAction = {
+  type: 'UPDATE_SUPPLIER'
+  supplierId: SupplierId
+  patch: Partial<Supplier>
+}
+
+// ─── Estimates ───────────────────────────────────────────────────────────
+
+export type AddEstimateAction = { type: 'ADD_ESTIMATE'; estimate: Estimate }
+export type UpdateEstimateAction = {
+  type: 'UPDATE_ESTIMATE'
+  estimateId: EstimateId
+  patch: Partial<Estimate>
+}
+export type AddEstCodeAction = {
+  type: 'ADD_EST_CODE'
+  estimateId: EstimateId
+  code: EstimateCode
+}
+export type CreateEstimateFromTemplateAction = {
+  type: 'CREATE_ESTIMATE_FROM_TEMPLATE'
+  templateId: BoqTemplateId
+  name: string
+  /** Used to compute absolute budgets from template percentages. */
+  contractValue: number
+}
+export type PromoteEstimateAction = {
+  type: 'PROMOTE_ESTIMATE'
+  estimateId: EstimateId
+  projectName: string
+}
+
+// ─── Settings (new in Phase 4) ───────────────────────────────────────────
+
+export type UpdateSettingsAction = { type: 'UPDATE_SETTINGS'; patch: Partial<Settings> }
+
+// ─── Union ───────────────────────────────────────────────────────────────
+
+export type Action =
+  | AddProjectAction
+  | UpdateProjectAction
+  | DuplicateProjectAction
+  | AddCodeAction
+  | UpdateCodeAction
+  | DeleteCodeAction
+  | MoveCodeUpAction
+  | MoveCodeDownAction
+  | ImportTemplateIntoBoqAction
+  | AddLineItemAction
+  | AddVariationAction
+  | UpdateVariationAction
+  | AddInvoiceAction
+  | UpdateInvoiceAction
+  | AddPurchaseAction
+  | ReceivePurchaseAction
+  | AddClaimAction
+  | UpdateClaimAction
+  | AddPcItemAction
+  | UpdatePcItemAction
+  | DeletePcItemAction
+  | AddPsItemAction
+  | UpdatePsItemAction
+  | DeletePsItemAction
+  | UpdateRetentionAction
+  | AddDiaryEntryAction
+  | AddDefectAction
+  | UpdateDefectAction
+  | AddSelectionAction
+  | ApproveSelectionAction
+  | AddTimesheetAction
+  | DeleteTimesheetAction
+  | AddMilestoneAction
+  | UpdateMilestoneAction
+  | AddRfiAction
+  | UpdateRfiAction
+  | AddSubAction
+  | UpdateSubAction
+  | AddClientAction
+  | UpdateClientAction
+  | AddLeadAction
+  | UpdateLeadAction
+  | ConvertLeadToProjectAction
+  | AddMaterialAction
+  | UpdateMaterialAction
+  | AddSupplierAction
+  | UpdateSupplierAction
+  | AddEstimateAction
+  | UpdateEstimateAction
+  | AddEstCodeAction
+  | CreateEstimateFromTemplateAction
+  | PromoteEstimateAction
+  | UpdateSettingsAction
+
+/**
+ * Compile-time exhaustiveness check. Call from the default arm of a switch
+ * over `Action` — if a new action type is added without a case arm, TS
+ * complains here.
+ */
+export function assertNever(x: never): never {
+  throw new Error(`Unhandled action: ${JSON.stringify(x)}`)
+}
