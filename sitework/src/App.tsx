@@ -1,44 +1,57 @@
-import { seed } from '@/state/seed'
-import { formatCurrency } from '@/lib/formatCurrency'
-import { formatDate } from '@/lib/formatDate'
-import { StatusBadge } from '@/components/StatusBadge'
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
+import { StateProvider } from '@/state/StateProvider'
+import { AppShell } from '@/components/AppShell'
+import { Placeholder } from '@/components/Placeholder'
+import { ProjectsList } from '@/modules/Projects/ProjectsList'
+import { ProjectLayout } from '@/modules/project/ProjectLayout'
+import { ProjectTab } from '@/modules/project/ProjectTab'
+
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <AppShell />,
+    children: [
+      { index: true, element: <Placeholder title="Dashboard" note="Ported in Sessions 5–7." /> },
+      { path: 'projects', element: <ProjectsList /> },
+      {
+        path: 'projects/:projectId',
+        element: <ProjectLayout />,
+        children: [
+          { index: true, element: <Navigate to="overview" replace /> },
+          { path: ':tab', element: <ProjectTab /> },
+        ],
+      },
+      {
+        path: 'leads',
+        element: <Placeholder title="Leads / Tender" note="Ported in Sessions 5–7." />,
+      },
+      {
+        path: 'estimating',
+        element: <Placeholder title="Estimating" note="Ported in Sessions 5–7." />,
+      },
+      { path: 'clients', element: <Placeholder title="Clients" note="Ported in Sessions 5–7." /> },
+      {
+        path: 'subs',
+        element: <Placeholder title="Subcontractors" note="Ported in Sessions 5–7." />,
+      },
+      {
+        path: 'education',
+        element: <Placeholder title="Help & Learn" note="Ported in a later session." />,
+      },
+      {
+        path: 'settings',
+        element: <Placeholder title="Settings" note="Ported in Sessions 5–7." />,
+      },
+      { path: '*', element: <Placeholder title="Not found" note="No such page." /> },
+    ],
+  },
+])
 
 function App() {
-  const projects = seed.projects
-  const totalBudget = projects.reduce(
-    (sum, p) => sum + p.codes.reduce((s, c) => s + c.budget, 0),
-    0,
-  )
-
   return (
-    <main className="min-h-screen flex flex-col items-center gap-6 p-10">
-      <header className="text-center space-y-2">
-        <h1 className="text-4xl font-semibold tracking-tight">SITEWORK</h1>
-        <p className="text-sw-muted text-sm">
-          Phase 4 scaffold — Session 2: types, seed, persistence, utilities wired in.
-        </p>
-      </header>
-
-      <section className="w-full max-w-2xl space-y-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-sw-muted">
-          Seed sanity check ({projects.length} projects · total budget {formatCurrency(totalBudget)}
-          )
-        </h2>
-        <ul className="border border-sw-border rounded-md divide-y divide-sw-border">
-          {projects.map((p) => (
-            <li key={p.id} className="flex items-center justify-between px-4 py-3">
-              <div>
-                <div className="font-medium">{p.name}</div>
-                <div className="text-xs text-sw-muted">
-                  {p.id} · {p.state} · {formatDate(p.startDate)}
-                </div>
-              </div>
-              <StatusBadge status={p.status} />
-            </li>
-          ))}
-        </ul>
-      </section>
-    </main>
+    <StateProvider>
+      <RouterProvider router={router} />
+    </StateProvider>
   )
 }
 
