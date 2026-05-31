@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test'
 
+test.beforeEach(async ({ page }) => {
+  // Start each spec from a clean slate so the persisted dispatch from a
+  // previous spec doesn't bleed in.
+  await page.addInitScript(() => localStorage.clear())
+})
+
 test('shell renders with sidebar nav', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible()
@@ -9,21 +15,16 @@ test('shell renders with sidebar nav', async ({ page }) => {
 
 test('navigates to Projects list and into a project tab', async ({ page }) => {
   await page.goto('/')
-
-  // Sidebar → Projects
   await page.getByRole('link', { name: 'Projects' }).click()
   await expect(page).toHaveURL(/\/projects$/)
   await expect(page.getByText('Akademie')).toBeVisible()
 
-  // Into the first project → overview tab via index redirect
   await page.getByRole('link', { name: /Akademie/ }).click()
   await expect(page).toHaveURL(/\/projects\/PRJ-001\/overview$/)
 
-  // Tab bar present, switch to BOQ
   await page.getByRole('link', { name: 'BOQ & Budget' }).click()
   await expect(page).toHaveURL(/\/projects\/PRJ-001\/boq$/)
 
-  // Back button returns to overview (URL routing works)
   await page.goBack()
   await expect(page).toHaveURL(/\/projects\/PRJ-001\/overview$/)
 })
@@ -31,4 +32,30 @@ test('navigates to Projects list and into a project tab', async ({ page }) => {
 test('deep-link into a project tab works', async ({ page }) => {
   await page.goto('/projects/PRJ-001/claims')
   await expect(page.getByRole('heading', { name: 'Progress Claims' })).toBeVisible()
+})
+
+test('clients module: add then edit a client', async ({ page }) => {
+  await page.goto('/clients')
+  await expect(page.getByRole('heading', { name: 'Clients' })).toBeVisible()
+  await expect(page.getByText('Fletcher Architecture')).toBeVisible()
+
+  // Add
+  await page.getByRole('button', { name: '+ New Client' }).first().click()
+  await page.getByLabel(/^Name/).fill('Smoke Test Pty Ltd')
+  await page.getByLabel('Phone').fill('0400 000 000')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText('Smoke Test Pty Ltd')).toBeVisible()
+
+  // Edit — click the row
+  await page.getByText('Smoke Test Pty Ltd').click()
+  await page.getByLabel(/^Name/).fill('Smoke Test (renamed)')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText('Smoke Test (renamed)')).toBeVisible()
+})
+
+test('clients form blocks save when Name is empty', async ({ page }) => {
+  await page.goto('/clients')
+  await page.getByRole('button', { name: '+ New Client' }).first().click()
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText('Name is required')).toBeVisible()
 })

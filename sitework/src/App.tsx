@@ -5,6 +5,7 @@ import { Placeholder } from '@/components/Placeholder'
 import { ProjectsList } from '@/modules/Projects/ProjectsList'
 import { ProjectLayout } from '@/modules/project/ProjectLayout'
 import { ProjectTab } from '@/modules/project/ProjectTab'
+import { ClientsPage } from '@/modules/Clients'
 
 const router = createBrowserRouter([
   {
@@ -29,7 +30,7 @@ const router = createBrowserRouter([
         path: 'estimating',
         element: <Placeholder title="Estimating" note="Ported in Sessions 5–7." />,
       },
-      { path: 'clients', element: <Placeholder title="Clients" note="Ported in Sessions 5–7." /> },
+      { path: 'clients', element: <ClientsPage /> },
       {
         path: 'subs',
         element: <Placeholder title="Subcontractors" note="Ported in Sessions 5–7." />,
