@@ -6,13 +6,14 @@ import { ProjectsList } from '@/modules/Projects/ProjectsList'
 import { ProjectLayout } from '@/modules/project/ProjectLayout'
 import { ProjectTab } from '@/modules/project/ProjectTab'
 import { ClientsPage } from '@/modules/Clients'
+import { DashboardPage } from '@/modules/Dashboard'
 
 const router = createBrowserRouter([
   {
     path: '/',
     element: <AppShell />,
     children: [
-      { index: true, element: <Placeholder title="Dashboard" note="Ported in Sessions 5–7." /> },
+      { index: true, element: <DashboardPage /> },
       { path: 'projects', element: <ProjectsList /> },
       {
         path: 'projects/:projectId',
