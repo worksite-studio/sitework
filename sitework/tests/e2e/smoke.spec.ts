@@ -6,11 +6,22 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.clear())
 })
 
-test('shell renders with sidebar nav', async ({ page }) => {
+test('dashboard renders KPI tiles + Project Health + Pipeline', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Projects' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
+  await expect(page.getByText('Active Projects', { exact: true })).toBeVisible()
+  await expect(page.getByText('Outstanding Invoices', { exact: true })).toBeVisible()
+  await expect(page.getByText('Portfolio Margin', { exact: true })).toBeVisible()
+  await expect(page.getByText('Compliance Alerts', { exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: /Project Health/i })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: /Pipeline/i })).toBeVisible()
+
+  // Click a Project Health row navigates to the project overview
+  await page
+    .getByRole('link', { name: /Akademie/ })
+    .first()
+    .click()
+  await expect(page).toHaveURL(/\/projects\/PRJ-001\/overview$/)
 })
 
 test('navigates to Projects list and into a project tab', async ({ page }) => {
