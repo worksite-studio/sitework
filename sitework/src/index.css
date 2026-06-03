@@ -40,3 +40,74 @@ body,
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
+
+/* ---- Print (Phase 3) ----
+   A4 page setup + chrome hiding. Components opt in via `.print-page` or by
+   sitting on a `/print/*` route — the PrintLayout component wraps content in
+   the page class so `window.print()` produces clean A4 output. */
+@page {
+  size: A4;
+  margin: 16mm 14mm;
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    background: #ffffff;
+    height: auto;
+  }
+  .print-hide {
+    display: none !important;
+  }
+  .print-page {
+    box-shadow: none;
+    border: none;
+  }
+}
+
+.print-page {
+  background: #ffffff;
+  color: #000000;
+  padding: 24px;
+  max-width: 210mm;
+  margin: 24px auto;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.print-page h1 {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.print-page h2 {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #4b5563;
+}
+.print-page table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+.print-page th,
+.print-page td {
+  text-align: left;
+  padding: 5px 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.print-page thead th {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  border-bottom: 1px solid #9ca3af;
+}
+.print-page tfoot td {
+  border-top: 1px solid #9ca3af;
+  border-bottom: none;
+  font-weight: 600;
+}
