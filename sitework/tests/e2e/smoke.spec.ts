@@ -45,6 +45,42 @@ test('deep-link into a project tab works', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Progress Claims' })).toBeVisible()
 })
 
+test('project Overview tab renders Contract vs Cost panel', async ({ page }) => {
+  await page.goto('/projects/PRJ-001/overview')
+  await expect(page.getByText('Contract Value', { exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Contract vs Cost/ })).toBeVisible()
+  await expect(page.getByText('Adjusted contract value')).toBeVisible()
+})
+
+test('project BOQ tab renders codes table and supports add', async ({ page }) => {
+  await page.goto('/projects/PRJ-001/boq')
+  await expect(page.getByRole('heading', { name: 'BOQ & Budget' })).toBeVisible()
+  await expect(
+    page.getByText('Preliminary Costs, Consultant Fees, Site Establishment'),
+  ).toBeVisible()
+
+  // Open the cost-code form via the + Cost Code button
+  await page.getByRole('button', { name: '+ Cost Code' }).first().click()
+  await expect(page.getByRole('heading', { name: 'New cost code' })).toBeVisible()
+  // Auto-numbered Code (next 3-digit) is pre-filled
+  await expect(page.getByLabel(/^Code\*$/)).not.toHaveValue('')
+})
+
+test('project PC & PS tab renders reconciliation tables', async ({ page }) => {
+  await page.goto('/projects/PRJ-001/pcps')
+  await expect(page.getByRole('heading', { name: /Prime Cost items/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Provisional Sums/ })).toBeVisible()
+  // Reconciliation column exists
+  await expect(page.getByText('Margin on excess', { exact: true }).first()).toBeVisible()
+})
+
+test('project Variations tab renders and dialog opens', async ({ page }) => {
+  await page.goto('/projects/PRJ-001/variations')
+  await expect(page.getByRole('heading', { name: 'Variations', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '+ New Variation' }).first().click()
+  await expect(page.getByRole('heading', { name: 'New variation' })).toBeVisible()
+})
+
 test('clients module: add then edit a client', async ({ page }) => {
   await page.goto('/clients')
   await expect(page.getByRole('heading', { name: 'Clients' })).toBeVisible()

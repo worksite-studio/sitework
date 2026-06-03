@@ -5,6 +5,10 @@ import { Placeholder } from '@/components/Placeholder'
 import { ProjectsList } from '@/modules/Projects/ProjectsList'
 import { ProjectLayout } from '@/modules/project/ProjectLayout'
 import { ProjectTab } from '@/modules/project/ProjectTab'
+import { OverviewTab } from '@/modules/project/Overview/OverviewTab'
+import { BoqTab } from '@/modules/project/Boq/BoqTab'
+import { PcPsTab } from '@/modules/project/PcPs/PcPsTab'
+import { VariationsTab } from '@/modules/project/Variations/VariationsTab'
 import { ClientsPage } from '@/modules/Clients'
 import { DashboardPage } from '@/modules/Dashboard'
 import { SubsPage } from '@/modules/Subcontractors'
@@ -26,6 +30,10 @@ const router = createBrowserRouter([
         element: <ProjectLayout />,
         children: [
           { index: true, element: <Navigate to="overview" replace /> },
+          { path: 'overview', element: <OverviewTab /> },
+          { path: 'boq', element: <BoqTab /> },
+          { path: 'pcps', element: <PcPsTab /> },
+          { path: 'variations', element: <VariationsTab /> },
           { path: ':tab', element: <ProjectTab /> },
         ],
       },
