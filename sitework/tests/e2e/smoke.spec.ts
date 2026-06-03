@@ -64,6 +64,36 @@ test('clients module: add then edit a client', async ({ page }) => {
   await expect(page.getByText('Smoke Test (renamed)')).toBeVisible()
 })
 
+test('subcontractors module: list shows cert chips, add then edit a sub', async ({ page }) => {
+  await page.goto('/subs')
+  await expect(page.getByRole('heading', { name: 'Subcontractors' })).toBeVisible()
+
+  // Seed includes Worksite Studio with a cert
+  await expect(page.getByText('Worksite Studio')).toBeVisible()
+
+  // Add
+  await page.getByRole('button', { name: '+ New Subcontractor' }).first().click()
+  await page.getByLabel(/^Name\*$/).fill('Smoke Subs Pty Ltd')
+  await page.getByLabel(/^Trade\*$/).fill('Carpentry')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText('Smoke Subs Pty Ltd')).toBeVisible()
+
+  // Edit — row click, rename
+  await page.getByRole('button', { name: /Smoke Subs Pty Ltd/ }).click()
+  await expect(page.getByRole('heading', { name: /Edit Smoke Subs Pty Ltd/i })).toBeVisible()
+  await page.getByLabel(/^Name\*$/).fill('Smoke Subs (renamed)')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText('Smoke Subs (renamed)')).toBeVisible()
+})
+
+test('subcontractors form requires Name and Trade', async ({ page }) => {
+  await page.goto('/subs')
+  await page.getByRole('button', { name: '+ New Subcontractor' }).first().click()
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText('Name is required')).toBeVisible()
+  await expect(page.getByText('Trade is required')).toBeVisible()
+})
+
 test('clients form blocks save when Name is empty', async ({ page }) => {
   await page.goto('/clients')
   await page.getByRole('button', { name: '+ New Client' }).first().click()

@@ -7,6 +7,7 @@ import { ProjectLayout } from '@/modules/project/ProjectLayout'
 import { ProjectTab } from '@/modules/project/ProjectTab'
 import { ClientsPage } from '@/modules/Clients'
 import { DashboardPage } from '@/modules/Dashboard'
+import { SubsPage } from '@/modules/Subcontractors'
 
 const router = createBrowserRouter([
   {
@@ -32,10 +33,7 @@ const router = createBrowserRouter([
         element: <Placeholder title="Estimating" note="Ported in Sessions 5–7." />,
       },
       { path: 'clients', element: <ClientsPage /> },
-      {
-        path: 'subs',
-        element: <Placeholder title="Subcontractors" note="Ported in Sessions 5–7." />,
-      },
+      { path: 'subs', element: <SubsPage /> },
       {
         path: 'education',
         element: <Placeholder title="Help & Learn" note="Ported in a later session." />,
