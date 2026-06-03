@@ -12,6 +12,15 @@ import { VariationsTab } from '@/modules/project/Variations/VariationsTab'
 import { InvoicesTab } from '@/modules/project/Invoices/InvoicesTab'
 import { POsTab } from '@/modules/project/Pos/POsTab'
 import { ClaimsTab } from '@/modules/project/Claims/ClaimsTab'
+import { DefectsTab } from '@/modules/project/Defects/DefectsTab'
+import { MilestonesTab } from '@/modules/project/Milestones/MilestonesTab'
+import { DiaryTab } from '@/modules/project/Diary/DiaryTab'
+import { RfisTab } from '@/modules/project/Rfis/RfisTab'
+import { SelectionsTab } from '@/modules/project/Selections/SelectionsTab'
+import { TimesheetsTab } from '@/modules/project/Timesheets/TimesheetsTab'
+import { CalendarTab } from '@/modules/project/Calendar/CalendarTab'
+import { OpenBookTab } from '@/modules/project/OpenBook/OpenBookTab'
+import { CashFlowTab } from '@/modules/project/CashFlow/CashFlowTab'
 import { ClientsPage } from '@/modules/Clients'
 import { DashboardPage } from '@/modules/Dashboard'
 import { SubsPage } from '@/modules/Subcontractors'
@@ -40,6 +49,15 @@ const router = createBrowserRouter([
           { path: 'invoices', element: <InvoicesTab /> },
           { path: 'purchases', element: <POsTab /> },
           { path: 'claims', element: <ClaimsTab /> },
+          { path: 'defects', element: <DefectsTab /> },
+          { path: 'schedule', element: <MilestonesTab /> },
+          { path: 'diary', element: <DiaryTab /> },
+          { path: 'rfis', element: <RfisTab /> },
+          { path: 'selections', element: <SelectionsTab /> },
+          { path: 'timesheets', element: <TimesheetsTab /> },
+          { path: 'calendar', element: <CalendarTab /> },
+          { path: 'openbook', element: <OpenBookTab /> },
+          { path: 'cashflow', element: <CashFlowTab /> },
           { path: ':tab', element: <ProjectTab /> },
         ],
       },

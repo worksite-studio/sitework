@@ -117,6 +117,40 @@ test('project Claims tab — claim numbering + substantiation gate', async ({ pa
   await expect(page.getByText('Supporting documents').first()).toBeVisible()
 })
 
+test('project Defects + Schedule + Diary + RFIs + Selections + Timesheets tabs render', async ({
+  page,
+}) => {
+  for (const [path, heading] of [
+    ['defects', 'Defects'],
+    ['schedule', 'Schedule'],
+    ['diary', 'Site Diary'],
+    ['rfis', 'RFI Register'],
+    ['selections', 'Client Selections'],
+    ['timesheets', 'Timesheets'],
+  ] as const) {
+    await page.goto(`/projects/PRJ-001/${path}`)
+    await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible()
+  }
+})
+
+test('project Calendar tab aggregates milestones + sub expiries', async ({ page }) => {
+  await page.goto('/projects/PRJ-001/calendar')
+  await expect(page.getByRole('heading', { name: 'Calendar', exact: true })).toBeVisible()
+  // Seed PRJ-001 has DA Approval milestone — should appear
+  await expect(page.getByText('DA Approval')).toBeVisible()
+})
+
+test('project Open Book tab renders read-only summary', async ({ page }) => {
+  await page.goto('/projects/PRJ-001/openbook')
+  await expect(page.getByText(/Open-book report/i)).toBeVisible()
+  await expect(page.getByRole('button', { name: /Print/ })).toBeVisible()
+})
+
+test('project Cash Flow tab renders monthly forecast', async ({ page }) => {
+  await page.goto('/projects/PRJ-001/cashflow')
+  await expect(page.getByRole('heading', { name: 'Cash Flow', exact: true })).toBeVisible()
+})
+
 test('clients module: add then edit a client', async ({ page }) => {
   await page.goto('/clients')
   await expect(page.getByRole('heading', { name: 'Clients' })).toBeVisible()
