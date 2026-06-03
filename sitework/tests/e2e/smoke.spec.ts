@@ -94,6 +94,47 @@ test('subcontractors form requires Name and Trade', async ({ page }) => {
   await expect(page.getByText('Trade is required')).toBeVisible()
 })
 
+test('leads module: filter chips + add a lead', async ({ page }) => {
+  await page.goto('/leads')
+  await expect(page.getByRole('heading', { name: 'Leads / Tender' })).toBeVisible()
+  // Filter chips
+  await expect(page.getByRole('button', { name: 'All', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Prospect', exact: true })).toBeVisible()
+
+  // Add a lead
+  await page.getByRole('button', { name: '+ New Lead' }).first().click()
+  await page.getByLabel(/^Name\*$/).fill('Hilltop Renovation Bid')
+  await page.getByLabel(/^Client name\*$/).fill('Hilltop Family')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText('Hilltop Renovation Bid')).toBeVisible()
+})
+
+test('estimating module: tab switch + open template wizard', async ({ page }) => {
+  await page.goto('/estimating')
+  await expect(page.getByRole('heading', { name: 'Estimating' })).toBeVisible()
+
+  // Switch to templates tab and verify a known template
+  await page.getByRole('button', { name: /BOQ Templates/ }).click()
+  await expect(page.getByRole('heading', { name: 'Residential New Build' })).toBeVisible()
+
+  // Open the wizard
+  await page.getByRole('button', { name: 'Use template' }).first().click()
+  await expect(page.getByRole('heading', { name: /New estimate from/ })).toBeVisible()
+
+  // Validation: empty submit blocks
+  await page.getByRole('button', { name: 'Create estimate' }).click()
+  await expect(page.getByText('Name is required')).toBeVisible()
+
+  // Happy path
+  await page.getByLabel(/^Estimate name\*$/).fill('Test Estimate')
+  await page.getByLabel(/^Contract value/).fill('500000')
+  await page.getByRole('button', { name: 'Create estimate' }).click()
+
+  // Switch back to estimates tab and confirm
+  await page.getByRole('button', { name: /^Estimates/ }).click()
+  await expect(page.getByText('Test Estimate')).toBeVisible()
+})
+
 test('clients form blocks save when Name is empty', async ({ page }) => {
   await page.goto('/clients')
   await page.getByRole('button', { name: '+ New Client' }).first().click()

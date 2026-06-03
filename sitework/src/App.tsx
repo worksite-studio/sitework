@@ -8,6 +8,8 @@ import { ProjectTab } from '@/modules/project/ProjectTab'
 import { ClientsPage } from '@/modules/Clients'
 import { DashboardPage } from '@/modules/Dashboard'
 import { SubsPage } from '@/modules/Subcontractors'
+import { LeadsPage } from '@/modules/Leads'
+import { EstimatingPage } from '@/modules/Estimating'
 
 const router = createBrowserRouter([
   {
@@ -24,14 +26,8 @@ const router = createBrowserRouter([
           { path: ':tab', element: <ProjectTab /> },
         ],
       },
-      {
-        path: 'leads',
-        element: <Placeholder title="Leads / Tender" note="Ported in Sessions 5–7." />,
-      },
-      {
-        path: 'estimating',
-        element: <Placeholder title="Estimating" note="Ported in Sessions 5–7." />,
-      },
+      { path: 'leads', element: <LeadsPage /> },
+      { path: 'estimating', element: <EstimatingPage /> },
       { path: 'clients', element: <ClientsPage /> },
       { path: 'subs', element: <SubsPage /> },
       {
