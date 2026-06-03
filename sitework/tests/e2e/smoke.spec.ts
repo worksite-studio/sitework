@@ -151,6 +151,39 @@ test('project Cash Flow tab renders monthly forecast', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Cash Flow', exact: true })).toBeVisible()
 })
 
+test('print routes — BOQ + Retention render outside the AppShell', async ({ page }) => {
+  // Disable auto window.print() so the dialog doesn't pause the test runner.
+  await page.addInitScript(() => {
+    window.print = () => {}
+  })
+
+  await page.goto('/print/boq/PRJ-001')
+  await expect(page.getByRole('heading', { name: 'Akademie' })).toBeVisible()
+  await expect(page.getByText('Generated', { exact: false })).toBeVisible()
+  // No sidebar nav — AppShell isn't rendered on print routes
+  await expect(page.getByRole('link', { name: 'Projects' })).toHaveCount(0)
+
+  await page.goto('/print/retention/PRJ-001')
+  await expect(page.getByRole('heading', { name: 'Retention summary' })).toBeVisible()
+  await expect(page.getByText('Balance to release')).toBeVisible()
+})
+
+test('print routes — Tax Invoice + Progress Claim render with content', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.print = () => {}
+  })
+
+  // Seed PRJ-001 has INV-001 with Certis Building Certifiers as supplier
+  await page.goto('/print/invoice/PRJ-001/INV-001')
+  await expect(page.getByText('Tax invoice', { exact: false }).first()).toBeVisible()
+  await expect(page.getByText('Certis Building Certifiers')).toBeVisible()
+
+  // Seed PRJ-001 has CLM-001 Stage 1
+  await page.goto('/print/claim/PRJ-001/CLM-001')
+  await expect(page.getByText('Progress claim', { exact: false }).first()).toBeVisible()
+  await expect(page.getByText(/Stage 1/)).toBeVisible()
+})
+
 test('clients module: add then edit a client', async ({ page }) => {
   await page.goto('/clients')
   await expect(page.getByRole('heading', { name: 'Clients' })).toBeVisible()

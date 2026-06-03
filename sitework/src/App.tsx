@@ -29,6 +29,10 @@ import { EstimatingPage } from '@/modules/Estimating'
 import { SettingsPage } from '@/modules/Settings'
 import { MaterialsPage } from '@/modules/Materials'
 import { SuppliersPage } from '@/modules/Suppliers'
+import { ProgressClaimPrint } from '@/modules/print/ProgressClaimPrint'
+import { BoqExportPrint } from '@/modules/print/BoqExportPrint'
+import { RetentionCertPrint } from '@/modules/print/RetentionCertPrint'
+import { TaxInvoicePrint } from '@/modules/print/TaxInvoicePrint'
 
 const router = createBrowserRouter([
   {
@@ -75,6 +79,11 @@ const router = createBrowserRouter([
       { path: '*', element: <Placeholder title="Not found" note="No such page." /> },
     ],
   },
+  // Print routes — outside AppShell so no sidebar/header bleeds into PDFs.
+  { path: '/print/claim/:projectId/:claimId', element: <ProgressClaimPrint /> },
+  { path: '/print/boq/:projectId', element: <BoqExportPrint /> },
+  { path: '/print/retention/:projectId', element: <RetentionCertPrint /> },
+  { path: '/print/invoice/:projectId/:invoiceId', element: <TaxInvoicePrint /> },
 ])
 
 function App() {

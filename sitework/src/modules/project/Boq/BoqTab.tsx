@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useDispatch } from '@/state/context'
 import { Button, Card, EmptyState } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
@@ -62,6 +63,13 @@ export function BoqTab() {
       <header className="flex items-center justify-between gap-2 flex-wrap">
         <h2 className="text-lg font-semibold">BOQ & Budget</h2>
         <div className="flex gap-2">
+          <Link
+            to={`/print/boq/${project.id}`}
+            target="_blank"
+            className="inline-flex items-center rounded-md border border-sw-border bg-sw-surface px-4 h-9 text-sm font-medium hover:bg-sw-muted/5 transition"
+          >
+            Export
+          </Link>
           <Button variant="secondary" onClick={() => setImporting(true)}>
             Import from template
           </Button>

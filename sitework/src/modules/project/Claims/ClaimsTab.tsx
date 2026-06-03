@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Button, Card, EmptyState } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
@@ -60,7 +61,16 @@ export function ClaimsTab() {
             )}
           </p>
         </div>
-        <Button onClick={() => setCreating(true)}>+ New Claim</Button>
+        <div className="flex gap-2">
+          <Link
+            to={`/print/retention/${project.id}`}
+            target="_blank"
+            className="inline-flex items-center rounded-md border border-sw-border bg-sw-surface px-3 py-1.5 text-sm font-medium hover:bg-sw-muted/5 transition"
+          >
+            Retention cert
+          </Link>
+          <Button onClick={() => setCreating(true)}>+ New Claim</Button>
+        </div>
       </header>
 
       {claims.length === 0 ? (
@@ -83,6 +93,7 @@ export function ClaimsTab() {
                 <th className="px-3 py-2 font-medium">Due</th>
                 <th className="px-3 py-2 font-medium">Docs</th>
                 <th className="px-3 py-2 font-medium">Status</th>
+                <th className="px-3 py-2 font-medium" aria-label="Print" />
               </tr>
             </thead>
             <tbody>
@@ -128,6 +139,16 @@ export function ClaimsTab() {
                     </td>
                     <td className="px-3 py-2">
                       <StatusBadge status={c.status} />
+                    </td>
+                    <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                      <Link
+                        to={`/print/claim/${project.id}/${c.id}`}
+                        target="_blank"
+                        aria-label={`Print claim #${displayNo(c)}`}
+                        className="text-sw-muted hover:text-sw-text text-sm transition px-2"
+                      >
+                        🖨
+                      </Link>
                     </td>
                   </tr>
                 )

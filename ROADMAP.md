@@ -144,15 +144,18 @@
 
 ---
 
-## Phase 3 — PDF & Print Export
+## Phase 3 — PDF & Print Export ✅
 *Goal: Print-ready documents for client-facing use.*
-*Estimated: 1–2 sessions*
+*Estimated: 1–2 sessions. Actual: 1 session (after Phase 4 — proper React makes this easy).*
 
-- ⬜ Print CSS stylesheet (hide nav, A4 format)
-- ⬜ Progress Claim PDF — claim schedule, certified amounts, retention line
-- ⬜ BOQ Export — cost codes, budget vs actual, variance
-- ⬜ Retention / FFC Certificate
-- ⬜ Invoice / Tax Invoice
+- ✅ Print CSS stylesheet — A4 `@page` size + `@media print` rules in `sitework/src/index.css`, `.print-page` wrapper class, `.print-hide` for the back-button toolbar
+- ✅ Progress Claim PDF — `/print/claim/:projectId/:claimId` (route + component). Builder header, bill-to/project block, claim line with retention breakdown, supporting-docs list for cost-plus, signature blocks
+- ✅ BOQ Export — `/print/boq/:projectId`. Cost-code table with budget / variations / adjusted / actual / overrun + totals footer
+- ✅ Retention / FFC Certificate — `/print/retention/:projectId`. Claims-to-date table + held/released/balance section + signature blocks
+- ✅ Invoice / Tax Invoice — `/print/invoice/:projectId/:invoiceId`. GST breakdown (ex / GST / inc), payment terms + reference footer
+- Buttons added on Claims tab (per-row 🖨 + "Retention cert" header), BOQ tab ("Export" header), Invoices tab (per-row 🖨)
+- All print routes sit outside the AppShell so no sidebar/header bleeds into PDFs. `PrintLayout` auto-triggers `window.print()` 250 ms after mount; a print-hidden toolbar offers Back + manual Print/Save PDF buttons.
+- 4 new e2e specs verify the print routes render with content and no AppShell chrome
 
 ---
 
@@ -293,4 +296,6 @@
 | 41 | 2026-06-07 | 4 | **Phase 4 Session 12 — ALL 15 project tabs done.** 8 remaining tabs ported: Defects (with form), Schedule/Milestones (with form, using new ADD/UPDATE_MILESTONE actions), Site Diary (card list reverse-chrono), RFIs (with form, using new ADD/UPDATE_RFI actions), Client Selections (with Approve via window.prompt → APPROVE_SELECTION), Timesheets (with delete + total in header), Calendar (Phase 1.5-D — aggregates milestones + defects + sub PL/WC + cert expiries grouped by month, uses shared ExpiryChip), Open Book (Phase 1.5-F — owner-facing read-only report with window.print()), Cash Flow (legacy j1v2 — monthly outflow bar-chart strip from invoices due + POs due). Combined with sessions 5–11, every legacy top-level module + every project tab is in the new app. 111 unit, 23 e2e. |
 | 42 | 2026-06-08 | 4 | **Phase 4 Session 13 — closeout.** CLAUDE.md rewritten for the new architecture. WORKFLOW.md updated: new dev loop (Vite HMR, no bracket dance), new deployment section, repo-map updated to reflect `sitework/` as the active codebase. `vercel.json` at root wires the SPA deploy: build command cd's into sitework/ and runs npm ci + npm run build; output is sitework/dist; SPA rewrite catches every URL → /index.html so React Router handles client-side routing. Legacy `index.html` (430 KB minified) + `serve.py` removed from the working tree — full file history preserved in git (`git log --all --oneline -- index.html` to recover). ROADMAP Phase 4 ticked ✅ with the honest 13-session count vs the 2-session original estimate. **Phase 4 complete.** Next: Phase 3 (PDF/print — likely 1 session now that we're in proper React) or Phase 5 (backend / multi-user — Supabase). |
 
-*Last updated: 2026-06-08 (session 42 — Phase 4 closed out; next: Phase 3 PDF/print or Phase 5 backend)*
+| 43 | 2026-06-09 | 3 | **Phase 3 — PDF/print export shipped in one session.** Four print routes outside the AppShell: /print/claim/:projectId/:claimId, /print/boq/:projectId, /print/retention/:projectId, /print/invoice/:projectId/:invoiceId. Each is a React component using a shared PrintLayout wrapper that auto-triggers window.print() 250ms after mount; a `.print-hide` toolbar gives Back + manual Print buttons. CSS additions in index.css: A4 @page sizing, @media print rules hiding the toolbar, `.print-page` class with proper typography reset (12px body, table borders, tfoot weight). Buttons added: Claims tab per-row 🖨 + "Retention cert" in header; BOQ tab "Export" in header; Invoices tab per-row 🖨. ProgressClaim PDF carries builder header + bill-to/project + claim line with retention breakdown + supporting-docs list (cost-plus) + signature blocks. Tax Invoice has full GST breakdown (ex/GST/inc). Retention cert summarises every claim's retention contribution + held/released/balance + signature blocks. BOQ export is the budget table with budget/variations/adjusted/actual/overrun + totals. 25 e2e (was 23) with 4 new specs verifying print routes render with content and no AppShell chrome. **Phase 3 complete in 1 session** — original estimate 1–2 sessions; React+HMR made this trivial. |
+
+*Last updated: 2026-06-09 (session 43 — Phase 3 closed out; next: Vercel connect verification + Phase 5 backend)*

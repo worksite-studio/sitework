@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Button, Card, EmptyState } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
@@ -72,6 +73,7 @@ export function InvoicesTab() {
                 <th className="px-3 py-2 font-medium">Due</th>
                 <th className="px-3 py-2 font-medium">Docs</th>
                 <th className="px-3 py-2 font-medium">Status</th>
+                <th className="px-3 py-2 font-medium" aria-label="Print" />
               </tr>
             </thead>
             <tbody>
@@ -110,6 +112,16 @@ export function InvoicesTab() {
                     </td>
                     <td className="px-3 py-2">
                       <StatusBadge status={inv.status} />
+                    </td>
+                    <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                      <Link
+                        to={`/print/invoice/${project.id}/${inv.id}`}
+                        target="_blank"
+                        aria-label={`Print invoice ${inv.id}`}
+                        className="text-sw-muted hover:text-sw-text text-sm transition px-2"
+                      >
+                        🖨
+                      </Link>
                     </td>
                   </tr>
                 )
