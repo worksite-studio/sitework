@@ -135,6 +135,32 @@ test('estimating module: tab switch + open template wizard', async ({ page }) =>
   await expect(page.getByText('Test Estimate')).toBeVisible()
 })
 
+test('settings module: edit + save flips the dirty/saved state', async ({ page }) => {
+  // Persistence (localStorage write-through) is covered by persistence unit
+  // tests; here we'd hit beforeEach's localStorage.clear() on reload, so we
+  // assert the in-page dirty → saved transition instead.
+  await page.goto('/settings')
+  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Save changes' })).toBeDisabled()
+
+  await page.getByLabel('Business name').fill('Acme Builders Pty Ltd')
+  await expect(page.getByText('Unsaved changes.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Save changes' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Save changes' }).click()
+  await expect(page.getByText('Saved.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Save changes' })).toBeDisabled()
+})
+
+test('suppliers + materials catalogues render at their direct URLs', async ({ page }) => {
+  await page.goto('/suppliers')
+  await expect(page.getByRole('heading', { name: 'Suppliers' })).toBeVisible()
+  await expect(page.getByText('Worksite Studio')).toBeVisible()
+
+  await page.goto('/materials')
+  await expect(page.getByRole('heading', { name: 'Materials' })).toBeVisible()
+  await expect(page.getByText('Scyon Linea Cladding')).toBeVisible()
+})
+
 test('clients form blocks save when Name is empty', async ({ page }) => {
   await page.goto('/clients')
   await page.getByRole('button', { name: '+ New Client' }).first().click()

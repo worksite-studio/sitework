@@ -10,6 +10,9 @@ import { DashboardPage } from '@/modules/Dashboard'
 import { SubsPage } from '@/modules/Subcontractors'
 import { LeadsPage } from '@/modules/Leads'
 import { EstimatingPage } from '@/modules/Estimating'
+import { SettingsPage } from '@/modules/Settings'
+import { MaterialsPage } from '@/modules/Materials'
+import { SuppliersPage } from '@/modules/Suppliers'
 
 const router = createBrowserRouter([
   {
@@ -34,10 +37,9 @@ const router = createBrowserRouter([
         path: 'education',
         element: <Placeholder title="Help & Learn" note="Ported in a later session." />,
       },
-      {
-        path: 'settings',
-        element: <Placeholder title="Settings" note="Ported in Sessions 5–7." />,
-      },
+      { path: 'settings', element: <SettingsPage /> },
+      { path: 'materials', element: <MaterialsPage /> },
+      { path: 'suppliers', element: <SuppliersPage /> },
       { path: '*', element: <Placeholder title="Not found" note="No such page." /> },
     ],
   },
