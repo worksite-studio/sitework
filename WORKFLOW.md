@@ -8,17 +8,21 @@ Aim: scannable in 2 minutes, executable without thinking.
 
 ## 1. Repo map — what lives where
 
+**The app** lives at `sitework/` (Vite + React 19 + TypeScript + Tailwind v4). The legacy single-file `index.html` was retired in Phase 4 session 13.
+
 **Tracked in git** (committed, pushed to GitHub):
-- `index.html` — the entire app (React 19 + app code + seed data, single minified file)
-- `serve.py` — local dev server (`python3 serve.py` → http://127.0.0.1:3456)
+- `sitework/` — the app, package-managed via npm
 - `CLAUDE.md` — codebase guide for Claude
 - `ROADMAP.md` — phase tracker + session log
 - `WORKFLOW.md` — this file
+- `ARCHITECTURE.md`, `DATA_MODEL.md`, `CONTRACTS_REFERENCE.md`, `HANDOFF.md` — companion docs
+- `vercel.json` — deployment config
+- `.github/workflows/sitework-ci.yml` — CI
 - `.gitignore`
 
 **Not tracked** (gitignored, stays local):
-- `*.bak` — backup snapshots, redundant with git history
-- `*.xlsx` — finance model reference docs
+- `sitework/node_modules`, `sitework/dist`, `sitework/playwright-report`, `sitework/test-results`
+- `*.bak`, `*.xlsx` — historical snapshots / spec docs
 - `.claude/` — Claude session state, settings, worktrees
 
 **Outside the repo, but matters**:
@@ -73,20 +77,26 @@ That's enough. Don't paste the roadmap, don't re-explain the architecture — Cl
 1. **Branch off main**:
    ```bash
    git checkout main && git pull
-   git checkout -b phase-0g-subs-edit
+   git checkout -b phase-X-some-feature
    ```
    One branch per phase or self-contained feature.
 
 2. **Plan mode** for anything non-trivial. Approve the plan before edits.
 
-3. **Edit** `index.html` using the Python-string-replace workflow in `CLAUDE.md`. After every edit, verify bracket balance is `(3, 3, 3)` (script in `CLAUDE.md`). If it isn't, `git checkout -- index.html` and retry.
+3. **Edit normal TypeScript/TSX files** under `sitework/src/`. Vite HMR shows changes in the browser in ~200 ms. No bracket-balance dance, no string-replace surgery.
 
-4. **Verify in browser**: Claude runs `python3 serve.py` and clicks through the affected module using preview tools. Claude won't ask you to test manually.
+4. **Verify locally** before commit:
+   ```bash
+   cd sitework
+   npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build
+   npm run test:e2e   # Playwright — boots Vite at :5173, runs all specs
+   ```
+   CI runs the same gates on every PR; matching them locally avoids the round-trip.
 
 5. **Commit**:
    ```bash
-   git add index.html
-   git commit -m "phase 0-G: subcontractor edit modal"
+   git add sitework
+   git commit -m "phase X: what changed"
    ```
    One commit per logical change. Multiple commits per branch is fine.
 
@@ -126,10 +136,11 @@ ROADMAP carries **phase progress**. Memory carries **durable preferences and fac
 
 ## 7. Repo invariants — do not break
 
-- `index.html` bracket balance must be `(3, 3, 3)` before every commit.
-- `.bak` / `.xlsx` / `.claude/` never committed (already in `.gitignore` — verify before `git add` if unsure).
+- All five local gates (`format:check`, `lint`, `typecheck`, `test`, `build`) must pass before commit. CI runs the same — matching locally avoids the round-trip.
+- `sitework/node_modules`, `sitework/dist`, `sitework/playwright-report`, `sitework/test-results` never committed (in `sitework/.gitignore` — verify if unsure).
+- `.bak` / `.xlsx` / `.claude/` never committed (in root `.gitignore`).
 - No secrets in committed files. Auth is via SSH key (`~/.ssh/id_ed25519`) — `git remote -v` shows `git@github.com:…`, no token. If you ever set up a new machine, generate a new SSH key per machine; don't copy the private key around.
-- `main` always deploys cleanly. If a merge breaks `main`, revert the merge commit before fixing forward.
+- `main` always deploys cleanly. Vercel auto-deploys from `main` (see `vercel.json`). If a merge breaks `main`, revert the merge commit before fixing forward.
 
 ---
 
@@ -146,43 +157,21 @@ ROADMAP carries **phase progress**. Memory carries **durable preferences and fac
 
 ---
 
-## 9. Loose files in the repo — what they are and how to clean up
+## 9. Deployment
 
-The repo root currently has files that aren't tracked by git but sit alongside the source. They're gitignored, so they never reach GitHub — but they clutter the working directory and create small risks (accidental edits, confusion about source of truth).
+Vercel auto-deploys from `main` (and per-PR preview deploys). Wiring lives in the root `vercel.json`:
 
-### 9a. `sitework.html.bak` (~390 KB)
+- Build command: `cd sitework && npm ci && npm run build`
+- Output directory: `sitework/dist`
+- SPA rewrite: every URL falls through to `index.html` so React Router handles client-side routing
 
-- **What it is**: a snapshot of `index.html` from before some earlier edit. Manual backup.
-- **Why git already replaces it**: every committed version of `index.html` is recoverable via `git log` + `git show <sha>:index.html`. The `.bak` is redundant.
-- **Risk**: low (gitignored), but if you open it by accident and edit it thinking it's `index.html`, you lose work silently.
-- **Recommendation — delete it**:
-  ```bash
-  rm "sitework.html.bak"
-  ```
-  If you ever need that exact pre-rename version: `git log --all --oneline -- index.html` then `git show <sha>:index.html > recovered.html`.
+To wire up a fresh Vercel project for this repo:
+1. In the Vercel dashboard, **New Project** → import `worksite-studio/sitework`
+2. **Framework preset:** Other (the `vercel.json` config takes over)
+3. Leave the root directory as `./` — `vercel.json` cd's into `sitework/` itself
+4. Deploy. First deploy ~1 minute; subsequent pushes auto-build via the GitHub integration.
 
-### 9b. `Preliminary_Finance_Model_v6.xlsx` and `_v8.xlsx`
-
-- **What they are**: financial model spreadsheets that SITEWORK is being built from. Reference/spec material, not source code.
-- **Why they're gitignored**: `*.xlsx` is in `.gitignore`. Treated as private working docs.
-
-**Three options — pick one**:
-
-1. **Move out of the repo** *(recommended)*. Spec material lives where other working docs live. Repo stays focused on code.
-   ```bash
-   mkdir -p ~/Documents/sitework/reference
-   mv Preliminary_Finance_Model_v*.xlsx ~/Documents/sitework/reference/
-   ```
-
-2. **Keep them where they are**. They don't pollute git (gitignored). One line of clutter in `ls`. Fine if you cross-reference them constantly.
-
-3. **Track them in `/docs/` via Git LFS**. Versioned trail of model changes. Removes `*.xlsx` from `.gitignore`, requires `git lfs install` + `git lfs track "*.xlsx"`. Probably overkill until you have collaborators reviewing the model.
-
-**Why option 1**: the v6/v8 versioning suggests these will keep evolving. Each new version sitting in the repo root is more clutter. Keep the latest in a known reference folder, repo stays focused on code.
-
-### 9c. The general principle
-
-The repo root should contain only files that are **either committed to git or actively used by the running app**. `serve.py` and `index.html` are runtime files. `CLAUDE.md`, `ROADMAP.md`, `WORKFLOW.md`, `.gitignore` are committed docs/config. Everything else is clutter or workspace state and should live elsewhere.
+The legacy `index.html` deployment (GitHub Pages on the old single-file app) is no longer used.
 
 ---
 
