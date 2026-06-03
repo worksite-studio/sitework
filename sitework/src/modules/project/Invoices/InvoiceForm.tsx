@@ -1,0 +1,187 @@
+import { useState } from 'react'
+import { Button, Dialog, Field, Input } from '@/components/ui'
+import { FilePicker } from '@/components/FilePicker'
+import { useDispatch } from '@/state/context'
+import { asId } from '@/types'
+import { checkSubstantiation } from '@/lib/substantiation'
+import type {
+  CostCodeId,
+  FileAttachment,
+  Invoice,
+  InvoiceId,
+  InvoiceStatus,
+  Project,
+} from '@/types'
+
+interface Props {
+  open: boolean
+  onClose: () => void
+  project: Project
+  initial?: Invoice
+}
+
+const STATUSES: InvoiceStatus[] = ['Pending', 'Approved', 'Paid', 'Disputed']
+
+const blank = (firstCodeId?: CostCodeId): Omit<Invoice, 'id'> => ({
+  ccId: (firstCodeId ?? ('' as unknown as CostCodeId)) as CostCodeId,
+  supplier: '',
+  amount: 0,
+  status: 'Pending',
+  date: new Date().toISOString().slice(0, 10),
+  due: '',
+  xero: false,
+  supportingDocs: [],
+})
+
+/**
+ * InvFormV2 port. Substantiation rule (Phase 1.5-A): cost-plus projects
+ * require at least one supportingDocs entry before save proceeds; the
+ * checkSubstantiation() helper encodes the rule so it stays in sync with
+ * ClaimForm.
+ */
+export function InvoiceForm({ open, onClose, project, initial }: Props) {
+  const dispatch = useDispatch()
+  const [form, setForm] = useState<Omit<Invoice, 'id'>>(() =>
+    initial
+      ? { ...initial, supportingDocs: initial.supportingDocs ?? [] }
+      : blank(project.codes[0]?.id),
+  )
+  const [attempted, setAttempted] = useState(false)
+  const isEdit = !!initial
+
+  const supplierMissing = form.supplier.trim() === ''
+  const codeMissing = !(form.ccId as string)
+  const subCheck = checkSubstantiation(project, form.supportingDocs)
+
+  function reset() {
+    setForm(blank(project.codes[0]?.id))
+    setAttempted(false)
+  }
+
+  function save() {
+    if (supplierMissing || codeMissing || subCheck.blocked) {
+      setAttempted(true)
+      return
+    }
+    if (isEdit && initial) {
+      dispatch({
+        type: 'UPDATE_INVOICE',
+        projectId: project.id,
+        invoiceId: initial.id,
+        patch: form,
+      })
+    } else {
+      const id = asId<InvoiceId>(`INV-${Date.now()}`)
+      dispatch({ type: 'ADD_INVOICE', projectId: project.id, invoice: { id, ...form } })
+    }
+    reset()
+    onClose()
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onClose={() => {
+        reset()
+        onClose()
+      }}
+      title={isEdit ? `Edit ${initial?.id}` : 'New invoice'}
+      widthClass="max-w-xl"
+      footer={
+        <>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              reset()
+              onClose()
+            }}
+          >
+            Cancel
+          </Button>
+          <Button onClick={save}>Save</Button>
+        </>
+      }
+    >
+      <div className="grid grid-cols-2 gap-3">
+        <Field
+          label="Supplier / subcontractor"
+          required
+          error={attempted && supplierMissing ? 'Required' : undefined}
+        >
+          <Input
+            autoFocus
+            value={form.supplier}
+            onChange={(e) => setForm({ ...form, supplier: e.target.value })}
+            invalid={attempted && supplierMissing}
+          />
+        </Field>
+        <Field label="Cost code" required error={attempted && codeMissing ? 'Required' : undefined}>
+          <select
+            value={form.ccId as string}
+            onChange={(e) => setForm({ ...form, ccId: e.target.value as CostCodeId })}
+            className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
+          >
+            <option value="">— choose code —</option>
+            {project.codes.map((c) => (
+              <option key={c.id} value={c.id as string}>
+                {c.code} · {c.desc}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="Amount inc GST ($)">
+          <Input
+            type="number"
+            step="0.01"
+            value={form.amount}
+            onChange={(e) => setForm({ ...form, amount: Number(e.target.value) || 0 })}
+          />
+        </Field>
+        <Field label="Date">
+          <Input
+            type="date"
+            value={form.date}
+            onChange={(e) => setForm({ ...form, date: e.target.value })}
+          />
+        </Field>
+        <Field label="Due">
+          <Input
+            type="date"
+            value={form.due}
+            onChange={(e) => setForm({ ...form, due: e.target.value })}
+          />
+        </Field>
+      </div>
+      <Field label="Status">
+        <select
+          value={form.status}
+          onChange={(e) => setForm({ ...form, status: e.target.value as InvoiceStatus })}
+          className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
+        >
+          {STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      {project.contractType === 'cost-plus' && (
+        <Field
+          label="Supporting documents"
+          required
+          hint="Cost-plus projects require receipts / timesheets / sub invoices substantiating every dollar claimed."
+          error={attempted && subCheck.blocked ? subCheck.reason : undefined}
+        >
+          <FilePicker
+            value={form.supportingDocs ?? []}
+            onChange={(docs: FileAttachment[]) => setForm({ ...form, supportingDocs: docs })}
+            invalid={attempted && subCheck.blocked}
+          />
+        </Field>
+      )}
+    </Dialog>
+  )
+}
