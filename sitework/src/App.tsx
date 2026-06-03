@@ -9,6 +9,9 @@ import { OverviewTab } from '@/modules/project/Overview/OverviewTab'
 import { BoqTab } from '@/modules/project/Boq/BoqTab'
 import { PcPsTab } from '@/modules/project/PcPs/PcPsTab'
 import { VariationsTab } from '@/modules/project/Variations/VariationsTab'
+import { InvoicesTab } from '@/modules/project/Invoices/InvoicesTab'
+import { POsTab } from '@/modules/project/Pos/POsTab'
+import { ClaimsTab } from '@/modules/project/Claims/ClaimsTab'
 import { ClientsPage } from '@/modules/Clients'
 import { DashboardPage } from '@/modules/Dashboard'
 import { SubsPage } from '@/modules/Subcontractors'
@@ -34,6 +37,9 @@ const router = createBrowserRouter([
           { path: 'boq', element: <BoqTab /> },
           { path: 'pcps', element: <PcPsTab /> },
           { path: 'variations', element: <VariationsTab /> },
+          { path: 'invoices', element: <InvoicesTab /> },
+          { path: 'purchases', element: <POsTab /> },
+          { path: 'claims', element: <ClaimsTab /> },
           { path: ':tab', element: <ProjectTab /> },
         ],
       },

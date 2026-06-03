@@ -81,6 +81,42 @@ test('project Variations tab renders and dialog opens', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'New variation' })).toBeVisible()
 })
 
+test('project Invoices tab — cost-plus substantiation gate blocks save', async ({ page }) => {
+  // PRJ-001 is cost-plus in seed
+  await page.goto('/projects/PRJ-001/invoices')
+  await expect(page.getByRole('heading', { name: 'Invoices' })).toBeVisible()
+  await page.getByRole('button', { name: '+ New Invoice' }).first().click()
+  await expect(page.getByRole('heading', { name: 'New invoice' })).toBeVisible()
+  // Fill required fields BUT leave docs empty
+  await page.getByLabel(/^Supplier \/ subcontractor\*$/).fill('Test Supplier')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText(/supporting document/i).first()).toBeVisible()
+})
+
+test('project Invoices tab — fixed-price doesn’t gate on docs', async ({ page }) => {
+  // PRJ-005 is fixed-price in seed
+  await page.goto('/projects/PRJ-005/invoices')
+  await page.getByRole('button', { name: '+ New Invoice' }).first().click()
+  await expect(page.getByRole('heading', { name: 'New invoice' })).toBeVisible()
+  // No "Supporting documents" field at all on fixed-price
+  await expect(page.getByText('Supporting documents')).not.toBeVisible()
+})
+
+test('project POs tab renders + Receive button on sent POs', async ({ page }) => {
+  await page.goto('/projects/PRJ-001/purchases')
+  await expect(page.getByRole('heading', { name: 'Purchase Orders' })).toBeVisible()
+})
+
+test('project Claims tab — claim numbering + substantiation gate', async ({ page }) => {
+  await page.goto('/projects/PRJ-001/claims')
+  await expect(page.getByRole('heading', { name: 'Progress Claims' })).toBeVisible()
+  await page.getByRole('button', { name: '+ New Claim' }).first().click()
+  // Dialog title shows the next claimNo (auto-fill)
+  await expect(page.getByRole('heading', { name: /^New claim #\d+$/ })).toBeVisible()
+  // Substantiation field visible on cost-plus
+  await expect(page.getByText('Supporting documents').first()).toBeVisible()
+})
+
 test('clients module: add then edit a client', async ({ page }) => {
   await page.goto('/clients')
   await expect(page.getByRole('heading', { name: 'Clients' })).toBeVisible()
