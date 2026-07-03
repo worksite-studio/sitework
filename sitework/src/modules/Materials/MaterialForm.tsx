@@ -3,6 +3,7 @@ import { Button, Dialog, Field, Input } from '@/components/ui'
 import { useAppState, useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import type { Material, MaterialId, SupplierId } from '@/types'
+import { newId } from '@/lib/newId'
 
 interface Props {
   open: boolean
@@ -40,7 +41,7 @@ export function MaterialForm({ open, onClose, initial }: Props) {
     if (isEdit && initial) {
       dispatch({ type: 'UPDATE_MATERIAL', materialId: initial.id, patch: form })
     } else {
-      const id = asId<MaterialId>(`MAT-${Date.now()}`)
+      const id = asId<MaterialId>(newId('MAT'))
       dispatch({ type: 'ADD_MATERIAL', material: { id, ...form } })
     }
     reset()

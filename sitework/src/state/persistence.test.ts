@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest'
+import { act, renderHook } from '@testing-library/react'
 import {
   loadInitialState,
   mergeSeedWithStored,
+  useReducerPersisted,
   STATE_KEY,
   LEGACY_KEY,
   type PersistedStorage,
@@ -127,5 +129,49 @@ describe('migrateLegacyState', () => {
     storage.setItem(LEGACY_KEY, JSON.stringify(legacy))
     migrateLegacyState(storage)
     expect(storage.getItem(LEGACY_KEY)).not.toBeNull()
+  })
+})
+
+describe('useReducerPersisted persist-failure signal', () => {
+  /** Storage whose writes fail until `healed` is set — simulates quota exceeded. */
+  class FlakyStorage extends MemoryStorage {
+    healed = false
+    setItem(key: string, value: string): void {
+      if (!this.healed) throw new DOMException('quota exceeded', 'QuotaExceededError')
+      super.setItem(key, value)
+    }
+  }
+
+  const bump = (state: RootState): RootState => ({
+    ...state,
+    settings: { ...state.settings, businessName: `${state.settings.businessName ?? ''}x` },
+  })
+
+  it('reports no failure while writes succeed', () => {
+    const storage = new MemoryStorage()
+    const { result } = renderHook(() => useReducerPersisted(bump, minimalSeed(), storage))
+    act(() => result.current[1](null))
+    expect(result.current[2]).toBe(false)
+    expect(storage.getItem(STATE_KEY)).not.toBeNull()
+  })
+
+  it('flips persistFailed when setItem throws, and recovers on the next successful write', () => {
+    const storage = new FlakyStorage()
+    const { result } = renderHook(() => useReducerPersisted(bump, minimalSeed(), storage))
+
+    act(() => result.current[1](null))
+    expect(result.current[2]).toBe(true)
+    expect(storage.getItem(STATE_KEY)).toBeNull()
+
+    storage.healed = true
+    act(() => result.current[1](null))
+    expect(result.current[2]).toBe(false)
+    expect(storage.getItem(STATE_KEY)).not.toBeNull()
+  })
+
+  it('skips the initial mount write (seed never overwrites storage on load)', () => {
+    const storage = new MemoryStorage()
+    renderHook(() => useReducerPersisted(bump, minimalSeed(), storage))
+    expect(storage.getItem(STATE_KEY)).toBeNull()
   })
 })

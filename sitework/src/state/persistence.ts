@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, type Dispatch, type Reducer } from 'react'
+import { useEffect, useReducer, useRef, useState, type Dispatch, type Reducer } from 'react'
 import type { RootState } from '@/types'
 
 /** Current persistence schema version. Bump when the shape changes incompatibly. */
@@ -58,14 +58,19 @@ export function loadInitialState(seed: RootState, storage = browserStorage): Roo
  * `useReducer` + localStorage write-through. Writes happen on every dispatch
  * after the initial mount; the first write is skipped so loading the page
  * with no state doesn't overwrite seed with seed.
+ *
+ * The third tuple element flips to true when a write throws (quota exceeded
+ * or storage unavailable) so the shell can warn the user that changes are
+ * not being saved. It clears again as soon as a write succeeds.
  */
 export function useReducerPersisted<A>(
   reducer: Reducer<RootState, A>,
   seed: RootState,
   storage: PersistedStorage | null = browserStorage,
-): [RootState, Dispatch<A>] {
+): [RootState, Dispatch<A>, boolean] {
   const initialState = loadInitialState(seed, storage)
   const [state, dispatch] = useReducer(reducer, initialState)
+  const [persistFailed, setPersistFailed] = useState(false)
   const isFirstWrite = useRef(true)
 
   useEffect(() => {
@@ -74,15 +79,19 @@ export function useReducerPersisted<A>(
       isFirstWrite.current = false
       return
     }
+    let failed = false
     try {
       storage.setItem(STATE_KEY, JSON.stringify(state))
     } catch {
-      // Quota exceeded or storage unavailable — silent failure for now.
-      // Phase 5 moves file attachments out of state so the quota stops mattering.
+      // Quota exceeded or storage unavailable — the AppShell banner tells the
+      // user their changes aren't being saved. Phase 5 moves file attachments
+      // out of state so the quota stops mattering.
+      failed = true
     }
+    setPersistFailed(failed)
   }, [state, storage])
 
-  return [state, dispatch]
+  return [state, dispatch, persistFailed]
 }
 
 export { LEGACY_KEY }

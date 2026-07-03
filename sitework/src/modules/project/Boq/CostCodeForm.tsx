@@ -3,6 +3,7 @@ import { Button, Dialog, Field, Input } from '@/components/ui'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import type { CostCode, CostCodeId, ProjectId } from '@/types'
+import { newId } from '@/lib/newId'
 
 interface Props {
   open: boolean
@@ -51,7 +52,7 @@ export function CostCodeForm({ open, onClose, projectId, initial, nextCode }: Pr
     if (isEdit && initial) {
       dispatch({ type: 'UPDATE_CODE', projectId, codeId: initial.id, patch: form })
     } else {
-      const id = asId<CostCodeId>(`CC-${Date.now()}`)
+      const id = asId<CostCodeId>(newId('CC'))
       dispatch({ type: 'ADD_CODE', projectId, code: { id, ...form } })
     }
     reset()

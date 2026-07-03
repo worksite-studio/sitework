@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import { StateProvider } from '@/state/StateProvider'
 import { AppShell } from '@/components/AppShell'
+import { ErrorBoundary, RouteCrash } from '@/components/ErrorBoundary'
 import { Placeholder } from '@/components/Placeholder'
 import { ProjectsList } from '@/modules/Projects/ProjectsList'
 import { ProjectLayout } from '@/modules/project/ProjectLayout'
@@ -38,6 +39,7 @@ const router = createBrowserRouter([
   {
     path: '/',
     element: <AppShell />,
+    errorElement: <RouteCrash />,
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'projects', element: <ProjectsList /> },
@@ -88,9 +90,11 @@ const router = createBrowserRouter([
 
 function App() {
   return (
-    <StateProvider>
-      <RouterProvider router={router} />
-    </StateProvider>
+    <ErrorBoundary>
+      <StateProvider>
+        <RouterProvider router={router} />
+      </StateProvider>
+    </ErrorBoundary>
   )
 }
 

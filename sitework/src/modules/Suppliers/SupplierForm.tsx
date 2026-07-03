@@ -3,6 +3,7 @@ import { Button, Dialog, Field, Input } from '@/components/ui'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import type { Supplier, SupplierId } from '@/types'
+import { newId } from '@/lib/newId'
 
 interface Props {
   open: boolean
@@ -39,7 +40,7 @@ export function SupplierForm({ open, onClose, initial }: Props) {
     if (isEdit && initial) {
       dispatch({ type: 'UPDATE_SUPPLIER', supplierId: initial.id, patch: form })
     } else {
-      const id = asId<SupplierId>(`SUP-${Date.now()}`)
+      const id = asId<SupplierId>(newId('SUP'))
       dispatch({ type: 'ADD_SUPPLIER', supplier: { id, ...form } })
     }
     reset()

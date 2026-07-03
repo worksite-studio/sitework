@@ -4,6 +4,7 @@ import { FilePicker } from '@/components/FilePicker'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import { checkSubstantiation } from '@/lib/substantiation'
+import { newId } from '@/lib/newId'
 import type {
   CostCodeId,
   FileAttachment,
@@ -71,7 +72,7 @@ export function InvoiceForm({ open, onClose, project, initial }: Props) {
         patch: form,
       })
     } else {
-      const id = asId<InvoiceId>(`INV-${Date.now()}`)
+      const id = asId<InvoiceId>(newId('INV'))
       dispatch({ type: 'ADD_INVOICE', projectId: project.id, invoice: { id, ...form } })
     }
     reset()

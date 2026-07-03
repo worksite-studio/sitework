@@ -3,6 +3,7 @@ import { Button, Dialog, Field, Input } from '@/components/ui'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import type { Lead, LeadId, LeadStage } from '@/types'
+import { newId } from '@/lib/newId'
 
 interface LeadFormProps {
   open: boolean
@@ -50,7 +51,7 @@ export function LeadForm({ open, onClose, initial }: LeadFormProps) {
     if (isEdit && initial) {
       dispatch({ type: 'UPDATE_LEAD', leadId: initial.id, patch: form })
     } else {
-      const id = asId<LeadId>(`LED-${Date.now()}`)
+      const id = asId<LeadId>(newId('LED'))
       dispatch({ type: 'ADD_LEAD', lead: { id, ...form } })
     }
     reset()

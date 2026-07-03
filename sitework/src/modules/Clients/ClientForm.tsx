@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button, Dialog, Field, Input } from '@/components/ui'
 import { useDispatch } from '@/state/context'
 import { asId, type Client, type ClientId } from '@/types'
+import { newId } from '@/lib/newId'
 
 interface ClientFormProps {
   open: boolean
@@ -45,7 +46,7 @@ export function ClientForm({ open, onClose, initial }: ClientFormProps) {
     if (isEdit && initial) {
       dispatch({ type: 'UPDATE_CLIENT', clientId: initial.id, patch: form })
     } else {
-      const id = asId<ClientId>(`CLI-${Date.now()}`)
+      const id = asId<ClientId>(newId('CLI'))
       dispatch({ type: 'ADD_CLIENT', client: { id, ...form } })
     }
     reset()

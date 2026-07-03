@@ -176,6 +176,22 @@
 
 ---
 
+## Phase 4.5 — "Drive & Trust" 🔄
+*Goal: drive like a Porsche (fast, zero-friction interactions), look like a Volvo (calm, consistent, trustworthy), reliable like a Landcruiser (never loses data, never crashes, correct numbers). Born from the full three-audit review (cross-linking, UX consistency, reliability) in session 44.*
+*Design principle: zero schema-shape work that Phase 5 FK normalisation would redo; no new runtime dependencies. Full visual redesign (NB Akademie type system) is a separate phase after this one.*
+*Estimated: 6 sessions (A→F)*
+
+- ✅ **4.5-A Reliability guardrails** — ErrorBoundary + route-level crash screen with "Download backup" straight off localStorage; persistence failures surfaced via red AppShell banner (was a silent empty catch); JSON backup export/restore in Settings (`RESTORE_STATE` action); all 23 `Date.now()` ID sites → collision-safe `newId()` (crypto.randomUUID). Session 44
+- ⬜ **4.5-B Money correctness** — central `src/lib/money.ts` (GST, cents rounding, `parseAmount`); replace 3 scattered GST computations; kill `Number("abc") || 0` in amount fields; rounding tests. NOT a cents migration (Phase 5 does that in Postgres)
+- ⬜ **4.5-C Linking layer** — EntityLink primitive + `?cc=`/`?client=`/`?sup=` query-param filtering; cost-code cells link to BOQ; BOQ Actual/Committed drill to filtered invoices/POs; Clients/Suppliers drill-downs; Dashboard KPI tiles become clickable. All render-time lookups, nothing persisted
+- ⬜ **4.5-D UX consistency kit** — Select primitive (13 raw `<select>` sites); Dialog rewrite on native `<dialog>` (focus trap, scroll lock); ConfirmDialog replacing `window.confirm`; toast system; row-click edit standardised (POs get full edit)
+- ⬜ **4.5-E Table ergonomics** — `useTableSort` hook; Invoices/POs sortable + status chips + supplier search; BOQ sort + over-budget toggle. No virtualization/pagination/DataTable framework
+- ⬜ **4.5-F Perf + light polish** — memoise `computeProjectFinancials`; StatusBadge WCAG (not colour-only); SVG icons replacing emoji; sidebar tooltips; light typography-token pass
+
+Explicitly NOT in 4.5: FK normalisation, PO↔invoice matching, undo, multi-tab sync, global search, detail pages, cents migration — all Phase 5+ where a server source of truth exists.
+
+---
+
 ## Phase 5 — Backend, Auth & Multi-user
 *Goal: Data lives server-side. Multiple builders can sign up, log in, and see only their own data.*
 *Estimated: 3–4 sessions*
@@ -298,4 +314,6 @@
 
 | 43 | 2026-06-09 | 3 | **Phase 3 — PDF/print export shipped in one session.** Four print routes outside the AppShell: /print/claim/:projectId/:claimId, /print/boq/:projectId, /print/retention/:projectId, /print/invoice/:projectId/:invoiceId. Each is a React component using a shared PrintLayout wrapper that auto-triggers window.print() 250ms after mount; a `.print-hide` toolbar gives Back + manual Print buttons. CSS additions in index.css: A4 @page sizing, @media print rules hiding the toolbar, `.print-page` class with proper typography reset (12px body, table borders, tfoot weight). Buttons added: Claims tab per-row 🖨 + "Retention cert" in header; BOQ tab "Export" in header; Invoices tab per-row 🖨. ProgressClaim PDF carries builder header + bill-to/project + claim line with retention breakdown + supporting-docs list (cost-plus) + signature blocks. Tax Invoice has full GST breakdown (ex/GST/inc). Retention cert summarises every claim's retention contribution + held/released/balance + signature blocks. BOQ export is the budget table with budget/variations/adjusted/actual/overrun + totals. 25 e2e (was 23) with 4 new specs verifying print routes render with content and no AppShell chrome. **Phase 3 complete in 1 session** — original estimate 1–2 sessions; React+HMR made this trivial. |
 
-*Last updated: 2026-06-09 (session 43 — Phase 3 closed out; next: Vercel connect verification + Phase 5 backend)*
+| 44 | 2026-07-03 | 4.5 | **Phase 4.5 kicked off with full project review + Session A (reliability guardrails).** Three parallel audits (cross-linking, UX consistency, reliability) produced the Phase 4.5 "Drive & Trust" plan — 6 sessions, sequenced to avoid any work Phase 5 FK normalisation would redo. Session A shipped: `ErrorBoundary` + `RouteCrash` (root route errorElement) with a crash screen offering Reload + "Download backup" read straight from localStorage, so a render error can never white-screen the app or strand data; `useReducerPersisted` now returns a `persistFailed` flag (was a silent empty catch on `setItem`) surfaced as a red role=alert banner in AppShell with one-click export; `src/lib/backup.ts` export/restore wired into Settings (new Backup card) via new `RESTORE_STATE` action — old backups stay restorable because `parseBackupFile` reuses `mergeSeedWithStored`; all 23 `PREFIX-${Date.now()}` ID sites (6 reducer + 17 forms) replaced with `newId()` (crypto.randomUUID slice, keeps PREFIX- convention so seed IDs + branded types untouched). Verified live in preview: simulated QuotaExceededError → banner appears, heal storage → banner clears and write lands. 125 unit (+2 boundary, +5 backup, +2 newId, +3 persistence-failure, +1 RESTORE_STATE), 25 e2e all green. |
+
+*Last updated: 2026-07-03 (session 44 — Phase 4.5-A reliability guardrails shipped; next: 4.5-B money correctness)*

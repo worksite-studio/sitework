@@ -44,6 +44,7 @@ import type {
   Retention,
   Rfi,
   RfiId,
+  RootState,
   Selection,
   SelectionId,
   Settings,
@@ -317,6 +318,15 @@ export type PromoteEstimateAction = {
 
 export type UpdateSettingsAction = { type: 'UPDATE_SETTINGS'; patch: Partial<Settings> }
 
+// ─── Backup restore (Phase 4.5-A) ────────────────────────────────────────
+
+/**
+ * Replace the entire root state with a parsed backup file. The payload has
+ * already been validated + merged onto the seed shape by
+ * `parseBackupFile()`. Removed in Phase 5 when restore goes server-side.
+ */
+export type RestoreStateAction = { type: 'RESTORE_STATE'; state: RootState }
+
 // ─── Union ───────────────────────────────────────────────────────────────
 
 export type Action =
@@ -373,6 +383,7 @@ export type Action =
   | CreateEstimateFromTemplateAction
   | PromoteEstimateAction
   | UpdateSettingsAction
+  | RestoreStateAction
 
 /**
  * Compile-time exhaustiveness check. Call from the default arm of a switch
