@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button, Dialog, Field, Input } from '@/components/ui'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
+import { newId } from '@/lib/newId'
 import type {
   CostCodeId,
   ProjectId,
@@ -62,7 +63,7 @@ export function VariationForm({ open, onClose, projectId, codes, initial }: Prop
     if (isEdit && initial) {
       dispatch({ type: 'UPDATE_VARIATION', projectId, variationId: initial.id, patch: form })
     } else {
-      const id = asId<VariationId>(`VO-${Date.now()}`)
+      const id = asId<VariationId>(newId('VO'))
       dispatch({ type: 'ADD_VARIATION', projectId, variation: { id, ...form } })
     }
     reset()

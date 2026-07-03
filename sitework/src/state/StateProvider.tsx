@@ -14,7 +14,10 @@ import { StateContext } from './context'
  * a provider so routed module components can reach it.
  */
 export function StateProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducerPersisted<Action>(reducer, seed)
-  const value = useMemo(() => ({ state, dispatch }), [state, dispatch])
+  const [state, dispatch, persistFailed] = useReducerPersisted<Action>(reducer, seed)
+  const value = useMemo(
+    () => ({ state, dispatch, persistFailed }),
+    [state, dispatch, persistFailed],
+  )
   return <StateContext.Provider value={value}>{children}</StateContext.Provider>
 }

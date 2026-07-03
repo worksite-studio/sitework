@@ -841,3 +841,14 @@ describe('UPDATE_SETTINGS (new in Phase 4)', () => {
     expect(s.settings.abn).toBe('123')
   })
 })
+
+// ─── Backup restore (Phase 4.5-A) ──────────────────────────────────────────
+
+describe('RESTORE_STATE', () => {
+  it('replaces the entire state with the payload', () => {
+    const current = emptyState({ settings: { businessName: 'Current' } })
+    const backup = emptyState({ settings: { businessName: 'From backup' } })
+    const s = reducer(current, { type: 'RESTORE_STATE', state: backup })
+    expect(s).toBe(backup)
+  })
+})

@@ -9,6 +9,7 @@
 
 import type { ProjectId, ProgressClaim, Rfi, RootState } from '@/types'
 import { asId } from '@/types'
+import { newId } from '@/lib/newId'
 import { type Action, assertNever } from './actions'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -75,8 +76,8 @@ export function reducer(state: RootState, action: Action): RootState {
     case 'DUPLICATE_PROJECT': {
       const src = state.projects.find((p) => p.id === action.projectId)
       if (!src) return state
-      const newId = asId<ProjectId>(`PRJ-DUP-${Date.now()}`)
-      const clone: typeof src = { ...src, id: newId, name: action.newName }
+      const dupId = asId<ProjectId>(newId('PRJ-DUP'))
+      const clone: typeof src = { ...src, id: dupId, name: action.newName }
       return { ...state, projects: [...state.projects, clone] }
     }
 
@@ -122,8 +123,8 @@ export function reducer(state: RootState, action: Action): RootState {
         const existing = new Set(p.codes.map((c) => c.code))
         const newCodes = tpl.codes
           .filter((tc) => !existing.has(tc.code))
-          .map((tc, i) => ({
-            id: asId<(typeof p.codes)[number]['id']>(`CC-${Date.now()}-${i}`),
+          .map((tc) => ({
+            id: asId<(typeof p.codes)[number]['id']>(newId('CC')),
             code: tc.code,
             desc: tc.desc,
             budget: 0,
@@ -437,15 +438,15 @@ export function reducer(state: RootState, action: Action): RootState {
       const tpl = state.templates.find((t) => t.id === action.templateId)
       if (!tpl) return state
       const newEst: (typeof state.estimates)[number] = {
-        id: asId(`EST-${Date.now()}`),
+        id: asId(newId('EST')),
         name: action.name,
         clientId: asId(''),
         address: '',
         status: 'draft',
         createdDate: new Date().toISOString().slice(0, 10),
         margin: 0,
-        codes: tpl.codes.map((tc, i) => ({
-          id: asId(`EC-${Date.now()}-${i}`),
+        codes: tpl.codes.map((tc) => ({
+          id: asId(newId('EC')),
           code: tc.code,
           desc: tc.desc,
           budget: Math.round((action.contractValue * tc.pct) / 100),
@@ -458,7 +459,7 @@ export function reducer(state: RootState, action: Action): RootState {
       const est = state.estimates.find((e) => e.id === action.estimateId)
       if (!est) return state
       const newProject: (typeof state.projects)[number] = {
-        id: asId(`PRJ-${Date.now()}`),
+        id: asId(newId('PRJ')),
         name: action.projectName,
         clientId: est.clientId,
         address: est.address,
@@ -472,8 +473,8 @@ export function reducer(state: RootState, action: Action): RootState {
         estimatedValue: 0,
         isRenovationWithUnknownCost: false,
         qldHwsAcknowledged: false,
-        codes: est.codes.map((ec, i) => ({
-          id: asId(`CC-${Date.now()}-${i}`),
+        codes: est.codes.map((ec) => ({
+          id: asId(newId('CC')),
           code: ec.code,
           desc: ec.desc,
           budget: ec.budget,
@@ -491,6 +492,10 @@ export function reducer(state: RootState, action: Action): RootState {
     // ─── Settings (new in Phase 4) ────────────────────────────────────────
     case 'UPDATE_SETTINGS':
       return { ...state, settings: { ...state.settings, ...action.patch } }
+
+    // ─── Backup restore (Phase 4.5-A) ─────────────────────────────────────
+    case 'RESTORE_STATE':
+      return action.state
 
     default:
       return assertNever(action)

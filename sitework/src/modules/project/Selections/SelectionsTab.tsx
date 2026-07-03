@@ -6,6 +6,7 @@ import { useAppState, useDispatch } from '@/state/context'
 import { useProject } from '../useProject'
 import { asId } from '@/types'
 import type { ProjectId, Selection, SelectionId } from '@/types'
+import { newId } from '@/lib/newId'
 
 interface FormProps {
   open: boolean
@@ -32,7 +33,7 @@ function SelectionForm({ open, onClose, projectId }: FormProps) {
       setAttempted(true)
       return
     }
-    const id = asId<SelectionId>(`SEL-${Date.now()}`)
+    const id = asId<SelectionId>(newId('SEL'))
     dispatch({ type: 'ADD_SELECTION', projectId, selection: { id, ...form } })
     onClose()
   }

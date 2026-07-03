@@ -3,6 +3,7 @@ import { Button, Dialog, Field, Input } from '@/components/ui'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import type { Defect, DefectId, DefectStatus, ProjectId } from '@/types'
+import { newId } from '@/lib/newId'
 
 interface Props {
   open: boolean
@@ -42,7 +43,7 @@ export function DefectForm({ open, onClose, projectId, initial }: Props) {
     if (isEdit && initial) {
       dispatch({ type: 'UPDATE_DEFECT', projectId, defectId: initial.id, patch: form })
     } else {
-      const id = asId<DefectId>(`DEF-${Date.now()}`)
+      const id = asId<DefectId>(newId('DEF'))
       dispatch({ type: 'ADD_DEFECT', projectId, defect: { id, ...form } })
     }
     reset()

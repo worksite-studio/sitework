@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { TOP_NAV } from '@/nav'
-import { useAppState } from '@/state/context'
+import { useAppState, usePersistFailed } from '@/state/context'
+import { exportStateFile } from '@/lib/backup'
 
 /**
  * Application shell — port of the legacy `Pc` component's chrome (sidebar +
@@ -12,7 +13,9 @@ import { useAppState } from '@/state/context'
  * treatment can land once shadcn primitives are wired in Session 5.
  */
 export function AppShell() {
-  const { settings } = useAppState()
+  const state = useAppState()
+  const { settings } = state
+  const persistFailed = usePersistFailed()
   const [collapsed, setCollapsed] = useState(false)
   const businessName =
     (typeof settings.businessName === 'string' && settings.businessName) || 'Worksite'
@@ -71,6 +74,24 @@ export function AppShell() {
             <span className="font-medium">{businessName}</span>
           </span>
         </header>
+
+        {persistFailed && (
+          <div
+            role="alert"
+            className="flex items-center gap-3 px-6 py-2 bg-sw-danger text-white text-sm"
+          >
+            <span className="font-medium">
+              Changes are NOT being saved — browser storage is full or unavailable.
+            </span>
+            <button
+              type="button"
+              onClick={() => exportStateFile(state)}
+              className="ml-auto shrink-0 rounded-md border border-white/60 px-3 py-1 text-sm font-medium hover:bg-white/10"
+            >
+              Download backup now
+            </button>
+          </div>
+        )}
 
         <main className="flex-1 min-w-0 p-6">
           <Outlet />

@@ -5,6 +5,7 @@ import { useAppState, useDispatch } from '@/state/context'
 import { useProject } from '../useProject'
 import { asId } from '@/types'
 import type { DiaryEntry, DiaryEntryId, ProjectId } from '@/types'
+import { newId } from '@/lib/newId'
 
 interface FormProps {
   open: boolean
@@ -25,7 +26,7 @@ function DiaryForm({ open, onClose, projectId }: FormProps) {
   })
 
   function save() {
-    const id = asId<DiaryEntryId>(`DY-${Date.now()}`)
+    const id = asId<DiaryEntryId>(newId('DY'))
     dispatch({ type: 'ADD_DIARY_ENTRY', projectId, entry: { id, ...form } })
     onClose()
   }

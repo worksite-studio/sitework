@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button, Dialog, Field, Input } from '@/components/ui'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
+import { newId } from '@/lib/newId'
 import type {
   Certificate,
   CertificateId,
@@ -60,7 +61,7 @@ export function SubForm({ open, onClose, initial }: SubFormProps) {
 
   function addCertRow() {
     const newCert: Certificate = {
-      id: asId<CertificateId>(`CERT-${Date.now()}`),
+      id: asId<CertificateId>(newId('CERT')),
       type: 'PL',
       file: { name: '', dataUrl: '', size: 0 },
       expiry: '',
@@ -91,7 +92,7 @@ export function SubForm({ open, onClose, initial }: SubFormProps) {
     if (isEdit && initial) {
       dispatch({ type: 'UPDATE_SUB', subId: initial.id, patch: form })
     } else {
-      const id = asId<SubcontractorId>(`SUB-${Date.now()}`)
+      const id = asId<SubcontractorId>(newId('SUB'))
       dispatch({ type: 'ADD_SUB', sub: { id, ...form } })
     }
     reset()

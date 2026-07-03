@@ -6,6 +6,7 @@ import { useAppState, useDispatch } from '@/state/context'
 import { useProject } from '../useProject'
 import { asId } from '@/types'
 import type { ProjectId, Rfi, RfiId, RfiStatus } from '@/types'
+import { newId } from '@/lib/newId'
 
 const STATUSES: RfiStatus[] = ['Open', 'Closed', 'Overdue']
 
@@ -44,7 +45,7 @@ function RfiForm({ open, onClose, projectId, initial }: FormProps) {
     if (isEdit && initial) {
       dispatch({ type: 'UPDATE_RFI', projectId, rfiId: initial.id, patch: form })
     } else {
-      const id = asId<RfiId>(`RFI-${Date.now()}`)
+      const id = asId<RfiId>(newId('RFI'))
       dispatch({ type: 'ADD_RFI', projectId, rfi: { id, ...form } })
     }
     onClose()

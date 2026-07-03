@@ -6,6 +6,7 @@ import { useAppState, useDispatch } from '@/state/context'
 import { useProject } from '../useProject'
 import { asId } from '@/types'
 import type { CostCodeId, ProjectId, Timesheet, TimesheetId } from '@/types'
+import { newId } from '@/lib/newId'
 
 interface FormProps {
   open: boolean
@@ -33,7 +34,7 @@ function TimesheetForm({ open, onClose, projectId, codes }: FormProps) {
       setAttempted(true)
       return
     }
-    const id = asId<TimesheetId>(`TS-${Date.now()}`)
+    const id = asId<TimesheetId>(newId('TS'))
     dispatch({ type: 'ADD_TIMESHEET', projectId, timesheet: { id, ...form } })
     onClose()
   }

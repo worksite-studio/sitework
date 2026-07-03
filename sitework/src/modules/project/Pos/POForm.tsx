@@ -3,6 +3,7 @@ import { Button, Dialog, Field, Input } from '@/components/ui'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import type { CostCodeId, Project, Purchase, PurchaseId, PurchaseStatus } from '@/types'
+import { newId } from '@/lib/newId'
 
 interface Props {
   open: boolean
@@ -47,7 +48,7 @@ export function POForm({ open, onClose, project }: Props) {
       setAttempted(true)
       return
     }
-    const id = asId<PurchaseId>(`PO-${Date.now()}`)
+    const id = asId<PurchaseId>(newId('PO'))
     dispatch({ type: 'ADD_PURCHASE', projectId: project.id, purchase: { id, ...form } })
     reset()
     onClose()

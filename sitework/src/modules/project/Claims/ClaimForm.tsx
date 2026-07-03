@@ -4,6 +4,7 @@ import { FilePicker } from '@/components/FilePicker'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import { checkSubstantiation } from '@/lib/substantiation'
+import { newId } from '@/lib/newId'
 import type {
   FileAttachment,
   ProgressClaim,
@@ -92,7 +93,7 @@ export function ClaimForm({ open, onClose, project, initial, nextNo = 1 }: Props
         patch: form,
       })
     } else {
-      const id = asId<ProgressClaimId>(`CLM-${Date.now()}`)
+      const id = asId<ProgressClaimId>(newId('CLM'))
       dispatch({ type: 'ADD_CLAIM', projectId: project.id, claim: { id, ...form } })
     }
     reset()

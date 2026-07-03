@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useAppState, useDispatch } from '@/state/context'
 import { Button, Card, Field, Input } from '@/components/ui'
+import { exportStateFile, parseBackupFile } from '@/lib/backup'
+import { seed } from '@/state/seed'
 import type { Settings } from '@/types'
 
 const FIELDS: Array<{ key: keyof Settings; label: string; hint?: string }> = [
@@ -20,8 +22,29 @@ const FIELDS: Array<{ key: keyof Settings; label: string; hint?: string }> = [
  * destination as Phase 6+ work lands.
  */
 export function SettingsPage() {
-  const { settings } = useAppState()
+  const state = useAppState()
+  const { settings } = state
   const dispatch = useDispatch()
+  const restoreInputRef = useRef<HTMLInputElement>(null)
+  const [restoreError, setRestoreError] = useState<string | null>(null)
+  const [restoredAt, setRestoredAt] = useState<number | null>(null)
+
+  async function onRestoreFilePicked(file: File | undefined) {
+    if (!file) return
+    setRestoreError(null)
+    setRestoredAt(null)
+    const parsed = parseBackupFile(await file.text(), seed)
+    if (!parsed) {
+      setRestoreError("That file isn't a SITEWORK backup — nothing was changed.")
+      return
+    }
+    const ok = window.confirm(
+      'Restore from backup? This replaces ALL current data with the contents of the file.',
+    )
+    if (!ok) return
+    dispatch({ type: 'RESTORE_STATE', state: parsed })
+    setRestoredAt(Date.now())
+  }
   // Initial form snapshot taken from settings at mount; the page is a
   // single-edit destination so we don't need to live-sync external mutations
   // (which would clobber the user's in-flight edits anyway).
@@ -68,6 +91,32 @@ export function SettingsPage() {
           {!dirty && savedAt && <span className="text-xs text-sw-success">Saved.</span>}
           {dirty && <span className="text-xs text-sw-warning">Unsaved changes.</span>}
         </div>
+      </Card>
+
+      <Card className="p-5 space-y-3 max-w-2xl">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-sw-muted">Backup</h2>
+        <p className="text-sm text-sw-muted">
+          All data lives in this browser until the cloud backend lands. Download a backup file
+          regularly, and restore from one if you switch machines or clear the browser.
+        </p>
+        <div className="flex items-center gap-3">
+          <Button onClick={() => exportStateFile(state)}>Download backup</Button>
+          <Button variant="secondary" onClick={() => restoreInputRef.current?.click()}>
+            Restore from backup…
+          </Button>
+          <input
+            ref={restoreInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(e) => {
+              void onRestoreFilePicked(e.target.files?.[0])
+              e.target.value = ''
+            }}
+          />
+        </div>
+        {restoreError && <p className="text-xs text-sw-danger">{restoreError}</p>}
+        {restoredAt && <p className="text-xs text-sw-success">Backup restored.</p>}
       </Card>
 
       <Card className="p-5 space-y-2 max-w-2xl">
