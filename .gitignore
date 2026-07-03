@@ -1,3 +1,4 @@
 *.bak
 *.xlsx
 .claude/
+.DS_Store
