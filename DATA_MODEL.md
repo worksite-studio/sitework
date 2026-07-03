@@ -1,5 +1,7 @@
 # DATA_MODEL.md — SITEWORK entity reference
 
+> **2026-07-04 note:** the seed/`index.html` referenced below now lives at `legacy/index.html` (canonical baseline, serve on :8766 — see `PARITY.md`).
+
 Every entity in SITEWORK with its field set, sourced from the current seed in `index.html`. Phase 5 will translate this into a PostgreSQL schema; Phase 4 will translate it into TypeScript interfaces. This document is the bridge.
 
 For each entity:

@@ -8,7 +8,7 @@ Aim: scannable in 2 minutes, executable without thinking.
 
 ## 1. Repo map — what lives where
 
-**The app** lives at `sitework/` (Vite + React 19 + TypeScript + Tailwind v4). The legacy single-file `index.html` was retired in Phase 4 session 13.
+**The canonical baseline** is `legacy/index.html` — serve on http://127.0.0.1:8766/ (`cd legacy && python3 -m http.server 8766 --bind 127.0.0.1`). See `PARITY.md` for the baseline contract. Ongoing development happens at `sitework/` (Vite + React 19 + TypeScript + Tailwind v4), which is an incomplete port being brought to parity with the baseline (Phase 4.6, sessions P1–P5).
 
 **Tracked in git** (committed, pushed to GitHub):
 - `sitework/` — the app, package-managed via npm
@@ -171,7 +171,7 @@ To wire up a fresh Vercel project for this repo:
 3. Leave the root directory as `./` — `vercel.json` cd's into `sitework/` itself
 4. Deploy. First deploy ~1 minute; subsequent pushes auto-build via the GitHub integration.
 
-The legacy `index.html` deployment (GitHub Pages on the old single-file app) is no longer used.
+The legacy `index.html` deployment (GitHub Pages on the old single-file app) is no longer used for hosting — but the file itself lives on as the canonical baseline at `legacy/index.html` (see `PARITY.md`).
 
 ---
 

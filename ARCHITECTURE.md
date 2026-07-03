@@ -1,5 +1,7 @@
 # ARCHITECTURE.md — SITEWORK technical guide
 
+> **2026-07-04 note:** this document describes the legacy single-file app, which is now the **canonical baseline** at `legacy/index.html`, served on **http://127.0.0.1:8766/** (the `:3456` / root-`index.html` references below predate the move). The Vite port at `sitework/` is incomplete — see `PARITY.md` for the gap table and restoration plan. §12's advice ("click-through comparison between the two is the most reliable parity check there is") is now the enforced acceptance test for every session.
+
 How the codebase is put together, how it got that way, and what a developer should know before doing the Phase 4 React-scaffold port. Companion to `DATA_MODEL.md` (entity reference), `CLAUDE.md` (codebase pointer), `WORKFLOW.md` (operating procedures), and `CONTRACTS_REFERENCE.md` (legal source-of-truth).
 
 Audience: the developer who will port this codebase to a normal React project; also future sessions navigating the minified file.
