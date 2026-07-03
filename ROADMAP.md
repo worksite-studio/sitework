@@ -176,10 +176,22 @@
 
 ---
 
-## Phase 4.5 — "Drive & Trust" 🔄
+## Phase 4.6 — Baseline Parity Restoration 🔄
+*Goal: `legacy/index.html` (serve on :8766) is the **canonical baseline** — it holds all work from sessions 0-A→29. The Phase 4 port silently dropped features; a 2026-07-04 audit found the gaps. Nothing else ships in the Vite app until parity is closed. Contract + gap table live in `PARITY.md`. Acceptance test for every session: side-by-side against :8766.*
+*Estimated: 5 sessions (P1→P5)*
+
+- ⬜ **P1 Project form + statutory validation** (Critical) — port legacy `I0`: "+ New Project" + row-click edit, VIC s.13 hard-block, QLD HWS checkbox, WA flag, deposit-cap helper; rules in tested `src/lib/statutory.ts`
+- ⬜ **P2 Settings parity** (Critical) — home state + 8 licence fields + 5 insurance registrations + Reset to Demo Data (Backup card stays)
+- ⬜ **P3 Variations + PC/PS forms** (High) — `requestedBy` dropdown + "Other" reason + conditional comments; `pcf`/`psf` add/edit forms
+- ⬜ **P4 Help & Education + splash** (Medium) — port 4-tab content verbatim; port `Lp` splash faithfully (design phase reworks it later)
+- ⬜ **P5 Side-by-side sweep** — session-26 visual fixes verified, DUPLICATE_PROJECT button, full module-by-module walkthrough vs :8766 with Jake
+
+---
+
+## Phase 4.5 — "Drive & Trust" ⏸ (B–F paused pending Phase 4.6 parity)
 *Goal: drive like a Porsche (fast, zero-friction interactions), look like a Volvo (calm, consistent, trustworthy), reliable like a Landcruiser (never loses data, never crashes, correct numbers). Born from the full three-audit review (cross-linking, UX consistency, reliability) in session 44.*
 *Design principle: zero schema-shape work that Phase 5 FK normalisation would redo; no new runtime dependencies. Full visual redesign (NB Akademie type system) is a separate phase after this one.*
-*Estimated: 6 sessions (A→F)*
+*Estimated: 6 sessions (A→F). **Sessions B–F resume only after Phase 4.6 closes every PARITY.md gap.***
 
 - ✅ **4.5-A Reliability guardrails** — ErrorBoundary + route-level crash screen with "Download backup" straight off localStorage; persistence failures surfaced via red AppShell banner (was a silent empty catch); JSON backup export/restore in Settings (`RESTORE_STATE` action); all 23 `Date.now()` ID sites → collision-safe `newId()` (crypto.randomUUID). Session 44
 - ⬜ **4.5-B Money correctness** — central `src/lib/money.ts` (GST, cents rounding, `parseAmount`); replace 3 scattered GST computations; kill `Number("abc") || 0` in amount fields; rounding tests. NOT a cents migration (Phase 5 does that in Postgres)
@@ -316,4 +328,6 @@ Explicitly NOT in 4.5: FK normalisation, PO↔invoice matching, undo, multi-tab 
 
 | 44 | 2026-07-03 | 4.5 | **Phase 4.5 kicked off with full project review + Session A (reliability guardrails).** Three parallel audits (cross-linking, UX consistency, reliability) produced the Phase 4.5 "Drive & Trust" plan — 6 sessions, sequenced to avoid any work Phase 5 FK normalisation would redo. Session A shipped: `ErrorBoundary` + `RouteCrash` (root route errorElement) with a crash screen offering Reload + "Download backup" read straight from localStorage, so a render error can never white-screen the app or strand data; `useReducerPersisted` now returns a `persistFailed` flag (was a silent empty catch on `setItem`) surfaced as a red role=alert banner in AppShell with one-click export; `src/lib/backup.ts` export/restore wired into Settings (new Backup card) via new `RESTORE_STATE` action — old backups stay restorable because `parseBackupFile` reuses `mergeSeedWithStored`; all 23 `PREFIX-${Date.now()}` ID sites (6 reducer + 17 forms) replaced with `newId()` (crypto.randomUUID slice, keeps PREFIX- convention so seed IDs + branded types untouched). Verified live in preview: simulated QuotaExceededError → banner appears, heal storage → banner clears and write lands. 125 unit (+2 boundary, +5 backup, +2 newId, +3 persistence-failure, +1 RESTORE_STATE), 25 e2e all green. |
 
-*Last updated: 2026-07-03 (session 44 — Phase 4.5-A reliability guardrails shipped; next: 4.5-B money correctness)*
+| 45 | 2026-07-04 | 4.6 | **Course correction — baseline parity restoration begins.** Jake caught the fundamental error: the Vite app was being treated as the finished product, but the Phase 4 port silently dropped major features. Full audit vs `legacy/index.html` (the canonical baseline, all sessions 0-A→29) found ~40 features ported faithfully and 9 gaps — worst: **no project create/edit form at all** (the entire 0-H statutory validation layer — VIC s.13 hard-block, QLD HWS, WA flag, deposit caps — has no UI in the Vite app); Settings gutted from ~15 fields to 4 (licences + insurance registrations gone); Reset to Demo Data, splash, Help & Education content, PC/PS forms, Variation requestedBy all missing. **New ground rule: `legacy/index.html` on :8766 is the canonical baseline; every session's acceptance test is side-by-side against it; no new Vite feature work until parity closes.** `PARITY.md` created at repo root with the contract + gap table + session plan (P1–P5). Phase 4.5 B–F paused pending parity (4.5-A stays — purely additive reliability). Next: P1 project form + statutory validation. |
+
+*Last updated: 2026-07-04 (session 45 — Phase 4.6 parity restoration; baseline is legacy/index.html on :8766; next: P1 project form)*
