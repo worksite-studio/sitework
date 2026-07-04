@@ -1,10 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cd sitework && npm ci && npm run build",
+  "buildCommand": "cd sitework && npm ci && npm run build && mkdir -p dist/legacy && cp ../legacy/index.html dist/legacy/index.html",
   "outputDirectory": "sitework/dist",
   "installCommand": "echo 'install handled by buildCommand'",
   "framework": null,
   "rewrites": [
+    { "source": "/legacy", "destination": "/legacy/index.html" },
+    { "source": "/legacy/(.*)", "destination": "/legacy/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
