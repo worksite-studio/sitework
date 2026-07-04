@@ -16,7 +16,7 @@ Why this file exists: on 2026-07-04 the port was caught being treated as the fin
 
 | # | Gap | Built in (legacy session) | Vite status | Severity | Closed |
 |---|-----|---------------------------|-------------|----------|--------|
-| 1 | Project create/edit form (`I0`) + statutory validation: VIC s.13 hard-block (red banner + greyed Save for cost-plus <$1M non-renovation), QLD `qldHwsAcknowledged` checkbox, WA flag, deposit-cap helper under state select | 0-H (session 23) | **MISSING ENTIRELY** — no "+ New Project" button; `Project` type has the fields, no UI | Critical | ⬜ |
+| 1 | Project create/edit form (`I0`) + statutory validation: VIC s.13 hard-block (red banner; Save stays clickable but refuses, matching legacy), QLD `qldHwsAcknowledged` checkbox, WA flag, deposit-cap helper under state select | 0-H (session 23) | Ported session P1 — `ProjectForm.tsx` + `src/lib/statutory.ts` (21 unit tests pin verbatim copy/thresholds) + 7 e2e specs. Note: legacy seeded defaults from `sw_ct`/`sw_state` Settings keys — wires up in P2 | Critical | ✅ |
 | 2 | Settings: home state, 8 state-keyed builder licences, 5 insurance registrations (HBCF / DBI / VBA / QBCC / HII) | session 23 (`St1`) | Only 4 fields (userName / businessName / abn / licence) | Critical | ⬜ |
 | 3 | Settings: Reset to Demo Data (red button + confirm + clear + reload) | session 24 | Missing (new Backup card is additive, not a replacement) | High | ⬜ |
 | 4 | Variation `requestedBy` (Owner/Builder/Architect/Other, default Owner) + `reasonCategory` "Other" value + conditional comment fields | 0-H + session 26 | Field absent from type and form | High | ⬜ |
@@ -36,7 +36,7 @@ Additive Vite-only work (no legacy counterpart, keep): Phase 4.5-A reliability g
 
 | Session | Scope | Size | Status |
 |---------|-------|------|--------|
-| P1 | Project form + statutory validation (`src/lib/statutory.ts` + ProjectForm + e2e) — gap 1 | L | ⬜ |
+| P1 | Project form + statutory validation (`src/lib/statutory.ts` + ProjectForm + e2e) — gap 1 | L | ✅ 2026-07-05 |
 | P2 | Settings parity — gaps 2, 3 | M | ⬜ |
 | P3 | Variation requestedBy + PC/PS forms — gaps 4, 5 | M | ⬜ |
 | P4 | Help & Education content + splash port — gaps 6, 7 | M | ⬜ |

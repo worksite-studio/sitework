@@ -1,7 +1,9 @@
-import { Card, KpiTile } from '@/components/ui'
+import { useState } from 'react'
+import { Button, Card, KpiTile } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { useAppState } from '@/state/context'
+import { ProjectForm } from '@/modules/Projects/ProjectForm'
 import { useProject } from '../useProject'
 import {
   computeProjectFinancials,
@@ -20,6 +22,7 @@ import {
 export function OverviewTab() {
   const project = useProject()
   const state = useAppState()
+  const [editing, setEditing] = useState(false)
   if (!project) return null
 
   const fin = computeProjectFinancials(project)
@@ -70,7 +73,12 @@ export function OverviewTab() {
             <h2 className="text-sm font-semibold uppercase tracking-wide text-sw-muted">
               Contract vs Cost
             </h2>
-            <StatusBadge status={project.contractType} />
+            <span className="flex items-center gap-2">
+              <StatusBadge status={project.contractType} />
+              <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+                Edit Project
+              </Button>
+            </span>
           </header>
           <dl className="space-y-1.5 text-sm">
             <div className="flex justify-between">
@@ -135,6 +143,8 @@ export function OverviewTab() {
           </dl>
         </Card>
       </section>
+
+      {editing && <ProjectForm open initial={project} onClose={() => setEditing(false)} />}
     </div>
   )
 }
