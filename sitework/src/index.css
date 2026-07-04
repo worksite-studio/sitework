@@ -1,7 +1,9 @@
 @import 'tailwindcss';
 
-/* Design tokens lifted from the legacy app's `d` (palette) and `v` (typography) objects.
-   Phase 4 keeps the values stable so visual parity holds during the side-by-side port. */
+/* The sw-bg..sw-info tokens are the incomplete port's generic palette — NOT the
+   baseline's. The real baseline palette (extracted verbatim from legacy `d`,
+   PARITY gap 10) is the sw-ink.. block below; screens migrate to it during
+   session PV and the generic tokens retire when the last screen flips. */
 :root {
   --sw-bg: #fafafa;
   --sw-surface: #ffffff;
@@ -13,6 +15,19 @@
   --sw-warning: #f59e0b;
   --sw-danger: #ef4444;
   --sw-info: #3b82f6;
+
+  /* Baseline palette — legacy `d`, verbatim. */
+  --sw-ink: #000000;
+  --sw-mid: #404040;
+  --sw-dim: #808080;
+  --sw-faint: #c0c0c0;
+  --sw-rule: #d0d0d0;
+  --sw-rule-l: #ebebeb;
+  --sw-pos: #059669;
+  --sw-neg: #ec4899;
+  --sw-violet: #7c3aed;
+  --sw-lilac: #8b5cf6;
+  --sw-xero: #00b0ca;
 }
 
 @theme {
@@ -26,8 +41,30 @@
   --color-sw-warning: var(--sw-warning);
   --color-sw-danger: var(--sw-danger);
   --color-sw-info: var(--sw-info);
+  --color-sw-ink: var(--sw-ink);
+  --color-sw-mid: var(--sw-mid);
+  --color-sw-dim: var(--sw-dim);
+  --color-sw-faint: var(--sw-faint);
+  --color-sw-rule: var(--sw-rule);
+  --color-sw-rule-l: var(--sw-rule-l);
+  --color-sw-pos: var(--sw-pos);
+  --color-sw-neg: var(--sw-neg);
+  --color-sw-violet: var(--sw-violet);
+  --color-sw-lilac: var(--sw-lilac);
+  --color-sw-xero: var(--sw-xero);
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* Xero connection pulse — port of legacy `xpulse`. */
+@keyframes xpulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 
 html,
