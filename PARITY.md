@@ -8,6 +8,8 @@ Start the baseline server:
 cd legacy && python3 -m http.server 8766 --bind 127.0.0.1
 ```
 
+The baseline also deploys with the app: every push to `main` publishes it at **`/legacy`** on the Vercel URL (wired in `vercel.json` — the build copies `legacy/index.html` into `dist/legacy/`). Same file, same bytes, always up to date with the repo — use it when a local server isn't running.
+
 Why this file exists: on 2026-07-04 the port was caught being treated as the finished product. A full audit against the baseline found ~40 features ported faithfully and the gaps below silently dropped — including the entire project-creation form and its statutory compliance validation. This table is the single source of truth for what remains.
 
 ## Gap table (audit: 2026-07-04)
