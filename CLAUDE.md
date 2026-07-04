@@ -2,11 +2,23 @@
 
 Guidance for Claude Code (claude.ai/code) when working on this repository.
 
+## ⚠️ THE BASELINE RULE — read before anything else
+
+**`legacy/index.html` is the canonical baseline for SITEWORK.** It contains every feature built across sessions 0-A→29. Serve it locally:
+
+```bash
+cd legacy && python3 -m http.server 8766 --bind 127.0.0.1   # → http://127.0.0.1:8766/
+```
+
+The Vite app at `sitework/` is an **incomplete port** of that baseline — the Phase 4 port silently dropped features (no project create/edit form or statutory validation, gutted Settings, no splash/Help/PC-PS forms). **`PARITY.md` at the repo root is the contract**: the gap table, the restoration sessions (P1–P5), and the rule that every session's acceptance test is a side-by-side check against :8766. No new feature work ships in the Vite app until parity closes.
+
+A stale copy of the old app also exists at `~/Downloads/index.html` (May 25, pre-baseline) with its own outdated `~/Downloads/CLAUDE.md` — **never reference either**; the only correct baseline is `legacy/index.html` in this repo.
+
 ## Architecture (post-Phase 4)
 
-The active application is a **Vite + React 19 + TypeScript** project at `sitework/`.
+Ongoing development happens in the **Vite + React 19 + TypeScript** project at `sitework/` — building it up to, and then beyond, the legacy baseline.
 
-The legacy single-file `index.html` was retired in Phase 4 session 13 (June 2026). Earlier history of edits to that file is preserved in git — recover any prior version with `git log --oneline <commit>:index.html`.
+The legacy single-file app is preserved at `legacy/index.html` (see baseline rule above). Earlier edit history of that file is in git — recover any prior version with `git log --oneline <commit>:index.html`.
 
 Top-level layout:
 
