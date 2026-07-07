@@ -1,6 +1,6 @@
 /**
  * Parity screenshots — captures every screen of the legacy baseline (:8766)
- * and the Vite app (:5173) side by side into test-results/parity/.
+ * and the Vite app (:5173) side by side into parity-shots/.
  *
  * The legacy app is state-driven (no URLs): the script clicks through its
  * top nav / project tabs by visible text. The Vite side navigates by route
@@ -14,7 +14,7 @@
 import { chromium } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
 
-const OUT = 'test-results/parity'
+const OUT = 'parity-shots'
 mkdirSync(OUT, { recursive: true })
 
 const VIEWPORT = { width: 1440, height: 900 }
