@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Card, Dialog, EmptyState, Field, Input } from '@/components/ui'
+import { Button, Dialog, EmptyState, Field, Input, Select } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatDate } from '@/lib/formatDate'
 import { useAppState, useDispatch } from '@/state/context'
@@ -78,17 +78,16 @@ function MilestoneForm({ open, onClose, projectId, initial }: FormProps) {
           />
         </Field>
         <Field label="Status">
-          <select
+          <Select
             value={form.status}
             onChange={(e) => setForm({ ...form, status: e.target.value as MilestoneStatus })}
-            className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
           >
             {STATUSES.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       </div>
       <Field label="Notes">
@@ -117,7 +116,7 @@ export function MilestonesTab() {
     <div className="space-y-4">
       <header className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-lg font-semibold">Schedule</h2>
+          <h2 className="text-[18px] font-bold tracking-[-0.01em]">Schedule</h2>
           <p className="text-xs text-sw-muted">
             {complete} / {milestones.length} complete
           </p>
@@ -132,14 +131,14 @@ export function MilestonesTab() {
           action={<Button onClick={() => setCreating(true)}>+ New Milestone</Button>}
         />
       ) : (
-        <Card>
-          <table className="w-full text-sm">
+        <div>
+          <table className="sw-table">
             <thead>
-              <tr className="text-xs uppercase text-sw-muted text-left border-b border-sw-border">
-                <th className="px-3 py-2 font-medium">Name</th>
-                <th className="px-3 py-2 font-medium">Date</th>
-                <th className="px-3 py-2 font-medium">Status</th>
-                <th className="px-3 py-2 font-medium">Notes</th>
+              <tr>
+                <th>Name</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Notes</th>
               </tr>
             </thead>
             <tbody>
@@ -149,17 +148,17 @@ export function MilestonesTab() {
                   onClick={() => setEditing(m)}
                   className="border-b border-sw-border last:border-0 cursor-pointer hover:bg-sw-muted/5"
                 >
-                  <td className="px-3 py-2 font-medium">{m.name}</td>
-                  <td className="px-3 py-2 text-sw-muted">{formatDate(m.date)}</td>
-                  <td className="px-3 py-2">
+                  <td>{m.name}</td>
+                  <td className="text-sw-muted">{formatDate(m.date)}</td>
+                  <td>
                     <StatusBadge status={m.status} />
                   </td>
-                  <td className="px-3 py-2 text-sw-muted">{m.notes}</td>
+                  <td className="text-sw-muted">{m.notes}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </Card>
+        </div>
       )}
 
       <MilestoneForm open={creating} onClose={() => setCreating(false)} projectId={project.id} />

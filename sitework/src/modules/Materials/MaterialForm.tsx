@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Dialog, Field, Input } from '@/components/ui'
+import { Button, Dialog, Field, Input, Select } from '@/components/ui'
 import { useAppState, useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import type { Material, MaterialId, SupplierId } from '@/types'
@@ -109,10 +109,9 @@ export function MaterialForm({ open, onClose, initial }: Props) {
           />
         </Field>
         <Field label="Supplier">
-          <select
+          <Select
             value={form.supId as string}
             onChange={(e) => setForm({ ...form, supId: e.target.value as unknown as SupplierId })}
-            className="h-9 w-full rounded-md border border-sw-border px-2 text-sm bg-sw-surface"
           >
             <option value="">—</option>
             {suppliers.map((s) => (
@@ -120,7 +119,7 @@ export function MaterialForm({ open, onClose, initial }: Props) {
                 {s.name}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       </div>
     </Dialog>

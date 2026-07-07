@@ -1,5 +1,5 @@
 import { useAppState, useDispatch } from '@/state/context'
-import { Card, EmptyState } from '@/components/ui'
+import { EmptyState } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { useProject } from '../useProject'
@@ -113,7 +113,7 @@ function Section({ title, empty, rows, onDelete }: SectionProps) {
   if (rows.length === 0) {
     return (
       <section className="space-y-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-sw-muted">{title}</h2>
+        <h2 className="text-[12px] font-semibold text-sw-ink">{title}</h2>
         <EmptyState title={title} description={empty} />
       </section>
     )
@@ -131,31 +131,29 @@ function Section({ title, empty, rows, onDelete }: SectionProps) {
 
   return (
     <section className="space-y-2">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-sw-muted">{title}</h2>
-      <Card>
-        <table className="w-full text-sm">
+      <h2 className="text-[12px] font-semibold text-sw-ink">{title}</h2>
+      <div>
+        <table className="sw-table">
           <thead>
-            <tr className="text-xs uppercase text-sw-muted text-left border-b border-sw-border">
-              <th className="px-3 py-2 font-medium">Description</th>
-              <th className="px-3 py-2 font-medium text-right">Allowance</th>
-              <th className="px-3 py-2 font-medium text-right">Actual</th>
-              <th className="px-3 py-2 font-medium text-right">Variance</th>
-              <th className="px-3 py-2 font-medium text-right">Margin on excess</th>
-              <th className="px-3 py-2 font-medium text-right">Net to claim</th>
-              <th className="px-3 py-2 font-medium">Status</th>
-              <th className="px-3 py-2 font-medium" aria-label="Actions" />
+            <tr>
+              <th>Description</th>
+              <th className="text-right">Allowance</th>
+              <th className="text-right">Actual</th>
+              <th className="text-right">Variance</th>
+              <th className="text-right">Margin on excess</th>
+              <th className="text-right">Net to claim</th>
+              <th>Status</th>
+              <th aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} className="border-b border-sw-border last:border-0">
-                <td className="px-3 py-2">{r.description}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(r.allowance)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">
-                  {formatCurrency(r.actualCost)}
-                </td>
+                <td>{r.description}</td>
+                <td className="text-right font-mono">{formatCurrency(r.allowance)}</td>
+                <td className="text-right font-mono">{formatCurrency(r.actualCost)}</td>
                 <td
-                  className={`px-3 py-2 text-right tabular-nums ${
+                  className={`px-3 py-2 text-right font-mono ${
                     r.variance > 0
                       ? 'text-sw-danger'
                       : r.variance < 0
@@ -165,16 +163,14 @@ function Section({ title, empty, rows, onDelete }: SectionProps) {
                 >
                   {r.variance === 0 ? '—' : formatCurrency(r.variance)}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">
+                <td className="text-right font-mono">
                   {r.marginOnExcess > 0 ? formatCurrency(r.marginOnExcess) : '—'}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums font-medium">
-                  {formatCurrency(r.netToClaim)}
-                </td>
-                <td className="px-3 py-2">
+                <td className="text-right font-mono font-medium">{formatCurrency(r.netToClaim)}</td>
+                <td>
                   <StatusBadge status={r.status} />
                 </td>
-                <td className="px-3 py-2 text-right">
+                <td className="text-right">
                   <button
                     type="button"
                     onClick={() => onDelete(r.id)}
@@ -187,25 +183,17 @@ function Section({ title, empty, rows, onDelete }: SectionProps) {
               </tr>
             ))}
             <tr className="bg-sw-muted/5 font-medium text-sm">
-              <td className="px-3 py-2 text-sw-muted text-xs uppercase">Totals</td>
-              <td className="px-3 py-2 text-right tabular-nums">
-                {formatCurrency(totals.allowance)}
-              </td>
-              <td className="px-3 py-2 text-right tabular-nums">
-                {formatCurrency(totals.actualCost)}
-              </td>
-              <td className="px-3 py-2" />
-              <td className="px-3 py-2 text-right tabular-nums">
-                {formatCurrency(totals.marginOnExcess)}
-              </td>
-              <td className="px-3 py-2 text-right tabular-nums">
-                {formatCurrency(totals.netToClaim)}
-              </td>
+              <td className="text-sw-muted text-xs uppercase">Totals</td>
+              <td className="text-right font-mono">{formatCurrency(totals.allowance)}</td>
+              <td className="text-right font-mono">{formatCurrency(totals.actualCost)}</td>
+              <td />
+              <td className="text-right font-mono">{formatCurrency(totals.marginOnExcess)}</td>
+              <td className="text-right font-mono">{formatCurrency(totals.netToClaim)}</td>
               <td colSpan={2} />
             </tr>
           </tbody>
         </table>
-      </Card>
+      </div>
     </section>
   )
 }

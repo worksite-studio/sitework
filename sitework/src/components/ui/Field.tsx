@@ -13,7 +13,8 @@ export interface FieldProps {
 }
 
 /**
- * Form field wrapper — label + control slot + optional inline error.
+ * Form field wrapper — port of legacy `x`. Label 11px/500/muted over the
+ * underline control.
  *
  * If `htmlFor` is omitted, generates a stable id via `useId()` and injects
  * it onto the single child element so screen readers (and React Testing
@@ -30,16 +31,16 @@ export function Field({ label, htmlFor, required, error, hint, children, classNa
     : child
 
   return (
-    <div className={cn('space-y-1', className)}>
-      <label htmlFor={id} className="block text-xs font-medium text-sw-muted">
+    <div className={cn('space-y-0', className)}>
+      <label htmlFor={id} className="block text-[11px] font-medium text-sw-muted mb-[5px]">
         {label}
-        {required && <span className="text-sw-danger ml-0.5">*</span>}
+        {required && <span className="text-sw-neg ml-0.5">*</span>}
       </label>
       {controlWithId}
       {error ? (
-        <p className="text-xs text-sw-danger">{error}</p>
+        <p className="text-[11px] text-sw-neg mt-1">{error}</p>
       ) : hint ? (
-        <p className="text-xs text-sw-muted">{hint}</p>
+        <p className="text-[11px] text-sw-muted mt-1">{hint}</p>
       ) : null}
     </div>
   )

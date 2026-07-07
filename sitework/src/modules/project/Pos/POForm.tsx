@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Dialog, Field, Input } from '@/components/ui'
+import { Button, Dialog, Field, Input, Select } from '@/components/ui'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import type { CostCodeId, Project, Purchase, PurchaseId, PurchaseStatus } from '@/types'
@@ -92,10 +92,9 @@ export function POForm({ open, onClose, project }: Props) {
           />
         </Field>
         <Field label="Cost code" required error={attempted && codeMissing ? 'Required' : undefined}>
-          <select
+          <Select
             value={form.ccId as string}
             onChange={(e) => setForm({ ...form, ccId: e.target.value as CostCodeId })}
-            className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
           >
             <option value="">— choose code —</option>
             {project.codes.map((c) => (
@@ -103,7 +102,7 @@ export function POForm({ open, onClose, project }: Props) {
                 {c.code} · {c.desc}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       </div>
       <Field label="Description" required error={attempted && descMissing ? 'Required' : undefined}>
@@ -130,17 +129,16 @@ export function POForm({ open, onClose, project }: Props) {
           />
         </Field>
         <Field label="Status">
-          <select
+          <Select
             value={form.status}
             onChange={(e) => setForm({ ...form, status: e.target.value as PurchaseStatus })}
-            className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
           >
             {STATUSES.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       </div>
     </Dialog>

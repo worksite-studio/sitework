@@ -1,14 +1,15 @@
 /**
- * StatusBadge — coloured status chip, port of the legacy `He` component.
+ * StatusBadge — port of legacy `He`: BARE coloured text, 10px/700/uppercase,
+ * 0.07em tracking. No pill, no background, no ring — the colour is the badge.
  *
  * Maps known status strings to semantic colour variants. Unknown statuses
- * fall back to a neutral grey chip so a typo doesn't blow up the page.
+ * fall back to neutral muted text so a typo doesn't blow up the page.
  */
 
 type Variant = 'success' | 'warning' | 'danger' | 'info' | 'neutral'
 
 const VARIANT_FOR_STATUS: Record<string, Variant> = {
-  // Universal positives
+  // Universal positives — legacy He: pos green
   Paid: 'success',
   Approved: 'success',
   Rectified: 'success',
@@ -19,42 +20,51 @@ const VARIANT_FOR_STATUS: Record<string, Variant> = {
   received: 'success',
   approved: 'success',
   won: 'success',
+  'On Budget': 'success',
 
-  // In-progress / informational
+  // Pending / in-motion — legacy He: warn violet
   Pending: 'warning',
   pending: 'warning',
+  sent: 'warning',
+  quoted: 'warning',
+  Ordered: 'warning',
+  ordered: 'warning',
+  'At Risk': 'warning',
+  'on-hold': 'warning',
+  Open: 'warning',
+
+  // Live / informational — legacy He: accent ink
+  live: 'info',
+  'in-progress': 'info',
+  InProgress: 'info',
   Issued: 'info',
-  Draft: 'neutral',
-  draft: 'neutral',
   Selected: 'info',
   Procured: 'info',
-  InProgress: 'info',
-  'in-progress': 'info',
-  upcoming: 'info',
-  sent: 'info',
   prospect: 'info',
   tendering: 'info',
-  live: 'success',
-  quoted: 'info',
 
-  // Negatives
+  // Neutral
+  Draft: 'neutral',
+  draft: 'neutral',
+  upcoming: 'neutral',
+
+  // Negatives — legacy He: neg pink
   Rejected: 'danger',
   Disputed: 'danger',
-  Open: 'warning',
   Overdue: 'danger',
   delayed: 'danger',
   declined: 'danger',
   lost: 'danger',
   cancelled: 'danger',
-  'on-hold': 'warning',
+  Over: 'danger',
 }
 
 const CLASSES_FOR_VARIANT: Record<Variant, string> = {
-  success: 'bg-sw-success/10 text-sw-success ring-sw-success/20',
-  warning: 'bg-sw-warning/10 text-sw-warning ring-sw-warning/30',
-  danger: 'bg-sw-danger/10 text-sw-danger ring-sw-danger/30',
-  info: 'bg-sw-info/10 text-sw-info ring-sw-info/20',
-  neutral: 'bg-sw-muted/10 text-sw-muted ring-sw-muted/20',
+  success: 'text-sw-success',
+  warning: 'text-sw-warning',
+  danger: 'text-sw-danger',
+  info: 'text-sw-ink',
+  neutral: 'text-sw-muted',
 }
 
 export interface StatusBadgeProps {
@@ -72,7 +82,7 @@ export function StatusBadge({ status, label, variant, className = '' }: StatusBa
   const text = label ?? status.toUpperCase()
   return (
     <span
-      className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${CLASSES_FOR_VARIANT[resolvedVariant]} ${className}`}
+      className={`inline-flex items-center text-[10px] font-bold uppercase tracking-[0.07em] ${CLASSES_FOR_VARIANT[resolvedVariant]} ${className}`}
     >
       {text}
     </span>

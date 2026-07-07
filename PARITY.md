@@ -22,11 +22,13 @@ Why this file exists: on 2026-07-04 the port was caught being treated as the fin
 | 4 | Variation `requestedBy` (Owner/Builder/Architect/Other, default Owner) + `reasonCategory` "Other" value + conditional comment fields | 0-H + session 26 | Field absent from type and form | High | ⬜ |
 | 5 | PC/PS add/edit forms (`pcf` / `psf` with validation) | session 27 | Read + delete only; deferral admitted in PcPsTab comment | High | ⬜ |
 | 6 | Help & Education: 4 tabs (Start / Modules / Glossary / Rawlinson), 3 getting-started guides, 6 module docs, 14-term glossary — all real content | 0-G (session 17) | `/education` is a Placeholder stub | Medium | ⬜ |
-| 7 | Splash screen (`Lp`, "tap anywhere to enter") | original entry flow | No splash at all | Medium | ⬜ |
+| 7 | Splash screen (`Lp`, "tap anywhere to enter") | original entry flow | Ported session PV — verbatim `Splash.tsx` (88px wordmark, lilac pixel grid), shows every full load, e2e-covered | Medium | ✅ |
 | 8 | Session-26 visual fixes: Overview BOQ filters all-zero placeholder codes (44→25 rows); Cash Flow "$0 Committed" legend hidden when empty; Project Health "committed vs budget" descriptor | session 26 | Unverified — check each side-by-side vs :8766 | Medium | ⬜ |
 | 9 | DUPLICATE_PROJECT — reducer action exists, no UI button | session 29 inventory | Action present, no button on ProjectsList | Low | ⬜ |
-| 10 | **Visual design system** — the baseline's actual design language: horizontal top nav (uppercase, letterspaced) with spaced-caps SITEWORK wordmark (no sidebar), editorial stat blocks (large numbers over heavy black rules, colour accents: purple money / pink alerts / green-purple status dots), ruled list panels instead of rounded cards, "Good morning." display headline, legacy `d` colour + `v` type tokens | sessions 21, 26 + original design | Port rebuilt everything in a generic Tailwind sidebar-and-cards look — **does not resemble the baseline** (side-by-side screenshots 2026-07-05) | **Critical** | ⬜ |
-| 11 | Dashboard layout parity — Alerts & Compliance list panel leads the page ("+N more alerts" overflow), "Good morning. / Here's where things stand today." heading block, Budget & Margin ruled column beside Project Health, KPI sublabels ("$0.7M contract value") | 0-A + session 26 | Vite dashboard: alerts demoted to a KPI tile, no Budget & Margin panel, extra "Dashboard" H1 not in baseline | High | ⬜ |
+| 10 | **Visual design system** — the baseline's actual design language: horizontal top nav (uppercase, letterspaced) with spaced-caps SITEWORK wordmark (no sidebar), editorial stat blocks (large numbers over heavy black rules, colour accents: purple money / pink alerts / green-purple status dots), ruled list panels instead of rounded cards, "Good morning." display headline, legacy `d` colour + `v` type tokens | sessions 21, 26 + original design | Closed session PV — tokens repointed to legacy `d` verbatim; every primitive rewritten to baseline spec (underline inputs, square modals, bare-text badges, ink-ruled tables); top nav + 44px project sub-bar; 28 side-by-side screenshot pairs in `sitework/test-results/parity/` | **Critical** | ✅ |
+| 11 | Dashboard layout parity — Alerts & Compliance list panel leads the page ("+N more alerts" overflow), "Good morning. / Here's where things stand today." heading block, Budget & Margin ruled column beside Project Health, KPI sublabels ("$0.7M contract value") | 0-A + session 26 | Closed session PV — Alerts & Compliance panel leads, greeting block, editorial stat blocks, Budget & Margin column restored, phantom H1 removed | High | ✅ |
+
+| 12 | Per-table column/content parity — legacy tables carry richer content the port dropped (Invoices: Doc Ref, full cost-code descriptions, GST + Total inc GST columns, Comments, status filter chips, totals footer, header stat sub-line; similar deltas likely on other tabs). Styling is at parity; columns are not | sessions 0-D/0-E | Enumerate tab-by-tab in the P5 side-by-side sweep and close per-tab | High | ⬜ |
 
 ## Confirmed at parity (audited — do not re-port)
 
@@ -39,7 +41,7 @@ Additive Vite-only work (no legacy counterpart, keep): Phase 4.5-A reliability g
 | Session | Scope | Size | Status |
 |---------|-------|------|--------|
 | P1 | Project form + statutory validation (`src/lib/statutory.ts` + ProjectForm + e2e) — gap 1 | L | ✅ 2026-07-05 |
-| **PV** | **Visual parity: port the baseline design system** — extract legacy `d`/`v` tokens, rebuild AppShell (top nav, wordmark), Dashboard (alerts panel, editorial stats, Budget & Margin), restyle primitives (rules not cards, accent palette) — gaps 10, 11. Every later session inherits the corrected shell | L | ⬜ **next** |
+| PV | Visual parity — gaps 7, 10, 11 (see row above) | L | ✅ 2026-07-06 |
 | P2 | Settings parity — gaps 2, 3 | M | ⬜ |
 | P3 | Variation requestedBy + PC/PS forms — gaps 4, 5 | M | ⬜ |
 | P4 | Help & Education content + splash port — gaps 6, 7 | M | ⬜ |

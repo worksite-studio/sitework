@@ -3,18 +3,21 @@ import { test, expect } from '@playwright/test'
 test.beforeEach(async ({ page }) => {
   // Start each spec from a clean slate so the persisted dispatch from a
   // previous spec doesn't bleed in.
-  await page.addInitScript(() => localStorage.clear())
+  await page.addInitScript(() => {
+    localStorage.clear()
+    sessionStorage.setItem('sw:skipSplash', '1')
+  })
 })
 
-test('dashboard renders KPI tiles + Project Health + Pipeline', async ({ page }) => {
+test('dashboard renders stat blocks + Project Health + Budget & Margin', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
+  await expect(page.getByText(/^Good morning/)).toBeVisible()
   await expect(page.getByText('Active Projects', { exact: true })).toBeVisible()
   await expect(page.getByText('Outstanding Invoices', { exact: true })).toBeVisible()
   await expect(page.getByText('Portfolio Margin', { exact: true })).toBeVisible()
   await expect(page.getByText('Compliance Alerts', { exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { level: 2, name: /Project Health/i })).toBeVisible()
-  await expect(page.getByRole('heading', { level: 2, name: /Pipeline/i })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: /Budget & Margin/i })).toBeVisible()
 
   // Click a Project Health row navigates to the project overview
   await page

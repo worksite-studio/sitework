@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useDispatch } from '@/state/context'
-import { Button, Card, EmptyState } from '@/components/ui'
+import { Button, EmptyState } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { useProject } from '../useProject'
@@ -61,7 +61,7 @@ export function BoqTab() {
   return (
     <div className="space-y-4">
       <header className="flex items-center justify-between gap-2 flex-wrap">
-        <h2 className="text-lg font-semibold">BOQ & Budget</h2>
+        <h2 className="text-[18px] font-bold tracking-[-0.01em]">BOQ & Budget</h2>
         <div className="flex gap-2">
           <Link
             to={`/print/boq/${project.id}`}
@@ -91,19 +91,19 @@ export function BoqTab() {
           }
         />
       ) : (
-        <Card>
-          <table className="w-full text-sm">
+        <div>
+          <table className="sw-table">
             <thead>
-              <tr className="text-xs uppercase text-sw-muted text-left border-b border-sw-border">
-                <th className="px-3 py-2 font-medium">Code</th>
-                <th className="px-3 py-2 font-medium">Description</th>
-                <th className="px-3 py-2 font-medium text-right">Orig. budget</th>
-                <th className="px-3 py-2 font-medium text-right">Variations</th>
-                <th className="px-3 py-2 font-medium text-right">Adj. budget</th>
-                <th className="px-3 py-2 font-medium text-right">Actual</th>
-                <th className="px-3 py-2 font-medium text-right">Overrun</th>
-                <th className="px-3 py-2 font-medium">Status</th>
-                <th className="px-3 py-2 font-medium" aria-label="Actions" />
+              <tr>
+                <th>Code</th>
+                <th>Description</th>
+                <th className="text-right">Orig. budget</th>
+                <th className="text-right">Variations</th>
+                <th className="text-right">Adj. budget</th>
+                <th className="text-right">Actual</th>
+                <th className="text-right">Overrun</th>
+                <th>Status</th>
+                <th aria-label="Actions" />
               </tr>
             </thead>
             <tbody>
@@ -116,26 +116,22 @@ export function BoqTab() {
                     onClick={() => setEditing(c)}
                     className="border-b border-sw-border last:border-0 cursor-pointer hover:bg-sw-muted/5"
                   >
-                    <td className="px-3 py-2 tabular-nums">{c.code}</td>
-                    <td className="px-3 py-2">{c.desc}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {formatCurrency(c.budget || 0)}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
+                    <td className="font-mono">{c.code}</td>
+                    <td>{c.desc}</td>
+                    <td className="text-right font-mono">{formatCurrency(c.budget || 0)}</td>
+                    <td className="text-right font-mono">
                       {c.vars ? formatCurrency(c.vars) : '—'}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(adj)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {formatCurrency(c.actual || 0)}
-                    </td>
+                    <td className="text-right font-mono">{formatCurrency(adj)}</td>
+                    <td className="text-right font-mono">{formatCurrency(c.actual || 0)}</td>
                     <td
-                      className={`px-3 py-2 text-right tabular-nums ${
+                      className={`px-3 py-2 text-right font-mono ${
                         overrun > 0 ? 'text-sw-danger' : 'text-sw-muted'
                       }`}
                     >
                       {overrun > 0 ? `+${formatCurrency(overrun)}` : '—'}
                     </td>
-                    <td className="px-3 py-2">
+                    <td>
                       <StatusBadge
                         variant={overrun > 0 ? 'danger' : 'success'}
                         label={overrun > 0 ? 'OVER BUDGET' : 'ON BUDGET'}
@@ -143,7 +139,7 @@ export function BoqTab() {
                       />
                     </td>
                     <td
-                      className="px-3 py-2 text-right"
+                      className="text-right"
                       onClick={(e) => {
                         e.stopPropagation()
                       }}
@@ -161,26 +157,22 @@ export function BoqTab() {
                 )
               })}
               <tr className="bg-sw-muted/5 font-medium text-sm">
-                <td colSpan={2} className="px-3 py-2 text-sw-muted text-xs uppercase">
+                <td colSpan={2} className="text-sw-muted text-xs uppercase">
                   Totals
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">
-                  {formatCurrency(totals.budget)}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums">
+                <td className="text-right font-mono">{formatCurrency(totals.budget)}</td>
+                <td className="text-right font-mono">
                   {totals.vars ? formatCurrency(totals.vars) : '—'}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">
+                <td className="text-right font-mono">
                   {formatCurrency(totals.budget + totals.vars)}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">
-                  {formatCurrency(totals.actual)}
-                </td>
+                <td className="text-right font-mono">{formatCurrency(totals.actual)}</td>
                 <td colSpan={3} />
               </tr>
             </tbody>
           </table>
-        </Card>
+        </div>
       )}
 
       <CostCodeForm

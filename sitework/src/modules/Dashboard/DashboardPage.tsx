@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useMemo } from 'react'
+import { StatBlock } from '@/components/ui'
 import { useAppState } from '@/state/context'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { computeDashboardKpis } from './computeKpis'
@@ -86,33 +87,6 @@ function health(budget: number, committed: number): { color: string; label: stri
   return { color: 'var(--sw-neg)', label: 'Over' }
 }
 
-function StatBlock({
-  label,
-  value,
-  sublabel,
-  accent,
-}: {
-  label: string
-  value: string | number
-  sublabel: string
-  accent?: string
-}) {
-  return (
-    <div className="flex-1 border-b-2 border-sw-ink pb-3.5">
-      <div className="mb-[7px] text-[9px] font-semibold uppercase tracking-[0.1em] text-sw-dim">
-        {label}
-      </div>
-      <div
-        className="mb-[3px] text-[28px] font-bold leading-none tracking-[-0.02em]"
-        style={{ color: accent ?? 'var(--sw-ink)' }}
-      >
-        {value}
-      </div>
-      <div className="text-[11px] text-sw-dim">{sublabel}</div>
-    </div>
-  )
-}
-
 export function DashboardPage() {
   const state = useAppState()
   const kpis = useMemo(() => computeDashboardKpis(state), [state])
@@ -125,7 +99,8 @@ export function DashboardPage() {
     0,
   )
   const approvedOutstanding = state.projects.reduce(
-    (s, p) => s + p.invoices.filter((i) => i.status === 'Approved').reduce((a, i) => a + i.amount, 0),
+    (s, p) =>
+      s + p.invoices.filter((i) => i.status === 'Approved').reduce((a, i) => a + i.amount, 0),
     0,
   )
   const subsNeedingAttention = state.subs.filter((sub) => {
@@ -139,7 +114,7 @@ export function DashboardPage() {
   const shown = alerts.slice(0, 8)
 
   return (
-    <div>
+    <div className="sw-page">
       {/* Alerts & Compliance — leads the page, exactly like the baseline */}
       {alerts.length > 0 && (
         <div className="mb-8 overflow-hidden rounded-[1px] border border-sw-rule">
@@ -229,10 +204,7 @@ export function DashboardPage() {
                 to={`/projects/${p.id}/overview`}
                 className="flex items-center gap-3 border-b border-sw-rule-l py-2.5"
               >
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full"
-                  style={{ background: h.color }}
-                />
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: h.color }} />
                 <span className="min-w-0 flex-1">
                   <span className="block text-[13px] font-semibold text-sw-ink">{p.name}</span>
                   <span className="block text-[11px] text-sw-faint">{client?.name}</span>
@@ -274,9 +246,7 @@ export function DashboardPage() {
                   </span>
                 </span>
                 <span className="text-right">
-                  <span className="block font-mono text-xs font-bold text-sw-pos">
-                    {p.margin}%
-                  </span>
+                  <span className="block font-mono text-xs font-bold text-sw-pos">{p.margin}%</span>
                   <span className="block text-[10px] text-sw-faint">{spent}% spent</span>
                 </span>
               </div>

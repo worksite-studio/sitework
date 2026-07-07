@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Button, Card, EmptyState } from '@/components/ui'
+import { Button, EmptyState } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
@@ -38,7 +38,7 @@ export function InvoicesTab() {
     <div className="space-y-4">
       <header className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-lg font-semibold">Invoices</h2>
+          <h2 className="text-[18px] font-bold tracking-[-0.01em]">Invoices</h2>
           <p className="text-xs text-sw-muted">
             Paid: <span className="text-sw-text font-medium">{formatCurrency(totalPaid)}</span> ·
             Outstanding: {formatCurrency(totalOutstanding)}
@@ -61,19 +61,19 @@ export function InvoicesTab() {
           action={<Button onClick={() => setCreating(true)}>+ New Invoice</Button>}
         />
       ) : (
-        <Card>
-          <table className="w-full text-sm">
+        <div>
+          <table className="sw-table">
             <thead>
-              <tr className="text-xs uppercase text-sw-muted text-left border-b border-sw-border">
-                <th className="px-3 py-2 font-medium">ID</th>
-                <th className="px-3 py-2 font-medium">Supplier</th>
-                <th className="px-3 py-2 font-medium">Code</th>
-                <th className="px-3 py-2 font-medium text-right">Amount</th>
-                <th className="px-3 py-2 font-medium">Date</th>
-                <th className="px-3 py-2 font-medium">Due</th>
-                <th className="px-3 py-2 font-medium">Docs</th>
-                <th className="px-3 py-2 font-medium">Status</th>
-                <th className="px-3 py-2 font-medium" aria-label="Print" />
+              <tr>
+                <th>ID</th>
+                <th>Supplier</th>
+                <th>Code</th>
+                <th className="text-right">Amount</th>
+                <th>Date</th>
+                <th>Due</th>
+                <th>Docs</th>
+                <th>Status</th>
+                <th aria-label="Print" />
               </tr>
             </thead>
             <tbody>
@@ -86,15 +86,13 @@ export function InvoicesTab() {
                     onClick={() => setEditing(inv)}
                     className="border-b border-sw-border last:border-0 cursor-pointer hover:bg-sw-muted/5"
                   >
-                    <td className="px-3 py-2 text-sw-muted tabular-nums">{inv.id}</td>
-                    <td className="px-3 py-2">{inv.supplier}</td>
-                    <td className="px-3 py-2 text-sw-muted">{codeLookup(inv.ccId)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {formatCurrency(inv.amount)}
-                    </td>
-                    <td className="px-3 py-2 text-sw-muted">{formatDate(inv.date)}</td>
-                    <td className="px-3 py-2 text-sw-muted">{formatDate(inv.due)}</td>
-                    <td className="px-3 py-2">
+                    <td className="text-sw-muted font-mono">{inv.id}</td>
+                    <td>{inv.supplier}</td>
+                    <td className="text-sw-muted">{codeLookup(inv.ccId)}</td>
+                    <td className="text-right font-mono">{formatCurrency(inv.amount)}</td>
+                    <td className="text-sw-muted">{formatDate(inv.date)}</td>
+                    <td className="text-sw-muted">{formatDate(inv.due)}</td>
+                    <td>
                       {project.contractType === 'fixed-price' ? (
                         <span className="text-xs text-sw-muted">—</span>
                       ) : needsDocs ? (
@@ -110,10 +108,10 @@ export function InvoicesTab() {
                         </span>
                       )}
                     </td>
-                    <td className="px-3 py-2">
+                    <td>
                       <StatusBadge status={inv.status} />
                     </td>
-                    <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                    <td className="text-right" onClick={(e) => e.stopPropagation()}>
                       <Link
                         to={`/print/invoice/${project.id}/${inv.id}`}
                         target="_blank"
@@ -128,7 +126,7 @@ export function InvoicesTab() {
               })}
             </tbody>
           </table>
-        </Card>
+        </div>
       )}
 
       <InvoiceForm open={creating} onClose={() => setCreating(false)} project={project} />

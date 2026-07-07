@@ -9,13 +9,14 @@ export interface DialogProps {
   children: ReactNode
   /** Footer content — typically a Button row. */
   footer?: ReactNode
-  /** Override the dialog width (default `max-w-lg`). */
+  /** Override the dialog width (default 480px; pass `w-[720px]` for wide). */
   widthClass?: string
 }
 
 /**
- * Lightweight modal. No focus-trap or portal yet (acceptable for Phase 4
- * scaffold; swap to shadcn `<Dialog>` once `npx shadcn init` is wired).
+ * Modal — port of legacy `xt`. Square panel (480/720px), 1px rule border,
+ * no shadow, uppercase 11px title, ✕ close. Title stays a real <h2> so
+ * role/name queries in tests keep working.
  */
 export function Dialog({
   open,
@@ -24,7 +25,7 @@ export function Dialog({
   description,
   children,
   footer,
-  widthClass = 'max-w-lg',
+  widthClass = 'w-[480px]',
 }: DialogProps) {
   useEffect(() => {
     if (!open) return
@@ -39,7 +40,7 @@ export function Dialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       role="dialog"
       aria-modal="true"
       aria-label={title}
@@ -47,17 +48,30 @@ export function Dialog({
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className={cn('w-full bg-sw-surface rounded-lg shadow-xl flex flex-col', widthClass)}>
-        <header className="px-5 py-4 border-b border-sw-border">
-          <h2 className="text-base font-semibold tracking-tight">{title}</h2>
-          {description && <p className="text-xs text-sw-muted mt-0.5">{description}</p>}
-        </header>
-        <div className="px-5 py-4 space-y-3 max-h-[70vh] overflow-y-auto">{children}</div>
-        {footer && (
-          <footer className="px-5 py-3 border-t border-sw-border flex justify-end gap-2">
-            {footer}
-          </footer>
+      <div
+        className={cn(
+          'max-w-full max-h-[88vh] rounded-[1px] border border-sw-rule bg-white shadow-none flex flex-col',
+          widthClass,
         )}
+      >
+        <header className="flex items-center justify-between px-6 py-[18px] border-b border-sw-rule">
+          <div>
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-sw-ink">
+              {title}
+            </h2>
+            {description && <p className="text-[11px] text-sw-muted mt-0.5">{description}</p>}
+          </div>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            className="text-[14px] font-light leading-none text-sw-muted px-1 cursor-pointer"
+          >
+            ✕
+          </button>
+        </header>
+        <div className="p-6 space-y-3 overflow-y-auto">{children}</div>
+        {footer && <footer className="px-6 pb-6 flex justify-end gap-2">{footer}</footer>}
       </div>
     </div>
   )

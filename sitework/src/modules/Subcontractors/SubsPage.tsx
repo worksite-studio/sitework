@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAppState } from '@/state/context'
-import { Button, Card, EmptyState, ExpiryChip } from '@/components/ui'
+import { Button, EmptyState, ExpiryChip } from '@/components/ui'
 import { getExpiryInfo } from '@/lib/certExpiry'
 import { cn } from '@/lib/cn'
 import { SubForm } from './SubForm'
@@ -20,9 +20,9 @@ export function SubsPage() {
   const [creating, setCreating] = useState(false)
 
   return (
-    <div className="space-y-4">
+    <div className="sw-page space-y-4">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Subcontractors</h1>
+        <h1 className="text-[26px] font-bold tracking-[-0.02em] text-sw-ink">Subcontractors</h1>
         <Button onClick={() => setCreating(true)}>+ New Subcontractor</Button>
       </header>
 
@@ -33,7 +33,7 @@ export function SubsPage() {
           action={<Button onClick={() => setCreating(true)}>+ New Subcontractor</Button>}
         />
       ) : (
-        <Card>
+        <div>
           <ul className="divide-y divide-sw-border">
             {subs.map((s) => {
               const plInfo = getExpiryInfo(s.liabilityExp)
@@ -91,7 +91,7 @@ export function SubsPage() {
               )
             })}
           </ul>
-        </Card>
+        </div>
       )}
 
       <SubForm open={creating} onClose={() => setCreating(false)} />

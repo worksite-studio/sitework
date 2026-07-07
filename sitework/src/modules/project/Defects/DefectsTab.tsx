@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Card, EmptyState } from '@/components/ui'
+import { Button, EmptyState } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatDate } from '@/lib/formatDate'
 import { useAppState } from '@/state/context'
@@ -21,7 +21,7 @@ export function DefectsTab() {
     <div className="space-y-4">
       <header className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-lg font-semibold">Defects</h2>
+          <h2 className="text-[18px] font-bold tracking-[-0.01em]">Defects</h2>
           <p className="text-xs text-sw-muted">
             {open} open · {defects.length - open} closed
           </p>
@@ -36,17 +36,17 @@ export function DefectsTab() {
           action={<Button onClick={() => setCreating(true)}>+ New Defect</Button>}
         />
       ) : (
-        <Card>
-          <table className="w-full text-sm">
+        <div>
+          <table className="sw-table">
             <thead>
-              <tr className="text-xs uppercase text-sw-muted text-left border-b border-sw-border">
-                <th className="px-3 py-2 font-medium">ID</th>
-                <th className="px-3 py-2 font-medium">Item</th>
-                <th className="px-3 py-2 font-medium">Location</th>
-                <th className="px-3 py-2 font-medium">Trade</th>
-                <th className="px-3 py-2 font-medium">Logged</th>
-                <th className="px-3 py-2 font-medium">Rectified</th>
-                <th className="px-3 py-2 font-medium">Status</th>
+              <tr>
+                <th>ID</th>
+                <th>Item</th>
+                <th>Location</th>
+                <th>Trade</th>
+                <th>Logged</th>
+                <th>Rectified</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
@@ -56,22 +56,22 @@ export function DefectsTab() {
                   onClick={() => setEditing(d)}
                   className="border-b border-sw-border last:border-0 cursor-pointer hover:bg-sw-muted/5"
                 >
-                  <td className="px-3 py-2 text-sw-muted tabular-nums">{d.id}</td>
-                  <td className="px-3 py-2">{d.item}</td>
-                  <td className="px-3 py-2 text-sw-muted">{d.location}</td>
-                  <td className="px-3 py-2 text-sw-muted">{d.trade}</td>
-                  <td className="px-3 py-2 text-sw-muted">{formatDate(d.dateLogged)}</td>
-                  <td className="px-3 py-2 text-sw-muted">
+                  <td className="text-sw-muted font-mono">{d.id}</td>
+                  <td>{d.item}</td>
+                  <td className="text-sw-muted">{d.location}</td>
+                  <td className="text-sw-muted">{d.trade}</td>
+                  <td className="text-sw-muted">{formatDate(d.dateLogged)}</td>
+                  <td className="text-sw-muted">
                     {d.dateRectified ? formatDate(d.dateRectified) : '—'}
                   </td>
-                  <td className="px-3 py-2">
+                  <td>
                     <StatusBadge status={d.status} />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </Card>
+        </div>
       )}
 
       <DefectForm open={creating} onClose={() => setCreating(false)} projectId={project.id} />

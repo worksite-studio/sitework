@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useAppState } from '@/state/context'
-import { Button, Card, EmptyState } from '@/components/ui'
+import { Button, EmptyState } from '@/components/ui'
 import { ClientForm } from './ClientForm'
 import type { Client } from '@/types'
 
@@ -23,9 +23,9 @@ export function ClientsPage() {
   }, [projects])
 
   return (
-    <div className="space-y-4">
+    <div className="sw-page space-y-4">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Clients</h1>
+        <h1 className="text-[26px] font-bold tracking-[-0.02em] text-sw-ink">Clients</h1>
         <Button onClick={() => setCreating(true)}>+ New Client</Button>
       </header>
 
@@ -36,7 +36,7 @@ export function ClientsPage() {
           action={<Button onClick={() => setCreating(true)}>+ New Client</Button>}
         />
       ) : (
-        <Card>
+        <div>
           <ul className="divide-y divide-sw-border">
             {clients.map((c) => {
               const count = projectCountByClient.get(c.id as string) ?? 0
@@ -61,7 +61,7 @@ export function ClientsPage() {
               )
             })}
           </ul>
-        </Card>
+        </div>
       )}
 
       <ClientForm open={creating} onClose={() => setCreating(false)} />

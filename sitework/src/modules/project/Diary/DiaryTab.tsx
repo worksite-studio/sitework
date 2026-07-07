@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Card, Dialog, EmptyState, Field, Input } from '@/components/ui'
+import { Button, Dialog, EmptyState, Field, Input, Select } from '@/components/ui'
 import { formatDate } from '@/lib/formatDate'
 import { useAppState, useDispatch } from '@/state/context'
 import { useProject } from '../useProject'
@@ -83,14 +83,13 @@ function DiaryForm({ open, onClose, projectId }: FormProps) {
         <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
       </Field>
       <Field label="Incidents this day">
-        <select
+        <Select
           value={form.incidents ? 'yes' : 'no'}
           onChange={(e) => setForm({ ...form, incidents: e.target.value === 'yes' })}
-          className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
         >
           <option value="no">No</option>
           <option value="yes">Yes</option>
-        </select>
+        </Select>
       </Field>
     </Dialog>
   )
@@ -107,7 +106,7 @@ export function DiaryTab() {
   return (
     <div className="space-y-4">
       <header className="flex items-center justify-between gap-3 flex-wrap">
-        <h2 className="text-lg font-semibold">Site Diary</h2>
+        <h2 className="text-[18px] font-bold tracking-[-0.01em]">Site Diary</h2>
         <Button onClick={() => setCreating(true)}>+ Add Entry</Button>
       </header>
 
@@ -122,7 +121,7 @@ export function DiaryTab() {
           {[...entries]
             .sort((a, b) => (a.date < b.date ? 1 : -1))
             .map((e) => (
-              <Card key={e.id} className="p-3 space-y-1">
+              <div key={e.id} className="p-3 space-y-1">
                 <div className="flex items-center justify-between text-sm">
                   <div className="font-medium">{formatDate(e.date)}</div>
                   <div className="text-xs text-sw-muted">
@@ -135,7 +134,7 @@ export function DiaryTab() {
                 {e.subs.length > 0 && (
                   <p className="text-xs text-sw-muted">Subs: {e.subs.join(', ')}</p>
                 )}
-              </Card>
+              </div>
             ))}
         </div>
       )}

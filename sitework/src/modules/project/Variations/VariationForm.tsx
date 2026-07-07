@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Dialog, Field, Input } from '@/components/ui'
+import { Button, Dialog, Field, Input, Select } from '@/components/ui'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import { newId } from '@/lib/newId'
@@ -104,10 +104,9 @@ export function VariationForm({ open, onClose, projectId, codes, initial }: Prop
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Cost code" required error={attempted && codeMissing ? 'Required' : undefined}>
-          <select
+          <Select
             value={form.ccId as string}
             onChange={(e) => setForm({ ...form, ccId: e.target.value as CostCodeId })}
-            className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
           >
             <option value="">— choose code —</option>
             {codes.map((c) => (
@@ -115,7 +114,7 @@ export function VariationForm({ open, onClose, projectId, codes, initial }: Prop
                 {c.code} · {c.desc}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
         <Field label="Amount ($)">
           <Input
@@ -135,17 +134,16 @@ export function VariationForm({ open, onClose, projectId, codes, initial }: Prop
           />
         </Field>
         <Field label="Status">
-          <select
+          <Select
             value={form.status}
             onChange={(e) => setForm({ ...form, status: e.target.value as VariationStatus })}
-            className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
           >
             {STATUSES.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
         <Field label="Time impact (days)">
           <Input
@@ -157,19 +155,18 @@ export function VariationForm({ open, onClose, projectId, codes, initial }: Prop
         </Field>
       </div>
       <Field label="Reason category">
-        <select
+        <Select
           value={form.reasonCategory}
           onChange={(e) =>
             setForm({ ...form, reasonCategory: e.target.value as VariationReasonCategory })
           }
-          className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
         >
           {REASONS.map((r) => (
             <option key={r} value={r}>
               {r}
             </option>
           ))}
-        </select>
+        </Select>
       </Field>
     </Dialog>
   )

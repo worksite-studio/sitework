@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAppState, useDispatch } from '@/state/context'
-import { Button, Card, EmptyState } from '@/components/ui'
+import { Button, EmptyState } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
@@ -36,9 +36,9 @@ export function EstimatingPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="sw-page space-y-4">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Estimating</h1>
+        <h1 className="text-[26px] font-bold tracking-[-0.02em] text-sw-ink">Estimating</h1>
       </header>
 
       <div className="flex gap-1 border-b border-sw-border">
@@ -71,7 +71,7 @@ export function EstimatingPage() {
             action={<Button onClick={() => setTab('templates')}>Browse templates</Button>}
           />
         ) : (
-          <Card>
+          <div>
             <ul className="divide-y divide-sw-border">
               {estimates.map((est) => (
                 <li
@@ -97,13 +97,13 @@ export function EstimatingPage() {
                 </li>
               ))}
             </ul>
-          </Card>
+          </div>
         ))}
 
       {tab === 'templates' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {templates.map((tpl) => (
-            <Card key={tpl.id} className="p-4 space-y-2 flex flex-col">
+            <div key={tpl.id} className="p-4 space-y-2 flex flex-col">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="font-medium">{tpl.name}</h3>
                 <StatusBadge status={tpl.type} />
@@ -113,7 +113,7 @@ export function EstimatingPage() {
               <Button size="sm" onClick={() => setTemplateFor(tpl)}>
                 Use template
               </Button>
-            </Card>
+            </div>
           ))}
         </div>
       )}

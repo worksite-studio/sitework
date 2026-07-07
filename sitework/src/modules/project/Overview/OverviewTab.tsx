@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Card, KpiTile } from '@/components/ui'
+import { Button, StatBlock } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { useAppState } from '@/state/context'
@@ -12,12 +12,10 @@ import {
 } from '../computeFinancials'
 
 /**
- * Project Overview — port of legacy `D1v2`. The contract-vs-cost panel
- * with five headline KPIs, the BOQ delta summary, and a status surface
- * for outstanding invoices + retention held.
- *
- * The BOQ row-level breakdown lives on its own tab (`/boq`); this view
- * stays summary-level so it loads fast and reads at a glance.
+ * Project Overview — port of legacy `D1`/`D1v2`: project header (24px name,
+ * client · address, contract-type badge, Edit Project ghost), five editorial
+ * stat blocks over ink rules, then ruled Contract-vs-Cost and Project-info
+ * columns. Baseline styling throughout (PARITY gap 10).
  */
 export function OverviewTab() {
   const project = useProject()
@@ -28,13 +26,39 @@ export function OverviewTab() {
   const fin = computeProjectFinancials(project)
   const outstanding = outstandingInvoiceTotal(project)
   const heldRetention = retentionHeld(state, project.id as string)
-  const marginTone =
-    fin.marginErosionPct < -5 ? 'danger' : fin.marginErosionPct < 0 ? 'warning' : 'success'
+  const client = state.clients.find((c) => c.id === project.clientId)
+  const marginAccent =
+    fin.marginErosionPct < -5
+      ? 'var(--sw-neg)'
+      : fin.marginErosionPct < 0
+        ? 'var(--sw-violet)'
+        : 'var(--sw-pos)'
 
   return (
-    <div className="space-y-5">
-      <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        <KpiTile
+    <div>
+      <header className="mb-7 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-[24px] font-bold tracking-[-0.02em] text-sw-ink mb-1.5">
+            {project.name}
+          </h1>
+          <div className="text-[13px] text-sw-dim">
+            {client?.name}
+            {client?.name && project.address ? ' · ' : ''}
+            {project.address}
+          </div>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <span className="inline-flex items-center border border-sw-rule rounded-[2px] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-sw-dim">
+            {project.contractType === 'cost-plus' ? 'Cost Plus' : 'Fixed Price'}
+          </span>
+          <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+            Edit Project
+          </Button>
+        </div>
+      </header>
+
+      <section className="mb-12 flex gap-12">
+        <StatBlock
           label="Contract Value"
           value={formatCurrency(fin.adjustedContractValue)}
           sublabel={
@@ -43,105 +67,97 @@ export function OverviewTab() {
               : `target ${project.margin}% margin`
           }
         />
-        <KpiTile
+        <StatBlock
           label="Cost to Date"
           value={formatCurrency(fin.costToDate)}
           sublabel={`${formatCurrency(fin.committedToDate)} committed`}
         />
-        <KpiTile
+        <StatBlock
           label="Current Margin"
-          tone={marginTone}
+          accent={marginAccent}
           value={`${fin.currentMarginPct.toFixed(1)}%`}
           sublabel={`target ${project.margin}%`}
         />
-        <KpiTile
+        <StatBlock
           label="Margin Erosion"
-          tone={marginTone}
+          accent={marginAccent}
           value={`${fin.marginErosionPct >= 0 ? '+' : ''}${fin.marginErosionPct.toFixed(1)}%`}
           sublabel={fin.marginErosionPct >= 0 ? 'above target' : 'below target'}
         />
-        <KpiTile
+        <StatBlock
           label="Outstanding Invoices"
           value={formatCurrency(outstanding)}
           sublabel={`retention held ${formatCurrency(heldRetention)}`}
         />
       </section>
 
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="p-5 space-y-3">
-          <header className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-sw-muted">
-              Contract vs Cost
-            </h2>
-            <span className="flex items-center gap-2">
-              <StatusBadge status={project.contractType} />
-              <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
-                Edit Project
-              </Button>
-            </span>
+      <section className="grid grid-cols-2 gap-12">
+        <div className="border-t border-sw-ink pt-5">
+          <header className="mb-4 flex items-center justify-between">
+            <h2 className="text-[13px] font-bold text-sw-ink">Contract vs Cost</h2>
+            <StatusBadge status={project.contractType} />
           </header>
-          <dl className="space-y-1.5 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-sw-muted">Original budget</dt>
-              <dd className="tabular-nums">{formatCurrency(fin.originalBudget)}</dd>
+          <dl className="text-[13px]">
+            <div className="flex justify-between border-b border-sw-rule-l py-2">
+              <dt className="text-sw-dim">Original budget</dt>
+              <dd className="font-mono">{formatCurrency(fin.originalBudget)}</dd>
             </div>
-            <div className="flex justify-between">
-              <dt className="text-sw-muted">Approved variations</dt>
-              <dd className="tabular-nums">{formatCurrency(fin.approvedVariations)}</dd>
+            <div className="flex justify-between border-b border-sw-rule-l py-2">
+              <dt className="text-sw-dim">Approved variations</dt>
+              <dd className="font-mono">{formatCurrency(fin.approvedVariations)}</dd>
             </div>
-            <div className="flex justify-between border-t border-sw-border pt-1.5 font-medium">
+            <div className="flex justify-between border-b border-sw-rule-l py-2 font-semibold">
               <dt>Adjusted contract value</dt>
-              <dd className="tabular-nums">{formatCurrency(fin.adjustedContractValue)}</dd>
+              <dd className="font-mono">{formatCurrency(fin.adjustedContractValue)}</dd>
             </div>
-            <div className="flex justify-between pt-2">
-              <dt className="text-sw-muted">Cost to date</dt>
-              <dd className="tabular-nums">−{formatCurrency(fin.costToDate)}</dd>
+            <div className="flex justify-between border-b border-sw-rule-l py-2">
+              <dt className="text-sw-dim">Cost to date</dt>
+              <dd className="font-mono">−{formatCurrency(fin.costToDate)}</dd>
             </div>
-            <div className="flex justify-between border-t border-sw-border pt-1.5 font-medium">
+            <div className="flex justify-between py-2 font-semibold">
               <dt>Remaining</dt>
               <dd
-                className={`tabular-nums ${
-                  fin.remainingContract < 0 ? 'text-sw-danger' : 'text-sw-success'
-                }`}
+                className="font-mono"
+                style={{
+                  color: fin.remainingContract < 0 ? 'var(--sw-neg)' : 'var(--sw-pos)',
+                }}
               >
                 {formatCurrency(fin.remainingContract)}
               </dd>
             </div>
           </dl>
-        </Card>
+        </div>
 
-        <Card className="p-5 space-y-3">
-          <header>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-sw-muted">
-              Project info
-            </h2>
+        <div className="border-t border-sw-ink pt-5">
+          <header className="mb-4">
+            <h2 className="text-[13px] font-bold text-sw-ink">Project info</h2>
           </header>
-          <dl className="space-y-1.5 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-sw-muted">State</dt>
+          <dl className="text-[13px]">
+            <div className="flex justify-between border-b border-sw-rule-l py-2">
+              <dt className="text-sw-dim">State</dt>
               <dd>{project.state}</dd>
             </div>
-            <div className="flex justify-between">
-              <dt className="text-sw-muted">Contract form</dt>
+            <div className="flex justify-between border-b border-sw-rule-l py-2">
+              <dt className="text-sw-dim">Contract form</dt>
               <dd>{project.contractForm}</dd>
             </div>
-            <div className="flex justify-between">
-              <dt className="text-sw-muted">Classification</dt>
+            <div className="flex justify-between border-b border-sw-rule-l py-2">
+              <dt className="text-sw-dim">Classification</dt>
               <dd>{project.contractClassification}</dd>
             </div>
-            <div className="flex justify-between">
-              <dt className="text-sw-muted">Cost codes</dt>
+            <div className="flex justify-between border-b border-sw-rule-l py-2">
+              <dt className="text-sw-dim">Cost codes</dt>
               <dd>{project.codes.length}</dd>
             </div>
-            <div className="flex justify-between">
-              <dt className="text-sw-muted">Variations</dt>
+            <div className="flex justify-between py-2">
+              <dt className="text-sw-dim">Variations</dt>
               <dd>
                 {project.variations.length} total ·{' '}
                 {project.variations.filter((v) => v.status === 'Approved').length} approved
               </dd>
             </div>
           </dl>
-        </Card>
+        </div>
       </section>
 
       {editing && <ProjectForm open initial={project} onClose={() => setEditing(false)} />}

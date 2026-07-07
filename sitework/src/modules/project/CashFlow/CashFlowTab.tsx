@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Card, EmptyState } from '@/components/ui'
+import { EmptyState } from '@/components/ui'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { useAppState } from '@/state/context'
 import { useProject } from '../useProject'
@@ -44,7 +44,7 @@ export function CashFlowTab() {
   return (
     <div className="space-y-4">
       <header>
-        <h2 className="text-lg font-semibold">Cash Flow</h2>
+        <h2 className="text-[18px] font-bold tracking-[-0.01em]">Cash Flow</h2>
         <p className="text-xs text-sw-muted">
           Forecast outflow by month — invoices due (excluding Paid + Disputed) + POs raised
           (excluding received). Total committed:{' '}
@@ -58,7 +58,7 @@ export function CashFlowTab() {
           description="Add invoices with due dates or POs with delivery dates to see a forecast."
         />
       ) : (
-        <Card className="p-4 space-y-2">
+        <div className="p-4 space-y-2">
           {[...monthly.entries()].map(([month, b]) => {
             const pct = (b.outflow / maxOutflow) * 100
             return (
@@ -81,7 +81,7 @@ export function CashFlowTab() {
               </div>
             )
           })}
-        </Card>
+        </div>
       )}
     </div>
   )

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Dialog, Field, Input } from '@/components/ui'
+import { Button, Dialog, Field, Input, Select } from '@/components/ui'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import type { Defect, DefectId, DefectStatus, ProjectId } from '@/types'
@@ -114,17 +114,16 @@ export function DefectForm({ open, onClose, projectId, initial }: Props) {
           />
         </Field>
         <Field label="Status">
-          <select
+          <Select
             value={form.status}
             onChange={(e) => setForm({ ...form, status: e.target.value as DefectStatus })}
-            className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
           >
             {STATUSES.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       </div>
       <Field label="Notes">

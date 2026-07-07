@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Dialog, Field, Input } from '@/components/ui'
+import { Button, Dialog, Field, Input, Select } from '@/components/ui'
 import { useAppState, useDispatch } from '@/state/context'
 import { newId } from '@/lib/newId'
 import {
@@ -91,8 +91,6 @@ const fromProject = (p: Project): FormState => ({
   isRenovationWithUnknownCost: p.isRenovationWithUnknownCost,
   qldHwsAcknowledged: p.qldHwsAcknowledged,
 })
-
-const selectClass = 'h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface'
 
 /**
  * Project create/edit dialog — port of legacy `I0` (Phase 0-H statutory
@@ -202,18 +200,14 @@ export function ProjectForm({ open, onClose, initial }: ProjectFormProps) {
           />
         </Field>
         <Field label="Client">
-          <select
-            value={form.clientId}
-            onChange={(e) => set('clientId', e.target.value)}
-            className={selectClass}
-          >
+          <Select value={form.clientId} onChange={(e) => set('clientId', e.target.value)}>
             <option value="">Select client...</option>
             {clients.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
         <div className="col-span-2">
           <Field label="Address">
@@ -221,52 +215,48 @@ export function ProjectForm({ open, onClose, initial }: ProjectFormProps) {
           </Field>
         </div>
         <Field label="Contract Type">
-          <select
+          <Select
             value={form.contractType}
             onChange={(e) => set('contractType', e.target.value as ContractType)}
-            className={selectClass}
           >
             <option value="cost-plus">Cost Plus</option>
             <option value="fixed-price">Fixed Price</option>
-          </select>
+          </Select>
         </Field>
         <Field label="State">
-          <select
+          <Select
             value={form.state}
             onChange={(e) => set('state', e.target.value as AustralianState)}
-            className={selectClass}
           >
             {STATES.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
         <Field label="Contract Form">
-          <select
+          <Select
             value={form.contractForm}
             onChange={(e) => set('contractForm', e.target.value as ContractForm)}
-            className={selectClass}
           >
             {CONTRACT_FORMS.map((f) => (
               <option key={f} value={f}>
                 {f}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
         <Field label="Classification">
-          <select
+          <Select
             value={form.contractClassification}
             onChange={(e) =>
               set('contractClassification', e.target.value as ContractClassification)
             }
-            className={selectClass}
           >
             <option value="Domestic">Domestic</option>
             <option value="Commercial">Commercial</option>
-          </select>
+          </Select>
         </Field>
         <Field label="Start Date">
           <Input

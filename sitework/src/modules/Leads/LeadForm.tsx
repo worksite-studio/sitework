@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Dialog, Field, Input } from '@/components/ui'
+import { Button, Dialog, Field, Input, Select } from '@/components/ui'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import type { Lead, LeadId, LeadStage } from '@/types'
@@ -115,17 +115,16 @@ export function LeadForm({ open, onClose, initial }: LeadFormProps) {
           />
         </Field>
         <Field label="Stage">
-          <select
+          <Select
             value={form.stage}
             onChange={(e) => setForm({ ...form, stage: e.target.value as LeadStage })}
-            className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
           >
             {STAGES.map((s) => (
               <option key={s} value={s}>
                 {s.charAt(0).toUpperCase() + s.slice(1)}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       </div>
       <div className="grid grid-cols-2 gap-3">

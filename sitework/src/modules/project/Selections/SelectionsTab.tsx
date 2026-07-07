@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Card, Dialog, EmptyState, Field, Input } from '@/components/ui'
+import { Button, Dialog, EmptyState, Field, Input } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { useAppState, useDispatch } from '@/state/context'
@@ -117,7 +117,7 @@ export function SelectionsTab() {
   return (
     <div className="space-y-4">
       <header className="flex items-center justify-between gap-3 flex-wrap">
-        <h2 className="text-lg font-semibold">Client Selections</h2>
+        <h2 className="text-[18px] font-bold tracking-[-0.01em]">Client Selections</h2>
         <Button onClick={() => setCreating(true)}>+ New Selection</Button>
       </header>
 
@@ -128,35 +128,35 @@ export function SelectionsTab() {
           action={<Button onClick={() => setCreating(true)}>+ New Selection</Button>}
         />
       ) : (
-        <Card>
-          <table className="w-full text-sm">
+        <div>
+          <table className="sw-table">
             <thead>
-              <tr className="text-xs uppercase text-sw-muted text-left border-b border-sw-border">
-                <th className="px-3 py-2 font-medium">Category</th>
-                <th className="px-3 py-2 font-medium">Item</th>
-                <th className="px-3 py-2 font-medium">Options / Approved</th>
-                <th className="px-3 py-2 font-medium text-right">Amount</th>
-                <th className="px-3 py-2 font-medium">Status</th>
-                <th className="px-3 py-2 font-medium" aria-label="Actions" />
+              <tr>
+                <th>Category</th>
+                <th>Item</th>
+                <th>Options / Approved</th>
+                <th className="text-right">Amount</th>
+                <th>Status</th>
+                <th aria-label="Actions" />
               </tr>
             </thead>
             <tbody>
               {selections.map((s) => (
                 <tr key={s.id} className="border-b border-sw-border last:border-0">
-                  <td className="px-3 py-2 text-sw-muted">{s.category}</td>
-                  <td className="px-3 py-2">{s.item}</td>
-                  <td className="px-3 py-2 text-xs text-sw-muted">
+                  <td className="text-sw-muted">{s.category}</td>
+                  <td>{s.item}</td>
+                  <td className="text-xs text-sw-muted">
                     {s.approvedOption ? (
                       <span className="text-sw-text">✓ {s.approvedOption}</span>
                     ) : (
                       s.options
                     )}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(s.amount)}</td>
-                  <td className="px-3 py-2">
+                  <td className="text-right font-mono">{formatCurrency(s.amount)}</td>
+                  <td>
                     <StatusBadge status={s.status} />
                   </td>
-                  <td className="px-3 py-2 text-right">
+                  <td className="text-right">
                     {s.status === 'pending' && (
                       <Button size="sm" variant="secondary" onClick={() => approve(s)}>
                         Approve
@@ -167,7 +167,7 @@ export function SelectionsTab() {
               ))}
             </tbody>
           </table>
-        </Card>
+        </div>
       )}
 
       <SelectionForm open={creating} onClose={() => setCreating(false)} projectId={project.id} />

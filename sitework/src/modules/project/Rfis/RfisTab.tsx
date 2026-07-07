@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Card, Dialog, EmptyState, Field, Input } from '@/components/ui'
+import { Button, Dialog, EmptyState, Field, Input, Select } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatDate } from '@/lib/formatDate'
 import { useAppState, useDispatch } from '@/state/context'
@@ -96,17 +96,16 @@ function RfiForm({ open, onClose, projectId, initial }: FormProps) {
           />
         </Field>
         <Field label="Status">
-          <select
+          <Select
             value={form.status}
             onChange={(e) => setForm({ ...form, status: e.target.value as RfiStatus })}
-            className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
           >
             {STATUSES.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       </div>
       <Field label="Response">
@@ -134,7 +133,7 @@ export function RfisTab() {
     <div className="space-y-4">
       <header className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-lg font-semibold">RFI Register</h2>
+          <h2 className="text-[18px] font-bold tracking-[-0.01em]">RFI Register</h2>
           <p className="text-xs text-sw-muted">
             {openCount} open · {rfis.length - openCount} closed
           </p>
@@ -149,17 +148,17 @@ export function RfisTab() {
           action={<Button onClick={() => setCreating(true)}>+ New RFI</Button>}
         />
       ) : (
-        <Card>
-          <table className="w-full text-sm">
+        <div>
+          <table className="sw-table">
             <thead>
-              <tr className="text-xs uppercase text-sw-muted text-left border-b border-sw-border">
-                <th className="px-3 py-2 font-medium">#</th>
-                <th className="px-3 py-2 font-medium">Subject</th>
-                <th className="px-3 py-2 font-medium">Addressee</th>
-                <th className="px-3 py-2 font-medium">Issued</th>
-                <th className="px-3 py-2 font-medium">Required</th>
-                <th className="px-3 py-2 font-medium">Response</th>
-                <th className="px-3 py-2 font-medium">Status</th>
+              <tr>
+                <th>#</th>
+                <th>Subject</th>
+                <th>Addressee</th>
+                <th>Issued</th>
+                <th>Required</th>
+                <th>Response</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
@@ -169,20 +168,20 @@ export function RfisTab() {
                   onClick={() => setEditing(r)}
                   className="border-b border-sw-border last:border-0 cursor-pointer hover:bg-sw-muted/5"
                 >
-                  <td className="px-3 py-2 tabular-nums font-medium">#{r.rfiNo}</td>
-                  <td className="px-3 py-2">{r.subject}</td>
-                  <td className="px-3 py-2 text-sw-muted">{r.addressee}</td>
-                  <td className="px-3 py-2 text-sw-muted">{formatDate(r.dateIssued)}</td>
-                  <td className="px-3 py-2 text-sw-muted">{formatDate(r.dateRequired)}</td>
-                  <td className="px-3 py-2 text-sw-muted">{r.response || '—'}</td>
-                  <td className="px-3 py-2">
+                  <td className="font-mono font-medium">#{r.rfiNo}</td>
+                  <td>{r.subject}</td>
+                  <td className="text-sw-muted">{r.addressee}</td>
+                  <td className="text-sw-muted">{formatDate(r.dateIssued)}</td>
+                  <td className="text-sw-muted">{formatDate(r.dateRequired)}</td>
+                  <td className="text-sw-muted">{r.response || '—'}</td>
+                  <td>
                     <StatusBadge status={r.status} />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </Card>
+        </div>
       )}
 
       <RfiForm open={creating} onClose={() => setCreating(false)} projectId={project.id} />

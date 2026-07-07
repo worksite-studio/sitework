@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Button, Card, EmptyState } from '@/components/ui'
+import { Button, EmptyState } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
@@ -49,7 +49,7 @@ export function ClaimsTab() {
     <div className="space-y-4">
       <header className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-lg font-semibold">Progress Claims</h2>
+          <h2 className="text-[18px] font-bold tracking-[-0.01em]">Progress Claims</h2>
           <p className="text-xs text-sw-muted">
             Paid: <span className="text-sw-text font-medium">{formatCurrency(totalPaid)}</span> ·
             Total issued: {formatCurrency(totalIssued)}
@@ -80,20 +80,20 @@ export function ClaimsTab() {
           action={<Button onClick={() => setCreating(true)}>+ New Claim</Button>}
         />
       ) : (
-        <Card>
-          <table className="w-full text-sm">
+        <div>
+          <table className="sw-table">
             <thead>
-              <tr className="text-xs uppercase text-sw-muted text-left border-b border-sw-border">
-                <th className="px-3 py-2 font-medium">#</th>
-                <th className="px-3 py-2 font-medium">Description</th>
-                <th className="px-3 py-2 font-medium text-right">Amount</th>
-                <th className="px-3 py-2 font-medium text-right">Retention</th>
-                <th className="px-3 py-2 font-medium text-right">Net certified</th>
-                <th className="px-3 py-2 font-medium">Date</th>
-                <th className="px-3 py-2 font-medium">Due</th>
-                <th className="px-3 py-2 font-medium">Docs</th>
-                <th className="px-3 py-2 font-medium">Status</th>
-                <th className="px-3 py-2 font-medium" aria-label="Print" />
+              <tr>
+                <th>#</th>
+                <th>Description</th>
+                <th className="text-right">Amount</th>
+                <th className="text-right">Retention</th>
+                <th className="text-right">Net certified</th>
+                <th>Date</th>
+                <th>Due</th>
+                <th>Docs</th>
+                <th>Status</th>
+                <th aria-label="Print" />
               </tr>
             </thead>
             <tbody>
@@ -108,20 +108,18 @@ export function ClaimsTab() {
                     onClick={() => setEditing(c)}
                     className="border-b border-sw-border last:border-0 cursor-pointer hover:bg-sw-muted/5"
                   >
-                    <td className="px-3 py-2 tabular-nums font-medium">#{displayNo(c)}</td>
-                    <td className="px-3 py-2">{c.desc}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {formatCurrency(c.amount)}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-sw-muted">
+                    <td className="font-mono font-medium">#{displayNo(c)}</td>
+                    <td>{c.desc}</td>
+                    <td className="text-right font-mono">{formatCurrency(c.amount)}</td>
+                    <td className="text-right font-mono text-sw-muted">
                       −{formatCurrency(retention)}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums font-medium">
+                    <td className="text-right font-mono font-medium">
                       {formatCurrency(netCertified)}
                     </td>
-                    <td className="px-3 py-2 text-sw-muted">{formatDate(c.date)}</td>
-                    <td className="px-3 py-2 text-sw-muted">{formatDate(c.due)}</td>
-                    <td className="px-3 py-2">
+                    <td className="text-sw-muted">{formatDate(c.date)}</td>
+                    <td className="text-sw-muted">{formatDate(c.due)}</td>
+                    <td>
                       {project.contractType === 'fixed-price' ? (
                         <span className="text-xs text-sw-muted">—</span>
                       ) : needsDocs ? (
@@ -137,10 +135,10 @@ export function ClaimsTab() {
                         </span>
                       )}
                     </td>
-                    <td className="px-3 py-2">
+                    <td>
                       <StatusBadge status={c.status} />
                     </td>
-                    <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                    <td className="text-right" onClick={(e) => e.stopPropagation()}>
                       <Link
                         to={`/print/claim/${project.id}/${c.id}`}
                         target="_blank"
@@ -155,7 +153,7 @@ export function ClaimsTab() {
               })}
             </tbody>
           </table>
-        </Card>
+        </div>
       )}
 
       <ClaimForm

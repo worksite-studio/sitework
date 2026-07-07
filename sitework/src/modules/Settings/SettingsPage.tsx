@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useAppState, useDispatch } from '@/state/context'
-import { Button, Card, Field, Input } from '@/components/ui'
+import { Button, Field, Input } from '@/components/ui'
 import { exportStateFile, parseBackupFile } from '@/lib/backup'
 import { seed } from '@/state/seed'
 import type { Settings } from '@/types'
@@ -62,18 +62,16 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="sw-page space-y-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+        <h1 className="text-[26px] font-bold tracking-[-0.02em] text-sw-ink">Settings</h1>
         <p className="text-sm text-sw-muted">
           Business profile shown across documents, dashboards, and integrations.
         </p>
       </header>
 
-      <Card className="p-5 space-y-3 max-w-2xl">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-sw-muted">
-          Business profile
-        </h2>
+      <div className="p-5 space-y-3 max-w-2xl">
+        <h2 className="text-[12px] font-semibold text-sw-ink">Business profile</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {FIELDS.map((f) => (
             <Field key={f.key} label={f.label} hint={f.hint}>
@@ -91,10 +89,10 @@ export function SettingsPage() {
           {!dirty && savedAt && <span className="text-xs text-sw-success">Saved.</span>}
           {dirty && <span className="text-xs text-sw-warning">Unsaved changes.</span>}
         </div>
-      </Card>
+      </div>
 
-      <Card className="p-5 space-y-3 max-w-2xl">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-sw-muted">Backup</h2>
+      <div className="p-5 space-y-3 max-w-2xl">
+        <h2 className="text-[12px] font-semibold text-sw-ink">Backup</h2>
         <p className="text-sm text-sw-muted">
           All data lives in this browser until the cloud backend lands. Download a backup file
           regularly, and restore from one if you switch machines or clear the browser.
@@ -117,17 +115,15 @@ export function SettingsPage() {
         </div>
         {restoreError && <p className="text-xs text-sw-danger">{restoreError}</p>}
         {restoredAt && <p className="text-xs text-sw-success">Backup restored.</p>}
-      </Card>
+      </div>
 
-      <Card className="p-5 space-y-2 max-w-2xl">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-sw-muted">
-          Integrations
-        </h2>
+      <div className="p-5 space-y-2 max-w-2xl">
+        <h2 className="text-[12px] font-semibold text-sw-ink">Integrations</h2>
         <p className="text-sm text-sw-muted">
           Xero — wired in Phase 6 alongside backend auth. Settings here will gain a "Connect Xero"
           button at that point; for now the Xero badge in the header is a placeholder.
         </p>
-      </Card>
+      </div>
     </div>
   )
 }

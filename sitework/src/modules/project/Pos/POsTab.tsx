@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Button, Card, EmptyState } from '@/components/ui'
+import { Button, EmptyState } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
@@ -46,7 +46,7 @@ export function POsTab() {
     <div className="space-y-4">
       <header className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-lg font-semibold">Purchase Orders</h2>
+          <h2 className="text-[18px] font-bold tracking-[-0.01em]">Purchase Orders</h2>
           <p className="text-xs text-sw-muted">
             {formatCurrency(received)} received <span className="text-sw-muted">of</span>{' '}
             <span className="text-sw-text font-medium">{formatCurrency(committed)}</span> committed
@@ -68,33 +68,33 @@ export function POsTab() {
           }
         />
       ) : (
-        <Card>
-          <table className="w-full text-sm">
+        <div>
+          <table className="sw-table">
             <thead>
-              <tr className="text-xs uppercase text-sw-muted text-left border-b border-sw-border">
-                <th className="px-3 py-2 font-medium">ID</th>
-                <th className="px-3 py-2 font-medium">Supplier</th>
-                <th className="px-3 py-2 font-medium">Code</th>
-                <th className="px-3 py-2 font-medium">Description</th>
-                <th className="px-3 py-2 font-medium text-right">Amount</th>
-                <th className="px-3 py-2 font-medium">Date</th>
-                <th className="px-3 py-2 font-medium">Status</th>
-                <th className="px-3 py-2 font-medium" aria-label="Receive" />
+              <tr>
+                <th>ID</th>
+                <th>Supplier</th>
+                <th>Code</th>
+                <th>Description</th>
+                <th className="text-right">Amount</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th aria-label="Receive" />
               </tr>
             </thead>
             <tbody>
               {purchases.map((po) => (
                 <tr key={po.id} className="border-b border-sw-border last:border-0">
-                  <td className="px-3 py-2 text-sw-muted tabular-nums">{po.id}</td>
-                  <td className="px-3 py-2">{po.supplier}</td>
-                  <td className="px-3 py-2 text-sw-muted">{codeLookup(po.ccId)}</td>
-                  <td className="px-3 py-2">{po.desc}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(po.amount)}</td>
-                  <td className="px-3 py-2 text-sw-muted">{formatDate(po.date)}</td>
-                  <td className="px-3 py-2">
+                  <td className="text-sw-muted font-mono">{po.id}</td>
+                  <td>{po.supplier}</td>
+                  <td className="text-sw-muted">{codeLookup(po.ccId)}</td>
+                  <td>{po.desc}</td>
+                  <td className="text-right font-mono">{formatCurrency(po.amount)}</td>
+                  <td className="text-sw-muted">{formatDate(po.date)}</td>
+                  <td>
                     <StatusBadge status={po.status} />
                   </td>
-                  <td className="px-3 py-2 text-right">
+                  <td className="text-right">
                     {po.status === 'sent' && (
                       <Button size="sm" variant="secondary" onClick={() => receivePO(po)}>
                         Receive
@@ -105,7 +105,7 @@ export function POsTab() {
               ))}
             </tbody>
           </table>
-        </Card>
+        </div>
       )}
 
       <POForm open={creating} onClose={() => setCreating(false)} project={project} />

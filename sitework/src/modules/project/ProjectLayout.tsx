@@ -4,9 +4,10 @@ import { useAppState } from '@/state/context'
 import type { ProjectId } from '@/types'
 
 /**
- * Per-project shell — the tab bar + project header. Renders the active tab
- * into <Outlet />. Port of the legacy project view chrome (the `m` tab array
- * driven section inside `Pc`).
+ * Per-project shell — port of the legacy 44px project sub-bar (inside `Pc`):
+ * project name over client at the left behind a rule divider, then the tab
+ * strip (10px uppercase, active = ink + 2px underline), "All Projects" at the
+ * far right. The active tab renders into <Outlet /> inside the page padding.
  */
 export function ProjectLayout() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -15,10 +16,10 @@ export function ProjectLayout() {
 
   if (!project) {
     return (
-      <div className="space-y-2">
+      <div className="sw-page space-y-2">
         <p className="text-sm text-sw-muted">Project not found.</p>
-        <Link to="/projects" className="text-sm text-sw-info hover:underline">
-          ← All projects
+        <Link to="/projects" className="text-sm text-sw-ink hover:underline">
+          ← All Projects
         </Link>
       </div>
     )
@@ -27,37 +28,42 @@ export function ProjectLayout() {
   const client = clients.find((c) => c.id === project.clientId)
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Link to="/projects" className="text-sm text-sw-muted hover:text-sw-text">
-          ← All Projects
+    <div className="flex flex-col min-h-full">
+      <div className="flex h-11 shrink-0 items-center border-b border-sw-rule bg-white px-10">
+        <div className="mr-6 pr-6 border-r border-sw-rule shrink-0">
+          <div className="text-[11px] font-semibold leading-tight text-sw-ink">{project.name}</div>
+          <div className="text-[9px] leading-tight text-sw-dim">
+            {client?.name ?? 'Unknown client'}
+          </div>
+        </div>
+        <nav className="flex h-11 flex-1 items-center overflow-x-auto whitespace-nowrap">
+          {PROJECT_TABS.map((tab) => (
+            <NavLink
+              key={tab.id}
+              to={`/projects/${project.id}/${tab.id}`}
+              className={({ isActive }) =>
+                `flex h-11 shrink-0 items-center px-3 text-[10px] border-b-2 transition ${
+                  isActive
+                    ? 'font-semibold text-sw-ink border-sw-ink'
+                    : 'font-normal text-sw-dim border-transparent hover:text-sw-mid'
+                }`
+              }
+            >
+              {tab.label}
+            </NavLink>
+          ))}
+        </nav>
+        <Link
+          to="/projects"
+          className="ml-2 shrink-0 border-l border-sw-rule pl-3.5 text-[10px] text-sw-dim hover:text-sw-mid"
+        >
+          All Projects
         </Link>
       </div>
 
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
-        <p className="text-sm text-sw-muted">
-          {client?.name ?? 'Unknown client'} · {project.address}
-        </p>
-      </header>
-
-      <nav className="flex flex-wrap gap-1 border-b border-sw-border pb-2">
-        {PROJECT_TABS.map((tab) => (
-          <NavLink
-            key={tab.id}
-            to={`/projects/${project.id}/${tab.id}`}
-            className={({ isActive }) =>
-              `rounded-md px-3 py-1.5 text-sm transition ${
-                isActive ? 'bg-sw-primary text-white' : 'text-sw-text hover:bg-sw-muted/10'
-              }`
-            }
-          >
-            {tab.label}
-          </NavLink>
-        ))}
-      </nav>
-
-      <Outlet context={{ projectId: project.id }} />
+      <div className="sw-page flex-1">
+        <Outlet context={{ projectId: project.id }} />
+      </div>
     </div>
   )
 }

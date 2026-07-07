@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Dialog, Field, Input } from '@/components/ui'
+import { Button, Dialog, Field, Input, Select } from '@/components/ui'
 import { FilePicker } from '@/components/FilePicker'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
@@ -117,10 +117,9 @@ export function InvoiceForm({ open, onClose, project, initial }: Props) {
           />
         </Field>
         <Field label="Cost code" required error={attempted && codeMissing ? 'Required' : undefined}>
-          <select
+          <Select
             value={form.ccId as string}
             onChange={(e) => setForm({ ...form, ccId: e.target.value as CostCodeId })}
-            className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
           >
             <option value="">— choose code —</option>
             {project.codes.map((c) => (
@@ -128,7 +127,7 @@ export function InvoiceForm({ open, onClose, project, initial }: Props) {
                 {c.code} · {c.desc}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       </div>
       <div className="grid grid-cols-3 gap-3">
@@ -156,17 +155,16 @@ export function InvoiceForm({ open, onClose, project, initial }: Props) {
         </Field>
       </div>
       <Field label="Status">
-        <select
+        <Select
           value={form.status}
           onChange={(e) => setForm({ ...form, status: e.target.value as InvoiceStatus })}
-          className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
         >
           {STATUSES.map((s) => (
             <option key={s} value={s}>
               {s}
             </option>
           ))}
-        </select>
+        </Select>
       </Field>
 
       {project.contractType === 'cost-plus' && (

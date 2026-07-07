@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Button, Card, Dialog, EmptyState, Field, Input } from '@/components/ui'
+import { Button, Dialog, EmptyState, Field, Input, Select } from '@/components/ui'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
 import { useAppState, useDispatch } from '@/state/context'
@@ -78,17 +78,16 @@ function TimesheetForm({ open, onClose, projectId, codes }: FormProps) {
           />
         </Field>
         <Field label="Cost code">
-          <select
+          <Select
             value={form.ccId as string}
             onChange={(e) => setForm({ ...form, ccId: e.target.value as CostCodeId })}
-            className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
           >
             {codes.map((c) => (
               <option key={c.id} value={c.id as string}>
                 {c.code} · {c.desc}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -141,7 +140,7 @@ export function TimesheetsTab() {
     <div className="space-y-4">
       <header className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-lg font-semibold">Timesheets</h2>
+          <h2 className="text-[18px] font-bold tracking-[-0.01em]">Timesheets</h2>
           <p className="text-xs text-sw-muted">
             Total: <span className="text-sw-text font-medium">{formatCurrency(total)}</span>
           </p>
@@ -162,31 +161,31 @@ export function TimesheetsTab() {
           }
         />
       ) : (
-        <Card>
-          <table className="w-full text-sm">
+        <div>
+          <table className="sw-table">
             <thead>
-              <tr className="text-xs uppercase text-sw-muted text-left border-b border-sw-border">
-                <th className="px-3 py-2 font-medium">Date</th>
-                <th className="px-3 py-2 font-medium">Worker</th>
-                <th className="px-3 py-2 font-medium">Role</th>
-                <th className="px-3 py-2 font-medium text-right">Hours</th>
-                <th className="px-3 py-2 font-medium text-right">Rate</th>
-                <th className="px-3 py-2 font-medium text-right">Total</th>
-                <th className="px-3 py-2 font-medium" aria-label="Actions" />
+              <tr>
+                <th>Date</th>
+                <th>Worker</th>
+                <th>Role</th>
+                <th className="text-right">Hours</th>
+                <th className="text-right">Rate</th>
+                <th className="text-right">Total</th>
+                <th aria-label="Actions" />
               </tr>
             </thead>
             <tbody>
               {timesheets.map((t) => (
                 <tr key={t.id} className="border-b border-sw-border last:border-0">
-                  <td className="px-3 py-2 text-sw-muted">{formatDate(t.date)}</td>
-                  <td className="px-3 py-2">{t.worker}</td>
-                  <td className="px-3 py-2 text-sw-muted">{t.role}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{t.hours}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(t.rate)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-medium">
+                  <td className="text-sw-muted">{formatDate(t.date)}</td>
+                  <td>{t.worker}</td>
+                  <td className="text-sw-muted">{t.role}</td>
+                  <td className="text-right font-mono">{t.hours}</td>
+                  <td className="text-right font-mono">{formatCurrency(t.rate)}</td>
+                  <td className="text-right font-mono font-medium">
                     {formatCurrency(t.hours * t.rate)}
                   </td>
-                  <td className="px-3 py-2 text-right">
+                  <td className="text-right">
                     <button
                       type="button"
                       onClick={() => del(t)}
@@ -200,7 +199,7 @@ export function TimesheetsTab() {
               ))}
             </tbody>
           </table>
-        </Card>
+        </div>
       )}
 
       <TimesheetForm

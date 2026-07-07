@@ -6,15 +6,12 @@ export interface EmptyStateProps {
   action?: ReactNode
 }
 
-/**
- * Standard "nothing here yet" panel. Matches the legacy empty-state pattern
- * added in session 17 (after the cross-cutting-polish lesson in WORKFLOW §8).
- */
+/** Legacy empty-state: plain faint text, no box, no dashed border. */
 export function EmptyState({ title, description, action }: EmptyStateProps) {
   return (
-    <div className="text-center py-12 px-6 space-y-2 border border-dashed border-sw-border rounded-md bg-sw-surface">
-      <p className="text-sm font-medium text-sw-text">{title}</p>
-      {description && <p className="text-xs text-sw-muted">{description}</p>}
+    <div className="text-center p-10 space-y-1">
+      <p className="text-[13px] text-sw-faint">{title}</p>
+      {description && <p className="text-[12px] text-sw-faint">{description}</p>}
       {action && <div className="pt-3">{action}</div>}
     </div>
   )

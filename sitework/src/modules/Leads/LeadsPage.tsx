@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useAppState } from '@/state/context'
-import { Button, Card, EmptyState } from '@/components/ui'
+import { Button, EmptyState } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
@@ -33,9 +33,9 @@ export function LeadsPage() {
   const totalValue = filtered.reduce((s, l) => s + (l.value || 0), 0)
 
   return (
-    <div className="space-y-4">
+    <div className="sw-page space-y-4">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Leads / Tender</h1>
+        <h1 className="text-[26px] font-bold tracking-[-0.02em] text-sw-ink">Leads / Tender</h1>
         <Button onClick={() => setCreating(true)}>+ New Lead</Button>
       </header>
 
@@ -71,7 +71,7 @@ export function LeadsPage() {
           action={<Button onClick={() => setCreating(true)}>+ New Lead</Button>}
         />
       ) : (
-        <Card>
+        <div>
           <ul className="divide-y divide-sw-border">
             {filtered.map((l) => (
               <li key={l.id}>
@@ -98,7 +98,7 @@ export function LeadsPage() {
               </li>
             ))}
           </ul>
-        </Card>
+        </div>
       )}
 
       <LeadForm open={creating} onClose={() => setCreating(false)} />

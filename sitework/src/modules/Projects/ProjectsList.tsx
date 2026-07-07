@@ -6,42 +6,102 @@ import { Button } from '@/components/ui'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { ProjectForm } from './ProjectForm'
 
+type Filter = 'live' | 'quoted' | 'all'
+
+/** Legacy `Ma` — committed vs budget health colour. */
+function healthColor(budget: number, committed: number): string {
+  if (!budget) return 'var(--sw-faint)'
+  if (committed <= budget) return 'var(--sw-pos)'
+  if (committed <= budget * 1.1) return 'var(--sw-violet)'
+  return 'var(--sw-neg)'
+}
+
 /**
- * Projects list. Rows navigate into the project; "+ New Project" opens the
- * `I0`-port create dialog (statutory validation included — session P1).
- * Editing lives on the project Overview tab, mirroring legacy.
+ * Projects list — baseline layout: Live/Quoted/All filter chips, health-dot
+ * rows (name over client · address) with the committed spend in mono at the
+ * right over "of $X budget". "+ New Project" opens the `I0`-port create
+ * dialog (statutory validation included — session P1).
  */
 export function ProjectsList() {
-  const { projects } = useAppState()
+  const { projects, clients } = useAppState()
   const [creating, setCreating] = useState(false)
+  const [filter, setFilter] = useState<Filter>('live')
+
+  const shown = projects.filter((p) =>
+    filter === 'all' ? true : filter === 'live' ? p.status === 'live' : p.status === 'quoted',
+  )
 
   return (
-    <div className="space-y-4">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
+    <div className="sw-page">
+      <header className="mb-6 flex items-center justify-between">
+        <h1 className="text-[26px] font-bold tracking-[-0.02em] text-sw-ink">Projects</h1>
         <Button onClick={() => setCreating(true)}>+ New Project</Button>
       </header>
-      <ul className="border border-sw-border rounded-md divide-y divide-sw-border bg-sw-surface">
-        {projects.map((p) => {
+
+      <div className="mb-7 flex gap-1.5">
+        {(
+          [
+            ['live', 'Live'],
+            ['quoted', 'Quoted'],
+            ['all', 'All'],
+          ] as Array<[Filter, string]>
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setFilter(key)}
+            className={`border px-3.5 py-1.5 text-[12px] font-medium cursor-pointer rounded-[1px] ${
+              filter === key
+                ? 'bg-sw-ink text-white border-sw-ink'
+                : 'bg-white text-sw-ink border-sw-rule'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <ul>
+        {shown.map((p) => {
           const budget = p.codes.reduce((s, c) => s + c.budget, 0)
+          const committed = p.codes.reduce((s, c) => s + c.committed, 0)
+          const client = clients.find((c) => c.id === p.clientId)
+          const color = healthColor(budget, committed)
           return (
-            <li key={p.id}>
+            <li key={p.id} className="border-b border-sw-rule-l">
               <Link
                 to={`/projects/${p.id}/overview`}
-                className="flex items-center justify-between px-4 py-3 hover:bg-sw-muted/5 transition"
+                className="flex items-center gap-4 py-4 transition hover:bg-sw-bg-subtle"
               >
-                <div>
-                  <div className="font-medium">{p.name}</div>
-                  <div className="text-xs text-sw-muted">
-                    {p.id} · {p.state} · {p.contractType} · budget {formatCurrency(budget)}
-                  </div>
-                </div>
-                <StatusBadge status={p.status} />
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: color }} />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[15px] font-semibold text-sw-ink">{p.name}</span>
+                  <span className="block text-[12px] text-sw-dim">
+                    {client?.name}
+                    {client?.name && p.address ? ' · ' : ''}
+                    {p.address}
+                  </span>
+                </span>
+                <span className="text-right shrink-0">
+                  <span className="block font-mono text-[15px] font-semibold" style={{ color }}>
+                    {formatCurrency(committed)}
+                  </span>
+                  <span className="block text-[11px] text-sw-faint">
+                    of {formatCurrency(budget)} budget
+                  </span>
+                </span>
+                <StatusBadge status={p.status} className="shrink-0" />
               </Link>
             </li>
           )
         })}
+        {shown.length === 0 && (
+          <li className="p-10 text-center text-[13px] text-sw-faint">
+            No {filter === 'all' ? '' : filter + ' '}projects.
+          </li>
+        )}
       </ul>
+
       {creating && <ProjectForm open onClose={() => setCreating(false)} />}
     </div>
   )

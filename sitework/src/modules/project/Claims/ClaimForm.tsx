@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Dialog, Field, Input } from '@/components/ui'
+import { Button, Dialog, Field, Input, Select } from '@/components/ui'
 import { FilePicker } from '@/components/FilePicker'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
@@ -172,17 +172,16 @@ export function ClaimForm({ open, onClose, project, initial, nextNo = 1 }: Props
         </Field>
       </div>
       <Field label="Status">
-        <select
+        <Select
           value={form.status}
           onChange={(e) => setForm({ ...form, status: e.target.value as ProgressClaimStatus })}
-          className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
         >
           {STATUSES.map((s) => (
             <option key={s} value={s}>
               {s}
             </option>
           ))}
-        </select>
+        </Select>
       </Field>
       <Field label="Notes">
         <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />

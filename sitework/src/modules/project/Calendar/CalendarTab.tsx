@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Card, EmptyState, ExpiryChip } from '@/components/ui'
+import { EmptyState, ExpiryChip } from '@/components/ui'
 import { formatDate } from '@/lib/formatDate'
 import { getExpiryInfo } from '@/lib/certExpiry'
 import { useAppState } from '@/state/context'
@@ -114,7 +114,7 @@ export function CalendarTab() {
     return (
       <div className="space-y-4">
         <header>
-          <h2 className="text-lg font-semibold">Calendar</h2>
+          <h2 className="text-[18px] font-bold tracking-[-0.01em]">Calendar</h2>
         </header>
         <EmptyState
           title="Nothing dated yet"
@@ -127,7 +127,7 @@ export function CalendarTab() {
   return (
     <div className="space-y-4">
       <header>
-        <h2 className="text-lg font-semibold">Calendar</h2>
+        <h2 className="text-[18px] font-bold tracking-[-0.01em]">Calendar</h2>
         <p className="text-xs text-sw-muted">
           Aggregated milestones, defects, and insurance expiries — chronological.
         </p>
@@ -139,7 +139,7 @@ export function CalendarTab() {
             <h3 className="text-xs font-semibold uppercase tracking-wide text-sw-muted">
               {formatMonthHeader(month)}
             </h3>
-            <Card>
+            <div>
               <ul className="divide-y divide-sw-border">
                 {entries.map((it, idx) => (
                   <li
@@ -167,7 +167,7 @@ export function CalendarTab() {
                   </li>
                 ))}
               </ul>
-            </Card>
+            </div>
           </section>
         ))}
       </div>

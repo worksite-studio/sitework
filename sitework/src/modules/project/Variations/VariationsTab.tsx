@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Button, Card, EmptyState } from '@/components/ui'
+import { Button, EmptyState } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
@@ -43,7 +43,7 @@ export function VariationsTab() {
     <div className="space-y-4">
       <header className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-lg font-semibold">Variations</h2>
+          <h2 className="text-[18px] font-bold tracking-[-0.01em]">Variations</h2>
           <p className="text-xs text-sw-muted">
             Approved:{' '}
             <span className="text-sw-text font-medium">{formatCurrency(approvedTotal)}</span> ·
@@ -67,17 +67,17 @@ export function VariationsTab() {
           action={<Button onClick={() => setCreating(true)}>+ New Variation</Button>}
         />
       ) : (
-        <Card>
-          <table className="w-full text-sm">
+        <div>
+          <table className="sw-table">
             <thead>
-              <tr className="text-xs uppercase text-sw-muted text-left border-b border-sw-border">
-                <th className="px-3 py-2 font-medium">ID</th>
-                <th className="px-3 py-2 font-medium">Description</th>
-                <th className="px-3 py-2 font-medium">Code</th>
-                <th className="px-3 py-2 font-medium">Reason</th>
-                <th className="px-3 py-2 font-medium text-right">Amount</th>
-                <th className="px-3 py-2 font-medium">Date</th>
-                <th className="px-3 py-2 font-medium">Status</th>
+              <tr>
+                <th>ID</th>
+                <th>Description</th>
+                <th>Code</th>
+                <th>Reason</th>
+                <th className="text-right">Amount</th>
+                <th>Date</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
@@ -87,20 +87,20 @@ export function VariationsTab() {
                   onClick={() => setEditing(v)}
                   className="border-b border-sw-border last:border-0 cursor-pointer hover:bg-sw-muted/5"
                 >
-                  <td className="px-3 py-2 text-sw-muted tabular-nums">{v.id}</td>
-                  <td className="px-3 py-2">{v.desc}</td>
-                  <td className="px-3 py-2 text-xs text-sw-muted">{codeLookup(v.ccId)}</td>
-                  <td className="px-3 py-2 text-xs text-sw-muted">{v.reasonCategory}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(v.amount)}</td>
-                  <td className="px-3 py-2 text-sw-muted">{formatDate(v.date)}</td>
-                  <td className="px-3 py-2">
+                  <td className="text-sw-muted font-mono">{v.id}</td>
+                  <td>{v.desc}</td>
+                  <td className="text-xs text-sw-muted">{codeLookup(v.ccId)}</td>
+                  <td className="text-xs text-sw-muted">{v.reasonCategory}</td>
+                  <td className="text-right font-mono">{formatCurrency(v.amount)}</td>
+                  <td className="text-sw-muted">{formatDate(v.date)}</td>
+                  <td>
                     <StatusBadge status={v.status} />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </Card>
+        </div>
       )}
 
       <VariationForm

@@ -38,7 +38,7 @@ export function OpenBookTab() {
       <header className="space-y-1 border-b border-sw-border pb-3">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight">{project.name}</h2>
+            <h2 className="text-[26px] font-bold tracking-[-0.02em] text-sw-ink">{project.name}</h2>
             <p className="text-sm text-sw-muted">
               Open-book report · {project.contractType} · {project.state}
             </p>
@@ -60,24 +60,22 @@ export function OpenBookTab() {
 
       {/* Contract vs cost */}
       <section className="space-y-2">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-sw-muted">
-          Contract vs Cost
-        </h3>
+        <h3 className="text-[12px] font-semibold text-sw-ink">Contract vs Cost</h3>
         <Card className="p-4">
           <dl className="grid grid-cols-2 gap-y-1 text-sm">
             <dt className="text-sw-muted">Original contract</dt>
-            <dd className="text-right tabular-nums">{formatCurrency(fin.originalBudget)}</dd>
+            <dd className="text-right font-mono">{formatCurrency(fin.originalBudget)}</dd>
             <dt className="text-sw-muted">Approved variations</dt>
-            <dd className="text-right tabular-nums">{formatCurrency(fin.approvedVariations)}</dd>
+            <dd className="text-right font-mono">{formatCurrency(fin.approvedVariations)}</dd>
             <dt className="font-medium border-t border-sw-border pt-1">Adjusted contract value</dt>
-            <dd className="font-medium border-t border-sw-border pt-1 text-right tabular-nums">
+            <dd className="font-medium border-t border-sw-border pt-1 text-right font-mono">
               {formatCurrency(fin.adjustedContractValue)}
             </dd>
             <dt className="text-sw-muted pt-2">Cost to date</dt>
-            <dd className="text-right tabular-nums pt-2">−{formatCurrency(fin.costToDate)}</dd>
+            <dd className="text-right font-mono pt-2">−{formatCurrency(fin.costToDate)}</dd>
             <dt className="font-medium border-t border-sw-border pt-1">Margin position</dt>
             <dd
-              className={`font-medium border-t border-sw-border pt-1 text-right tabular-nums ${
+              className={`font-medium border-t border-sw-border pt-1 text-right font-mono ${
                 fin.currentMarginPct < project.margin ? 'text-sw-warning' : 'text-sw-success'
               }`}
             >
@@ -183,7 +181,7 @@ interface ReportSectionProps {
 function ReportSection({ title, children }: ReportSectionProps) {
   return (
     <section className="space-y-2">
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-sw-muted">{title}</h3>
+      <h3 className="text-[12px] font-semibold text-sw-ink">{title}</h3>
       {children}
     </section>
   )
@@ -196,9 +194,9 @@ interface ReportTableProps {
 function ReportTable({ head, rows }: ReportTableProps) {
   return (
     <Card>
-      <table className="w-full text-sm">
+      <table className="sw-table">
         <thead>
-          <tr className="text-xs uppercase text-sw-muted text-left border-b border-sw-border">
+          <tr>
             {head.map((h, idx) => (
               <th
                 key={h}
@@ -218,7 +216,7 @@ function ReportTable({ head, rows }: ReportTableProps) {
                 <td
                   key={ci}
                   className={`px-3 py-2 ${
-                    ci >= 2 && ci <= head.length - 2 ? 'text-right tabular-nums' : ''
+                    ci >= 2 && ci <= head.length - 2 ? 'text-right font-mono' : ''
                   }`}
                 >
                   {cell}

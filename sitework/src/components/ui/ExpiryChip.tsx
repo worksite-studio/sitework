@@ -1,11 +1,17 @@
 import { getExpiryInfo, type ExpiryStatus } from '@/lib/certExpiry'
 import { cn } from '@/lib/cn'
 
+/**
+ * Cert / insurance expiry chip — legacy pill treatment: mono 10px, rounded,
+ * pink fill when expired, literal amber (#F59E0B — the baseline uses amber
+ * here even though its warn token is violet) when ≤30d, bare muted text
+ * otherwise.
+ */
 const TONE: Record<ExpiryStatus, string> = {
-  current: 'bg-sw-success/10 text-sw-success ring-sw-success/20',
-  expiring: 'bg-sw-warning/10 text-sw-warning ring-sw-warning/30',
-  expired: 'bg-sw-danger/10 text-sw-danger ring-sw-danger/30',
-  unknown: 'bg-sw-muted/10 text-sw-muted ring-sw-muted/20',
+  current: 'text-sw-muted',
+  expiring: 'bg-[#F59E0B] text-white',
+  expired: 'bg-sw-neg text-white',
+  unknown: 'text-sw-faint',
 }
 
 const LABEL: Record<ExpiryStatus, string> = {
@@ -15,13 +21,6 @@ const LABEL: Record<ExpiryStatus, string> = {
   unknown: '—',
 }
 
-/**
- * Coloured chip for a cert / insurance expiry date. Pass the ISO date string;
- * the chip reads its own clock so consumers don't have to thread `today`.
- *
- * Optionally prefix with a `kind` label (e.g. "PL", "WC") so a row with
- * multiple chips reads at a glance.
- */
 export function ExpiryChip({
   iso,
   kind,
@@ -38,7 +37,7 @@ export function ExpiryChip({
     <span
       title={iso || 'No expiry on file'}
       className={cn(
-        'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset',
+        'inline-flex items-center font-mono rounded-full px-2 py-[3px] text-[10px] font-semibold',
         TONE[info.status],
         className,
       )}

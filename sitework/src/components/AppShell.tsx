@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { TOP_NAV } from '@/nav'
 import { useAppState, usePersistFailed } from '@/state/context'
 import { exportStateFile } from '@/lib/backup'
+import { Splash } from '@/components/Splash'
 
 /**
  * Application shell — faithful port of the legacy `Pc` chrome (PARITY gap 10):
@@ -9,12 +11,23 @@ import { exportStateFile } from '@/lib/backup'
  * letterspaced nav (active = ink + 2px underline), pulsing Xero dot, and the
  * WS avatar → Settings. No sidebar — the baseline never had one.
  */
+function shouldSkipSplash(): boolean {
+  try {
+    return sessionStorage.getItem('sw:skipSplash') === '1'
+  } catch {
+    return false
+  }
+}
+
 export function AppShell() {
   const state = useAppState()
   const { settings } = state
   const persistFailed = usePersistFailed()
+  const [entered, setEntered] = useState(shouldSkipSplash)
   const businessName =
     (typeof settings.businessName === 'string' && settings.businessName) || 'Worksite'
+
+  if (!entered) return <Splash onEnter={() => setEntered(true)} />
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-sw-ink">
@@ -75,7 +88,7 @@ export function AppShell() {
         </div>
       )}
 
-      <main className="min-w-0 flex-1 px-10 py-8">
+      <main className="min-w-0 flex-1 overflow-auto bg-white">
         <Outlet />
       </main>
     </div>
