@@ -7,6 +7,6 @@
   "rewrites": [
     { "source": "/legacy", "destination": "/legacy/index.html" },
     { "source": "/legacy/(.*)", "destination": "/legacy/index.html" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/legacy/index.html" }
   ]
 }
