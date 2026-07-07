@@ -176,16 +176,21 @@
 
 ---
 
-## Phase 4.6 — Baseline Parity Restoration 🔄
-*Goal: `legacy/index.html` (serve on :8766) is the **canonical baseline** — it holds all work from sessions 0-A→29. The Phase 4 port silently dropped features; a 2026-07-04 audit found the gaps. Nothing else ships in the Vite app until parity is closed. Contract + gap table live in `PARITY.md`. Acceptance test for every session: side-by-side against :8766.*
-*Estimated: 5 sessions (P1→P5)*
+## Phase 4.6 — Rebuild from the Baseline 🔄 (re-scoped 2026-07-08)
+*Goal: `legacy/index.html` (serve on :8766) is the **canonical baseline and the lift-off point for all future builds** — it holds all work from sessions 0-A→29. A full re-audit (session 48) found the port didn't just drop features, it reinterpreted screens and financial semantics. Per Jake: **the Vite app is rebuilt with the legacy file as its baseline** — screens transliterated from the legacy source, never reinterpreted. Contract, gap table (18 rows), transliteration protocol and the R0–R8 session plan live in `PARITY.md`. Acceptance test for every session: side-by-side against :8766, numbers matching exactly.*
+*Estimated: 9 further sessions (R0→R8)*
 
 - ✅ **P1 Project form + statutory validation** (Critical) — legacy `I0` ported: "+ New Project" on Projects list + "Edit Project" on Overview, VIC s.13 hard-block, QLD HWS checkbox, deposit-cap helper; rules in `src/lib/statutory.ts` (21 unit tests pin verbatim baseline copy + thresholds), 7 e2e specs. Session 46
 - ✅ **PV Visual parity** (Critical) — the entire app restyled to the baseline design system in one pass: legacy `d`/`v` tokens verbatim, every primitive rewritten (underline inputs/selects, square 480px modals, bare-text badges, ink-ruled tables, editorial stat blocks), 52px top nav + 44px project sub-bar, splash ported, dashboard layout parity (alerts panel + Budget & Margin). 28 side-by-side screenshot pairs vs :8766. Root URL restored to the Vite app. Session 47
-- ⬜ **P2 Settings parity** (Critical) — home state + 8 licence fields + 5 insurance registrations + Reset to Demo Data (Backup card stays)
-- ⬜ **P3 Variations + PC/PS forms** (High) — `requestedBy` dropdown + "Other" reason + conditional comments; `pcf`/`psf` add/edit forms
-- ⬜ **P4 Help & Education + splash** (Medium) — port 4-tab content verbatim; port `Lp` splash faithfully (design phase reworks it later)
-- ⬜ **P5 Side-by-side sweep** — session-26 visual fixes verified, DUPLICATE_PROJECT button, full module-by-module walkthrough vs :8766 with Jake
+- ⬜ **R0 Financial semantics core** (Critical) — legacy money maths into `computeFinancials.ts` (contract value, true overrun, cost-to-date, PC/PS net-to-claim) + retention units bug; tests pin legacy's exact on-screen numbers — gaps 17, 18
+- ⬜ **R1 Project Overview + BOQ edit tab** (High) — `D1` stats + analytic table; `w1`/`p1` edit surface — gaps 13, 16
+- ⬜ **R2 Money tables** (High) — Invoices/POs/Claims columns, filter chips, totals footers, PO RECEIVE action — gap 12
+- ⬜ **R3 Cash Flow** (High) — `j1v2`: stat blocks, outflows chart, month table, forward forecast — gap 14
+- ⬜ **R4 Settings** (Critical) — `St1`: defaults + home state + 8 licences + 9 insurance registrations + Reset to Demo Data; wire `sw_ct`/`sw_state` into ProjectForm — gaps 2, 3
+- ⬜ **R5 Leads kanban + Estimating + Clients/Subs tables** (High) — gaps 15 + gap-12 rows
+- ⬜ **R6 Variations requestedBy + PC/PS forms** (High) — gaps 4, 5
+- ⬜ **R7 Remaining tab anatomy** (Medium) — Schedule/Diary/RFIs/Selections/Timesheets/Defects/Calendar/Open Book — gap 12 rest
+- ⬜ **R8 Help & Education + final sweep** (Medium) — gap 6, DUPLICATE_PROJECT decision, full 26-pair sign-off with Jake — gaps 6, 9
 
 ---
 
@@ -335,4 +340,6 @@ Explicitly NOT in 4.5: FK normalisation, PO↔invoice matching, undo, multi-tab 
 
 | 47 | 2026-07-06 | 4.6 | **Session PV — full visual parity pass shipped in one PR.** Interim first: root URL swapped to serve the baseline while the work ran (reverted in this PR — the Vite app earns the root back on merge); P1 squash-merged to main. Then the pass: generic tokens REPOINTED to the verbatim legacy palette (`d`) so every screen flipped at once (bg white, muted #808080, border #D0D0D0, success #059669, warning **violet** #7C3AED, danger **pink** #EC4899) with print output isolated via a `.print-page` token override; primitives rewritten to baseline spec — Button (square, black), Input/Select (underline, no box), Dialog (`xt`: 480px, rule border, uppercase 11px title, ✕), Field (11px labels), FormGrid, StatusBadge (`He`: bare coloured text, unit tests pass unchanged), ExpiryChip (pink/amber pills), EmptyState (faint text), StatBlock promoted to ui, KpiTile deleted; 14 raw `<select>`s swapped for the Select primitive by script; `.sw-page` (40/52/80 padding) + `.sw-table` (9px ink-ruled headers, 13px cells) applied across 9 top-level pages + 16 project tabs; AppShell main unpadded; ProjectLayout rebuilt as the 44px sub-bar (title-case 10px tabs); ProjectsList rebuilt to baseline rows (health dots, client · address, mono committed-spend, Live/Quoted/All chips); OverviewTab rebuilt (24px header + contract badge + Edit Project ghost, editorial stat row, ruled panels); splash `Lp` ported verbatim (88px wordmark, lilac pixel grid, every full load; sessionStorage skip flag for tests only). Tests: smoke dashboard spec updated (greeting replaces the phantom "Dashboard" H1, Budget & Margin replaces the never-in-baseline Pipeline), splash.spec added; 144 unit / 34 e2e green. New `scripts/parity-shots.mjs` captured 28 legacy-vs-vite pairs; review confirmed chrome/tables/splash indistinguishable. Residual content deltas (richer legacy table columns — GST cols, filter chips, totals footers) filed as PARITY gap 12 for the P5 sweep. |
 
-*Last updated: 2026-07-05 (session 46 — P1 done; next: P2 Settings parity)*
+| 48 | 2026-07-08 | 4.6 | **Full parity re-audit + phase re-scoped to Rebuild-from-Baseline.** Fresh 26-pair side-by-side sweep (`sitework/parity-shots/`) + interaction checks + e2e regression. Closed rows verified holding (splash pixel-identical, design system + dashboard layout intact, all 9 project-form/splash e2e green). But six new gaps found, two Critical: **Claims retention ×100 units bug** (seed `rate: 5` vs fraction calc → −$225,000 retention on a $45,000 claim, negative Net Certified) and **contract-value semantics diverging on every money surface** (legacy: budget + margin, "$0.7M"; port: raw budget, "$0.5M" — same disease on Estimating sell-vs-cost and Open Book). Also: Cash Flow tab is a stub vs legacy's chart+table+forecast; Leads lost the 5-column kanban; Overview lost its 5 stat blocks + analytic BOQ table; BOQ tab lost the edit surface. Gap-12 per-tab enumeration completed (17 screens documented in PARITY.md). Settings corrected: 9 insurance fields, not 5. **Jake's call: :5173 as it stands is not the base — the Vite app is rebuilt with `legacy/index.html` as its baseline.** Transliteration protocol (legacy source extracted per ARCHITECTURE.md name map → verbatim React/TS → screenshot pair + exact-number acceptance) + R0–R8 rebuild sessions written into PARITY.md, replacing P2–P5. Gap table now 18 rows. |
+
+*Last updated: 2026-07-08 (session 48 — re-audit + rebuild re-scope; next: R0 financial semantics core)*
