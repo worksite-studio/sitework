@@ -1,19 +1,26 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAppState } from '@/state/context'
 import { StatusBadge } from '@/components/StatusBadge'
+import { Button } from '@/components/ui'
 import { formatCurrency } from '@/lib/formatCurrency'
+import { ProjectForm } from './ProjectForm'
 
 /**
- * Minimal Projects list — enough to navigate into a project (so routing into
- * project tabs is testable now). The full-fidelity port with filters and the
- * contract-vs-cost summary lands in Sessions 5–7.
+ * Projects list. Rows navigate into the project; "+ New Project" opens the
+ * `I0`-port create dialog (statutory validation included — session P1).
+ * Editing lives on the project Overview tab, mirroring legacy.
  */
 export function ProjectsList() {
   const { projects } = useAppState()
+  const [creating, setCreating] = useState(false)
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
+      <header className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
+        <Button onClick={() => setCreating(true)}>+ New Project</Button>
+      </header>
       <ul className="border border-sw-border rounded-md divide-y divide-sw-border bg-sw-surface">
         {projects.map((p) => {
           const budget = p.codes.reduce((s, c) => s + c.budget, 0)
@@ -35,6 +42,7 @@ export function ProjectsList() {
           )
         })}
       </ul>
+      {creating && <ProjectForm open onClose={() => setCreating(false)} />}
     </div>
   )
 }
