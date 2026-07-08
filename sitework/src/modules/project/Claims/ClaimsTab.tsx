@@ -6,6 +6,7 @@ import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
 import { useAppState } from '@/state/context'
 import { useProject } from '../useProject'
+import { claimNetCertified, claimRetention, retentionRatePct } from '../computeFinancials'
 import { ClaimForm } from './ClaimForm'
 import type { ProgressClaim } from '@/types'
 
@@ -15,10 +16,9 @@ import type { ProgressClaim } from '@/types'
  * legacy bad records (session 28), retention applied at the calc layer
  * (Net Certified shown alongside Amount).
  *
- * Net Certified = amount × (1 − retention rate). The legacy app's session 13
- * formula (×1.1 GST) is preserved in legacy seed amounts; here we treat the
- * claim amount as incl-GST verbatim from seed and display retention as a
- * straight percentage off.
+ * Retention maths transliterated from legacy Cl1 (R0, PARITY gap 18):
+ * amount is ex-GST; retention = amount × rate%/100; Net Certified =
+ * amount × (1 − rate%/100) × 1.1 — GST applies to the retained net.
  */
 export function ClaimsTab() {
   const project = useProject()
@@ -30,7 +30,7 @@ export function ClaimsTab() {
     () => (project ? (state.claims[project.id as string] ?? []) : []),
     [state.claims, project],
   )
-  const retentionRate = project ? (state.retention[project.id as string]?.rate ?? 0.05) : 0.05
+  const ratePct = project ? retentionRatePct(state, project.id as string) : 5
 
   if (!project) return null
 
@@ -98,8 +98,8 @@ export function ClaimsTab() {
             </thead>
             <tbody>
               {claims.map((c) => {
-                const retention = (c.amount || 0) * retentionRate
-                const netCertified = (c.amount || 0) - retention
+                const retention = claimRetention(c.amount || 0, ratePct)
+                const netCertified = claimNetCertified(c.amount || 0, ratePct)
                 const docCount = c.supportingDocs?.length ?? 0
                 const needsDocs = project.contractType === 'cost-plus' && docCount === 0
                 return (

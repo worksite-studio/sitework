@@ -269,7 +269,7 @@ export function reducer(state: RootState, action: Action): RootState {
     // ─── Retention ────────────────────────────────────────────────────────
     case 'UPDATE_RETENTION': {
       const key = action.projectId as string
-      const existing = state.retention[key] ?? { rate: 0.05 }
+      const existing = state.retention[key] ?? { rate: 5 } // percent — legacy unit (PARITY gap 18)
       return {
         ...state,
         retention: { ...state.retention, [key]: { ...existing, ...action.patch } },

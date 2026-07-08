@@ -94,15 +94,6 @@ export function DashboardPage() {
   const active = state.projects.filter((p) => p.status === 'live')
 
   const userName = typeof state.settings.userName === 'string' ? state.settings.userName : ''
-  const totalContractValue = active.reduce(
-    (s, p) => s + p.codes.reduce((cs, c) => cs + c.budget, 0),
-    0,
-  )
-  const approvedOutstanding = state.projects.reduce(
-    (s, p) =>
-      s + p.invoices.filter((i) => i.status === 'Approved').reduce((a, i) => a + i.amount, 0),
-    0,
-  )
   const subsNeedingAttention = state.subs.filter((sub) => {
     const today = new Date()
     const soon = new Date()
@@ -163,11 +154,11 @@ export function DashboardPage() {
         <StatBlock
           label="Active Projects"
           value={active.length}
-          sublabel={`$${(totalContractValue / 1e6).toFixed(1)}M contract value`}
+          sublabel={`$${(kpis.portfolioContractValue / 1e6).toFixed(1)}M contract value`}
         />
         <StatBlock
           label="Outstanding Invoices"
-          value={formatCurrency(approvedOutstanding)}
+          value={formatCurrency(kpis.outstandingInvoicesTotal)}
           sublabel="Approved, awaiting payment"
           accent="var(--sw-violet)"
         />

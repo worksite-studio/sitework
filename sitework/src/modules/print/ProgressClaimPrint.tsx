@@ -21,7 +21,8 @@ export function ProgressClaimPrint() {
     ? (state.claims[project.id as string] ?? []).find((c) => c.id === (claimId as ProgressClaimId))
     : null
   const client = project ? state.clients.find((c) => c.id === project.clientId) : null
-  const retentionRate = project ? (state.retention[project.id as string]?.rate ?? 0.05) : 0.05
+  // Rate is a PERCENT (legacy unit — PARITY gap 18); divide by 100 at use.
+  const retentionRatePct = project ? (state.retention[project.id as string]?.rate ?? 5) : 5
 
   if (!project || !claim) {
     return (
@@ -32,7 +33,7 @@ export function ProgressClaimPrint() {
   }
 
   const gross = claim.amount || 0
-  const retention = gross * retentionRate
+  const retention = (gross * retentionRatePct) / 100
   const netCertified = gross - retention
 
   return (
@@ -80,7 +81,7 @@ export function ProgressClaimPrint() {
               <th>#</th>
               <th>Description</th>
               <th className="text-right">Gross</th>
-              <th className="text-right">Retention ({(retentionRate * 100).toFixed(1)}%)</th>
+              <th className="text-right">Retention ({retentionRatePct.toFixed(1)}%)</th>
               <th className="text-right">Net certified</th>
             </tr>
           </thead>

@@ -22,7 +22,13 @@ export function OpenBookTab() {
   const project = useProject()
   const state = useAppState()
 
-  const fin = useMemo(() => (project ? computeProjectFinancials(project) : null), [project])
+  const fin = useMemo(
+    () =>
+      project
+        ? computeProjectFinancials(project, state.purchases[project.id as string] ?? [])
+        : null,
+    [project, state.purchases],
+  )
 
   if (!project || !fin) return null
 
@@ -62,25 +68,26 @@ export function OpenBookTab() {
       <section className="space-y-2">
         <h3 className="text-[12px] font-semibold text-sw-ink">Contract vs Cost</h3>
         <Card className="p-4">
+          {/* Row set transliterated from legacy `Obx` "Contract & Cost Summary" (R0). */}
           <dl className="grid grid-cols-2 gap-y-1 text-sm">
-            <dt className="text-sw-muted">Original contract</dt>
+            <dt className="text-sw-muted">Original budget</dt>
             <dd className="text-right font-mono">{formatCurrency(fin.originalBudget)}</dd>
-            <dt className="text-sw-muted">Approved variations</dt>
+            <dt className="text-sw-muted">Margin target</dt>
+            <dd className="text-right font-mono">{project.margin ?? 15}%</dd>
+            <dt className="text-sw-muted">Original contract value</dt>
+            <dd className="text-right font-mono">{formatCurrency(fin.contractValue)}</dd>
+            <dt className="text-sw-muted">Variations approved</dt>
             <dd className="text-right font-mono">{formatCurrency(fin.approvedVariations)}</dd>
+            <dt className="text-sw-muted">Variations pending</dt>
+            <dd className="text-right font-mono">{formatCurrency(fin.pendingVariations)}</dd>
             <dt className="font-medium border-t border-sw-border pt-1">Adjusted contract value</dt>
             <dd className="font-medium border-t border-sw-border pt-1 text-right font-mono">
               {formatCurrency(fin.adjustedContractValue)}
             </dd>
-            <dt className="text-sw-muted pt-2">Cost to date</dt>
-            <dd className="text-right font-mono pt-2">−{formatCurrency(fin.costToDate)}</dd>
-            <dt className="font-medium border-t border-sw-border pt-1">Margin position</dt>
-            <dd
-              className={`font-medium border-t border-sw-border pt-1 text-right font-mono ${
-                fin.currentMarginPct < project.margin ? 'text-sw-warning' : 'text-sw-success'
-              }`}
-            >
-              {fin.currentMarginPct.toFixed(1)}% (target {project.margin}%)
-            </dd>
+            <dt className="text-sw-muted pt-2">Cost to date (invoices + POs)</dt>
+            <dd className="text-right font-mono pt-2">{formatCurrency(fin.committedToDate)}</dd>
+            <dt className="text-sw-muted">Invoices paid</dt>
+            <dd className="text-right font-mono">{formatCurrency(fin.invoicesPaid)}</dd>
           </dl>
         </Card>
       </section>

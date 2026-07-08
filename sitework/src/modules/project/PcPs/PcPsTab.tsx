@@ -3,6 +3,7 @@ import { EmptyState } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { useProject } from '../useProject'
+import { reconcilePcPs } from '../computeFinancials'
 import type {
   PrimeCostItem,
   PrimeCostItemId,
@@ -19,26 +20,21 @@ interface ReconciledRow {
   variance: number
   /** Margin applies to the excess only, per CONTRACTS_REFERENCE.md §7.4. */
   marginOnExcess: number
-  /** allowance + variance + marginOnExcess. */
+  /** variance + marginOnExcess — legacy `Pcps` net (R0, PARITY gap 17 note). */
   netToClaim: number
   status: string
-}
-
-function reconcile(allowance: number, actualCost: number, marginRate: number) {
-  const variance = actualCost - allowance
-  const marginOnExcess = variance > 0 ? variance * marginRate : 0
-  const netToClaim = allowance + Math.max(variance, 0) + marginOnExcess
-  return { variance, marginOnExcess, netToClaim }
 }
 
 /**
  * PC & PS tab — port of legacy `Pcps`. Two tables (Prime Cost items +
  * Provisional Sums) with the reconciliation columns added in Phase 1.5
  * item 1. Margin applies to the excess only (CONTRACTS_REFERENCE §7.4).
+ * Maths transliterated via reconcilePcPs (computeFinancials, R0); values
+ * render abs-with-sign-prefix exactly like legacy `k()`.
  *
  * Read-only for now — the legacy `pcf`/`psf` add/edit forms aren't ported
- * yet; that polish lands in a follow-up session. The tab is still useful
- * because seed has rows and the math wires up.
+ * yet; that lands in rebuild session R6. The tab is still useful because
+ * seed has rows and the math wires up.
  */
 export function PcPsTab() {
   const project = useProject()
@@ -52,18 +48,14 @@ export function PcPsTab() {
   const pcReconciled: ReconciledRow[] = pcRows.map((r) => ({
     id: r.id as string,
     description: r.description,
-    allowance: r.allowance,
-    actualCost: r.actualCost,
     status: r.status,
-    ...reconcile(r.allowance, r.actualCost, r.marginRate),
+    ...reconcilePcPs(r.allowance, r.actualCost, r.marginRate),
   }))
   const psReconciled: ReconciledRow[] = psRows.map((r) => ({
     id: r.id as string,
     description: r.description,
-    allowance: r.allowance,
-    actualCost: r.actualCost,
     status: r.status,
-    ...reconcile(r.allowance, r.actualCost, r.marginRate),
+    ...reconcilePcPs(r.allowance, r.actualCost, r.marginRate),
   }))
 
   function quickDelete(kind: 'pc' | 'ps', id: string) {
@@ -100,6 +92,14 @@ export function PcPsTab() {
       />
     </div>
   )
+}
+
+/**
+ * Legacy `k()` display: absolute value, sign carried by an explicit "+"
+ * prefix on positives only — a $4,500-under-allowance row renders "$4,500".
+ */
+function signedAbs(n: number): string {
+  return `${n > 0 ? '+' : ''}${formatCurrency(Math.abs(n))}`
 }
 
 interface SectionProps {
@@ -151,7 +151,9 @@ function Section({ title, empty, rows, onDelete }: SectionProps) {
               <tr key={r.id} className="border-b border-sw-border last:border-0">
                 <td>{r.description}</td>
                 <td className="text-right font-mono">{formatCurrency(r.allowance)}</td>
-                <td className="text-right font-mono">{formatCurrency(r.actualCost)}</td>
+                <td className="text-right font-mono">
+                  {r.actualCost > 0 ? formatCurrency(r.actualCost) : '—'}
+                </td>
                 <td
                   className={`px-3 py-2 text-right font-mono ${
                     r.variance > 0
@@ -161,12 +163,22 @@ function Section({ title, empty, rows, onDelete }: SectionProps) {
                         : 'text-sw-muted'
                   }`}
                 >
-                  {r.variance === 0 ? '—' : formatCurrency(r.variance)}
+                  {r.variance === 0 ? '—' : signedAbs(r.variance)}
                 </td>
                 <td className="text-right font-mono">
                   {r.marginOnExcess > 0 ? formatCurrency(r.marginOnExcess) : '—'}
                 </td>
-                <td className="text-right font-mono font-medium">{formatCurrency(r.netToClaim)}</td>
+                <td
+                  className={`text-right font-mono font-medium ${
+                    r.variance > 0
+                      ? 'text-sw-danger'
+                      : r.variance < 0
+                        ? 'text-sw-success'
+                        : 'text-sw-muted'
+                  }`}
+                >
+                  {r.netToClaim === 0 ? '—' : signedAbs(r.netToClaim)}
+                </td>
                 <td>
                   <StatusBadge status={r.status} />
                 </td>
@@ -188,7 +200,9 @@ function Section({ title, empty, rows, onDelete }: SectionProps) {
               <td className="text-right font-mono">{formatCurrency(totals.actualCost)}</td>
               <td />
               <td className="text-right font-mono">{formatCurrency(totals.marginOnExcess)}</td>
-              <td className="text-right font-mono">{formatCurrency(totals.netToClaim)}</td>
+              <td className="text-right font-mono">
+                {formatCurrency(Math.abs(totals.netToClaim))}
+              </td>
               <td colSpan={2} />
             </tr>
           </tbody>

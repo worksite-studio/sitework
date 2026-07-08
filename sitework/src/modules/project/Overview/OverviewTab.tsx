@@ -23,14 +23,16 @@ export function OverviewTab() {
   const [editing, setEditing] = useState(false)
   if (!project) return null
 
-  const fin = computeProjectFinancials(project)
+  const purchases = state.purchases[project.id as string] ?? []
+  const fin = computeProjectFinancials(project, purchases)
   const outstanding = outstandingInvoiceTotal(project)
   const heldRetention = retentionHeld(state, project.id as string)
   const client = state.clients.find((c) => c.id === project.clientId)
+  // Legacy erosion sign: positive = eroded below target (D1v2).
   const marginAccent =
-    fin.marginErosionPct < -5
+    fin.marginErosionPct > 5
       ? 'var(--sw-neg)'
-      : fin.marginErosionPct < 0
+      : fin.marginErosionPct > 0
         ? 'var(--sw-violet)'
         : 'var(--sw-pos)'
 
@@ -60,12 +62,8 @@ export function OverviewTab() {
       <section className="mb-12 flex gap-12">
         <StatBlock
           label="Contract Value"
-          value={formatCurrency(fin.adjustedContractValue)}
-          sublabel={
-            fin.approvedVariations > 0
-              ? `original + ${formatCurrency(fin.approvedVariations)} variations`
-              : `target ${project.margin}% margin`
-          }
+          value={formatCurrency(fin.contractValue)}
+          sublabel={`target ${project.margin}% margin`}
         />
         <StatBlock
           label="Cost to Date"
@@ -81,8 +79,8 @@ export function OverviewTab() {
         <StatBlock
           label="Margin Erosion"
           accent={marginAccent}
-          value={`${fin.marginErosionPct >= 0 ? '+' : ''}${fin.marginErosionPct.toFixed(1)}%`}
-          sublabel={fin.marginErosionPct >= 0 ? 'above target' : 'below target'}
+          value={`${fin.marginErosionPct > 0 ? '−' : '+'}${Math.abs(fin.marginErosionPct).toFixed(1)}%`}
+          sublabel={fin.marginErosionPct > 0 ? 'below target' : 'above target'}
         />
         <StatBlock
           label="Outstanding Invoices"

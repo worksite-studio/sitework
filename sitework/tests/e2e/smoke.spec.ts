@@ -31,7 +31,10 @@ test('navigates to Projects list and into a project tab', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Projects' }).click()
   await expect(page).toHaveURL(/\/projects$/)
-  await expect(page.getByText('Akademie')).toBeVisible()
+  // Role-anchored: during the route swap the dashboard's Project Health
+  // "Akademie" briefly coexists with the list row — bare getByText is
+  // ambiguous mid-transition (strict-mode violation).
+  await expect(page.getByRole('link', { name: /Akademie/ })).toBeVisible()
 
   await page.getByRole('link', { name: /Akademie/ }).click()
   await expect(page).toHaveURL(/\/projects\/PRJ-001\/overview$/)

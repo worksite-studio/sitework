@@ -24,10 +24,11 @@ export function RetentionCertPrint() {
   }
 
   const claims = state.claims[project.id as string] ?? []
-  const retention = state.retention[project.id as string] ?? { rate: 0.05, held: 0, released: 0 }
+  // Rate is a PERCENT (legacy unit — PARITY gap 18); divide by 100 at use.
+  const retention = state.retention[project.id as string] ?? { rate: 5, held: 0, released: 0 }
   const client = state.clients.find((c) => c.id === project.clientId)
   const totalCertified = claims.reduce((s, c) => s + (c.amount || 0), 0)
-  const totalRetained = totalCertified * (retention.rate ?? 0)
+  const totalRetained = (totalCertified * (retention.rate ?? 5)) / 100
   const heldTotal = retention.held ?? totalRetained
   const releasedTotal = retention.released ?? 0
   const balance = heldTotal - releasedTotal
@@ -78,7 +79,7 @@ export function RetentionCertPrint() {
                 <td>{formatDate(c.date)}</td>
                 <td className="text-right tabular-nums">{formatCurrency(c.amount)}</td>
                 <td className="text-right tabular-nums">
-                  −{formatCurrency((c.amount || 0) * (retention.rate ?? 0))}
+                  −{formatCurrency(((c.amount || 0) * (retention.rate ?? 5)) / 100)}
                 </td>
               </tr>
             ))}
@@ -99,9 +100,7 @@ export function RetentionCertPrint() {
           <tbody>
             <tr>
               <td>Retention rate</td>
-              <td className="text-right tabular-nums">
-                {((retention.rate ?? 0) * 100).toFixed(1)}%
-              </td>
+              <td className="text-right tabular-nums">{(retention.rate ?? 5).toFixed(1)}%</td>
             </tr>
             <tr>
               <td>Retention held</td>

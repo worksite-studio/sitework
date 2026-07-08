@@ -479,7 +479,8 @@ describe('UPDATE_RETENTION', () => {
       projectId: P1,
       patch: { held: 5000 },
     })
-    expect(s.retention[P1 as string]).toEqual({ rate: 0.05, held: 5000 })
+    // rate is a PERCENT (legacy unit — PARITY gap 18), default 5.
+    expect(s.retention[P1 as string]).toEqual({ rate: 5, held: 5000 })
   })
 
   it('merges into an existing record', () => {
