@@ -1,43 +1,79 @@
 import { useState } from 'react'
-import { Button, StatBlock } from '@/components/ui'
+import { useNavigate } from 'react-router-dom'
+import { Button } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
-import { useAppState } from '@/state/context'
+import { useAppState, useDispatch } from '@/state/context'
 import { ProjectForm } from '@/modules/Projects/ProjectForm'
 import { useProject } from '../useProject'
-import {
-  computeProjectFinancials,
-  outstandingInvoiceTotal,
-  retentionHeld,
-} from '../computeFinancials'
+import { computeProjectFinancials } from '../computeFinancials'
 
 /**
- * Project Overview — port of legacy `D1`/`D1v2`: project header (24px name,
- * client · address, contract-type badge, Edit Project ghost), five editorial
- * stat blocks over ink rules, then ruled Contract-vs-Cost and Project-info
- * columns. Baseline styling throughout (PARITY gap 10).
+ * Project Overview — transliteration of legacy `D1` followed by `D1v2`'s
+ * Contract-vs-Cost panel (R1, PARITY gaps 13 + 8a + 9-button):
+ *
+ *   header (name · client · address · contract-type chip, Edit Project ghost)
+ *   → five D1 stat blocks over 1px ink rules
+ *   → the analytic BOQ table (zero-placeholder codes filtered out)
+ *   → D1v2 "Contract vs Cost" 4-KPI panel with Duplicate Project.
+ *
+ * Legacy is the spec — layout, copy, colours and maths mirror the source.
  */
 export function OverviewTab() {
   const project = useProject()
   const state = useAppState()
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   if (!project) return null
 
   const purchases = state.purchases[project.id as string] ?? []
   const fin = computeProjectFinancials(project, purchases)
-  const outstanding = outstandingInvoiceTotal(project)
-  const heldRetention = retentionHeld(state, project.id as string)
   const client = state.clients.find((c) => c.id === project.clientId)
-  // Legacy erosion sign: positive = eroded below target (D1v2).
-  const marginAccent =
-    fin.marginErosionPct > 5
-      ? 'var(--sw-neg)'
-      : fin.marginErosionPct > 0
-        ? 'var(--sw-violet)'
-        : 'var(--sw-pos)'
+  const marginTarget = project.margin ?? 15
+
+  const approvedCount = project.variations.filter((v) => v.status === 'Approved').length
+  const pendingCount = project.variations.filter((v) => v.status === 'Pending').length
+  const pctSpent = ((fin.codeActualTotal / fin.originalBudget) * 100 || 0).toFixed(0)
+
+  // Legacy D1 tbody filter: hide all-zero placeholder codes (44 → 25).
+  const visibleCodes = project.codes.filter(
+    (c) =>
+      c.budget !== 0 ||
+      c.committed !== 0 ||
+      (c.actual != null && c.actual !== 0) ||
+      project.variations.some((v) => v.status === 'Approved' && v.ccId === c.id),
+  )
+
+  // Legacy `Ma` — committed vs (adjusted) budget health.
+  function health(budget: number, committed: number): 'On Budget' | 'At Risk' | 'Over' | '—' {
+    if (!budget) return '—'
+    if (committed <= budget) return 'On Budget'
+    if (committed <= budget * 1.1) return 'At Risk'
+    return 'Over'
+  }
+
+  // D1v2 derived colours.
+  const marginOk = fin.currentMarginPct >= marginTarget
+  const erosion = fin.marginErosionPct
+  const erosionColor =
+    erosion > 2 ? 'var(--sw-neg)' : erosion > 0 ? 'var(--sw-violet)' : 'var(--sw-pos)'
+
+  function duplicateProject() {
+    if (!project) return
+    // Legacy shell onDuplicate: dispatch, then return to the projects list.
+    // Name suffix per legacy Z1: "<name> (Copy)".
+    dispatch({
+      type: 'DUPLICATE_PROJECT',
+      projectId: project.id,
+      newName: `${project.name} (Copy)`,
+    })
+    navigate('/projects')
+  }
 
   return (
     <div>
+      {/* ── D1 header ─────────────────────────────────────────────────── */}
       <header className="mb-7 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-[24px] font-bold tracking-[-0.02em] text-sw-ink mb-1.5">
@@ -48,117 +84,208 @@ export function OverviewTab() {
             {client?.name && project.address ? ' · ' : ''}
             {project.address}
           </div>
-        </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <span className="inline-flex items-center border border-sw-rule rounded-[2px] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-sw-dim">
+          <span className="mt-2 inline-block border border-sw-rule rounded-[2px] px-2 py-[2px] text-[10px] font-bold uppercase tracking-[0.08em] text-sw-dim">
             {project.contractType === 'cost-plus' ? 'Cost Plus' : 'Fixed Price'}
           </span>
-          <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
-            Edit Project
-          </Button>
         </div>
+        <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+          Edit Project
+        </Button>
       </header>
 
-      <section className="mb-12 flex gap-12">
-        <StatBlock
+      {/* ── D1 stat row (1px ink top rules, 24px values) ──────────────── */}
+      <div className="mb-10 flex gap-12">
+        <Stat
           label="Contract Value"
           value={formatCurrency(fin.contractValue)}
-          sublabel={`target ${project.margin}% margin`}
+          sub={`target ${marginTarget}% margin`}
         />
-        <StatBlock
-          label="Cost to Date"
-          value={formatCurrency(fin.costToDate)}
-          sublabel={`${formatCurrency(fin.committedToDate)} committed`}
+        <Stat
+          label="Original Budget"
+          value={formatCurrency(fin.originalBudget)}
+          sub={`${pctSpent}% spent`}
         />
-        <StatBlock
-          label="Current Margin"
-          accent={marginAccent}
-          value={`${fin.currentMarginPct.toFixed(1)}%`}
-          sublabel={`target ${project.margin}%`}
+        <Stat
+          label="Approved Variations"
+          value={formatCurrency(fin.approvedVariations)}
+          color={fin.approvedVariations > 0 ? 'var(--sw-violet)' : 'var(--sw-dim)'}
+          sub={`${approvedCount} approved / ${pendingCount} pending`}
         />
-        <StatBlock
-          label="Margin Erosion"
-          accent={marginAccent}
-          value={`${fin.marginErosionPct > 0 ? '−' : '+'}${Math.abs(fin.marginErosionPct).toFixed(1)}%`}
-          sublabel={fin.marginErosionPct > 0 ? 'below target' : 'above target'}
+        <Stat
+          label="True Overrun"
+          value={fin.trueOverrun > 0 ? formatCurrency(fin.trueOverrun) : 'Within Budget'}
+          color={fin.trueOverrun > 0 ? 'var(--sw-neg)' : 'var(--sw-pos)'}
+          sub={
+            fin.trueOverrun > 0
+              ? 'Above adj. budget'
+              : `Adj. budget: ${formatCurrency(fin.adjustedBudget)}`
+          }
         />
-        <StatBlock
+        <Stat
           label="Outstanding Invoices"
-          value={formatCurrency(outstanding)}
-          sublabel={`retention held ${formatCurrency(heldRetention)}`}
+          value={formatCurrency(fin.invoicesOutstanding)}
+          color={fin.invoicesOutstanding > 0 ? 'var(--sw-violet)' : 'var(--sw-pos)'}
+          sub={`$${(fin.invoicesPaid / 1e3).toFixed(0)}K paid`}
         />
-      </section>
+      </div>
 
-      <section className="grid grid-cols-2 gap-12">
-        <div className="border-t border-sw-ink pt-5">
-          <header className="mb-4 flex items-center justify-between">
-            <h2 className="text-[13px] font-bold text-sw-ink">Contract vs Cost</h2>
-            <StatusBadge status={project.contractType} />
-          </header>
-          <dl className="text-[13px]">
-            <div className="flex justify-between border-b border-sw-rule-l py-2">
-              <dt className="text-sw-dim">Original budget</dt>
-              <dd className="font-mono">{formatCurrency(fin.originalBudget)}</dd>
-            </div>
-            <div className="flex justify-between border-b border-sw-rule-l py-2">
-              <dt className="text-sw-dim">Approved variations</dt>
-              <dd className="font-mono">{formatCurrency(fin.approvedVariations)}</dd>
-            </div>
-            <div className="flex justify-between border-b border-sw-rule-l py-2 font-semibold">
-              <dt>Adjusted contract value</dt>
-              <dd className="font-mono">{formatCurrency(fin.adjustedContractValue)}</dd>
-            </div>
-            <div className="flex justify-between border-b border-sw-rule-l py-2">
-              <dt className="text-sw-dim">Cost to date</dt>
-              <dd className="font-mono">−{formatCurrency(fin.costToDate)}</dd>
-            </div>
-            <div className="flex justify-between py-2 font-semibold">
-              <dt>Remaining</dt>
-              <dd
-                className="font-mono"
-                style={{
-                  color: fin.remainingContract < 0 ? 'var(--sw-neg)' : 'var(--sw-pos)',
-                }}
-              >
-                {formatCurrency(fin.remainingContract)}
-              </dd>
-            </div>
-          </dl>
-        </div>
+      {/* ── D1 analytic BOQ table ─────────────────────────────────────── */}
+      <div className="border-t border-sw-ink bg-white">
+        <table className="sw-table">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Description</th>
+              <th className="text-right">Orig. Budget</th>
+              <th className="text-right">Variations</th>
+              <th className="text-right">Adj. Budget</th>
+              <th className="text-right">Actual</th>
+              <th className="text-right">Overrun</th>
+              <th className="text-right">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleCodes.map((code) => {
+              const va = project.variations
+                .filter((v) => v.status === 'Approved' && v.ccId === code.id)
+                .reduce((s, v) => s + (v.amount || 0), 0)
+              const adjBudget = (code.budget || 0) + va
+              const trueOverrun = (code.committed || 0) - adjBudget
+              return (
+                <tr key={code.id as string} className="border-b border-sw-rule-l">
+                  <td className="font-mono text-sw-dim">{code.code}</td>
+                  <td>{code.desc}</td>
+                  <td className="text-right font-mono">{formatCurrency(code.budget || 0)}</td>
+                  <td
+                    className="text-right font-mono"
+                    style={{ color: va > 0 ? 'var(--sw-violet)' : 'var(--sw-dim)' }}
+                  >
+                    {va > 0 ? formatCurrency(va) : '—'}
+                  </td>
+                  <td className="text-right font-mono font-semibold">
+                    {formatCurrency(adjBudget)}
+                  </td>
+                  <td className="text-right font-mono">{formatCurrency(code.actual || 0)}</td>
+                  {/* Legacy k() displays the absolute value; "+" flags a true overrun. */}
+                  <td
+                    className="text-right font-mono"
+                    style={{ color: trueOverrun > 0 ? 'var(--sw-neg)' : 'var(--sw-pos)' }}
+                  >
+                    {trueOverrun > 0 ? '+' : ''}
+                    {formatCurrency(Math.abs(trueOverrun))}
+                  </td>
+                  <td className="text-right">
+                    <StatusBadge status={health(adjBudget, code.committed || 0)} />
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
 
-        <div className="border-t border-sw-ink pt-5">
-          <header className="mb-4">
-            <h2 className="text-[13px] font-bold text-sw-ink">Project info</h2>
-          </header>
-          <dl className="text-[13px]">
-            <div className="flex justify-between border-b border-sw-rule-l py-2">
-              <dt className="text-sw-dim">State</dt>
-              <dd>{project.state}</dd>
-            </div>
-            <div className="flex justify-between border-b border-sw-rule-l py-2">
-              <dt className="text-sw-dim">Contract form</dt>
-              <dd>{project.contractForm}</dd>
-            </div>
-            <div className="flex justify-between border-b border-sw-rule-l py-2">
-              <dt className="text-sw-dim">Classification</dt>
-              <dd>{project.contractClassification}</dd>
-            </div>
-            <div className="flex justify-between border-b border-sw-rule-l py-2">
-              <dt className="text-sw-dim">Cost codes</dt>
-              <dd>{project.codes.length}</dd>
-            </div>
-            <div className="flex justify-between py-2">
-              <dt className="text-sw-dim">Variations</dt>
-              <dd>
-                {project.variations.length} total ·{' '}
-                {project.variations.filter((v) => v.status === 'Approved').length} approved
-              </dd>
-            </div>
-          </dl>
+      {/* ── D1v2 Contract vs Cost panel ───────────────────────────────── */}
+      <section className="mt-8 border-t-2 border-sw-ink pt-6">
+        <header className="mb-5 flex items-center justify-between">
+          <h2 className="text-[13px] font-bold uppercase tracking-[0.08em] text-sw-ink">
+            Contract vs Cost
+          </h2>
+          <button
+            type="button"
+            onClick={duplicateProject}
+            className="border border-sw-rule rounded-[1px] bg-transparent px-3 py-[5px] text-[11px] text-sw-dim cursor-pointer hover:text-sw-ink transition"
+          >
+            Duplicate Project
+          </button>
+        </header>
+        <div className="grid grid-cols-4 gap-6">
+          <Kpi
+            label="Contract Value"
+            value={formatCurrency(fin.adjustedContractValue)}
+            sub={
+              fin.approvedVariations > 0
+                ? `incl. ${formatCurrency(fin.approvedVariations)} vars`
+                : undefined
+            }
+          />
+          <Kpi label="Cost to Date" value={formatCurrency(fin.costToDate)} sub="committed" />
+          <Kpi
+            label="Current Margin"
+            value={`${fin.currentMarginPct.toFixed(1)}%`}
+            color={marginOk ? 'var(--sw-pos)' : 'var(--sw-neg)'}
+            accent={marginOk ? 'var(--sw-pos)' : 'var(--sw-neg)'}
+            sub={`target ${marginTarget}%`}
+          />
+          <Kpi
+            label="Margin Erosion"
+            value={`${erosion > 0 ? '-' : '+'}${Math.abs(erosion).toFixed(1)}%`}
+            color={erosionColor}
+            accent={erosionColor}
+            sub={erosion > 0 ? 'below target' : 'above target'}
+          />
         </div>
       </section>
 
       {editing && <ProjectForm open initial={project} onClose={() => setEditing(false)} />}
+    </div>
+  )
+}
+
+/** Legacy D1 stat block: 1px ink top rule, 9px label, 24px value, 11px faint sub. */
+function Stat({
+  label,
+  value,
+  color,
+  sub,
+}: {
+  label: string
+  value: string
+  color?: string
+  sub?: string
+}) {
+  return (
+    // Content-width like legacy `h` (no flex-1) — the ink rule spans the text.
+    <div className="border-t border-sw-ink pt-3">
+      <div className="mb-2 text-[9px] font-medium uppercase tracking-[0.1em] text-sw-dim">
+        {label}
+      </div>
+      <div
+        className="mb-[3px] text-[24px] font-bold tracking-[-0.02em]"
+        style={{ color: color ?? 'var(--sw-ink)' }}
+      >
+        {value}
+      </div>
+      {sub && <div className="text-[11px] text-sw-faint">{sub}</div>}
+    </div>
+  )
+}
+
+/** Legacy D1v2 KPI cell: 1px rule top, optional 3px left accent, 22px value. */
+function Kpi({
+  label,
+  value,
+  color,
+  accent,
+  sub,
+}: {
+  label: string
+  value: string
+  color?: string
+  accent?: string
+  sub?: string
+}) {
+  return (
+    <div
+      className="border-t border-sw-rule py-3"
+      style={accent ? { borderLeft: `3px solid ${accent}`, paddingLeft: 10 } : undefined}
+    >
+      <div className="mb-1.5 text-[9px] font-medium uppercase tracking-[0.1em] text-sw-dim">
+        {label}
+      </div>
+      <div className="text-[22px] font-bold" style={{ color: color ?? 'var(--sw-ink)' }}>
+        {value}
+      </div>
+      {sub && <div className="text-[11px] text-sw-dim">{sub}</div>}
     </div>
   )
 }

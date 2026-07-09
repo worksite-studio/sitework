@@ -51,11 +51,21 @@ test('deep-link into a project tab works', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Progress Claims' })).toBeVisible()
 })
 
-test('project Overview tab renders Contract vs Cost panel', async ({ page }) => {
+test('project Overview tab renders D1 stats + BOQ table + Contract vs Cost panel', async ({
+  page,
+}) => {
   await page.goto('/projects/PRJ-001/overview')
-  await expect(page.getByText('Contract Value', { exact: true })).toBeVisible()
+  // D1 stat row (legacy-only stats)
+  await expect(page.getByText('True Overrun')).toBeVisible()
+  await expect(page.getByText('Original Budget', { exact: true })).toBeVisible()
+  // D1 analytic BOQ table (zero-placeholder codes filtered out)
+  await expect(
+    page.getByText('Preliminary Costs, Consultant Fees, Site Establishment'),
+  ).toBeVisible()
+  await expect(page.getByText('Surveying — Set-Out, TBM, Pins')).not.toBeVisible()
+  // D1v2 panel + Duplicate Project button
   await expect(page.getByRole('heading', { name: /Contract vs Cost/ })).toBeVisible()
-  await expect(page.getByText('Adjusted contract value')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Duplicate Project' })).toBeVisible()
 })
 
 test('project BOQ tab renders codes table and supports add', async ({ page }) => {
@@ -67,7 +77,7 @@ test('project BOQ tab renders codes table and supports add', async ({ page }) =>
 
   // Open the cost-code form via the + Cost Code button
   await page.getByRole('button', { name: '+ Cost Code' }).first().click()
-  await expect(page.getByRole('heading', { name: 'New cost code' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Add Cost Code' })).toBeVisible()
   // Auto-numbered Code (next 3-digit) is pre-filled
   await expect(page.getByLabel(/^Code\*$/)).not.toHaveValue('')
 })

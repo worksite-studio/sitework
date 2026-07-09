@@ -38,7 +38,7 @@ export function BoqTemplateImportDialog({ open, onClose, projectId }: Props) {
         reset()
         onClose()
       }}
-      title="Import from BOQ template"
+      title="Import BOQ Template"
       description="Adds any codes from the template that aren't already on this project. Dedupes by code string."
       footer={
         <>

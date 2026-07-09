@@ -145,6 +145,20 @@ describe('projects', () => {
     expect(s.projects[1]!.id).not.toBe(P1)
   })
 
+  it('DUPLICATE_PROJECT copy starts at planning with money history cleared (legacy Z1)', () => {
+    const s = reducer(stateWithProject(), {
+      type: 'DUPLICATE_PROJECT',
+      projectId: P1,
+      newName: 'Copy',
+    })
+    const copy = s.projects[1]!
+    expect(copy.status).toBe('planning')
+    expect(copy.invoices).toEqual([])
+    expect(copy.variations).toEqual([])
+    // Codes / budgets carry over untouched.
+    expect(copy.codes).toEqual(s.projects[0]!.codes)
+  })
+
   it('ADD_PROJECT does not mutate input', () => {
     expectImmutable(emptyState(), { type: 'ADD_PROJECT', project: makeProject() })
   })

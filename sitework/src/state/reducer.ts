@@ -77,7 +77,16 @@ export function reducer(state: RootState, action: Action): RootState {
       const src = state.projects.find((p) => p.id === action.projectId)
       if (!src) return state
       const dupId = asId<ProjectId>(newId('PRJ-DUP'))
-      const clone: typeof src = { ...src, id: dupId, name: action.newName }
+      // Legacy Z1: the copy starts at "planning" with invoices + variations
+      // cleared — codes/budgets carry over, money history does not.
+      const clone: typeof src = {
+        ...src,
+        id: dupId,
+        name: action.newName,
+        status: 'planning',
+        invoices: [],
+        variations: [],
+      }
       return { ...state, projects: [...state.projects, clone] }
     }
 

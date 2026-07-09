@@ -183,6 +183,38 @@ export function retentionHeld(state: RootState, projectId: string): number {
   return r?.held ?? 0
 }
 
+// ─── Per-code live committed / actual — legacy `Gc` ─────────────────────────
+
+export interface CodeDocTotals {
+  /** Σ invoices[≠Rejected] + Σ purchases[≠cancelled] booked against this code. */
+  committed: number
+  /** Σ invoices[Paid] booked against this code. */
+  actual: number
+}
+
+/**
+ * Legacy `Gc(code, invoices, purchases)` — the live committed/actual figures
+ * the BOQ tab renders per cost code, derived from documents (not the static
+ * `code.committed` field).
+ */
+export function codeDocTotals(
+  codeId: string,
+  invoices: Project['invoices'],
+  purchases: Purchase[],
+): CodeDocTotals {
+  const committed =
+    invoices
+      .filter((i) => (i.ccId as string) === codeId && (i.status as string) !== 'Rejected')
+      .reduce((s, i) => s + (i.amount || 0), 0) +
+    purchases
+      .filter((p) => (p.ccId as string) === codeId && p.status !== 'cancelled')
+      .reduce((s, p) => s + (p.amount || 0), 0)
+  const actual = invoices
+    .filter((i) => (i.ccId as string) === codeId && i.status === 'Paid')
+    .reduce((s, i) => s + (i.amount || 0), 0)
+  return { committed, actual }
+}
+
 // ─── PC / PS reconciliation — legacy `Pcps` calc ─────────────────────────────
 
 export interface PcPsCalc {

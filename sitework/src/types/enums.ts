@@ -26,7 +26,8 @@ export type ContractClassification = 'Domestic' | 'Commercial'
 
 export type AustralianState = 'NSW' | 'VIC' | 'QLD' | 'WA' | 'SA' | 'TAS' | 'ACT' | 'NT'
 
-export type ProjectStatus = 'live' | 'quoted' | 'complete' | 'on-hold' | 'cancelled'
+/** 'planning' is what legacy `Z1` assigns to a DUPLICATE_PROJECT copy. */
+export type ProjectStatus = 'live' | 'quoted' | 'planning' | 'complete' | 'on-hold' | 'cancelled'
 
 export type LeadStage = 'prospect' | 'tendering' | 'won' | 'lost'
 
