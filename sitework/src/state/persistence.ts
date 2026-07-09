@@ -3,6 +3,7 @@ import type { RootState } from '@/types'
 
 /** Current persistence schema version. Bump when the shape changes incompatibly. */
 export const STATE_KEY = 'sw_state_v2' as const
+/** Pre-Phase-4 single-file app's key — cleared by Reset to Demo Data too. */
 const LEGACY_KEY = 'sw_state_v1' as const
 
 /**

@@ -20,6 +20,7 @@ import type {
   ContractType,
   Project,
   ProjectId,
+  Settings,
 } from '@/types'
 
 interface ProjectFormProps {
@@ -59,18 +60,18 @@ interface FormState {
   qldHwsAcknowledged: boolean
 }
 
-// Legacy seeded contractType/state from the sw_ct / sw_state Settings keys;
-// those Settings fields arrive in session P2 — until then the legacy
-// fallbacks ('cost-plus' / 'NSW') apply.
-const blank = (): FormState => ({
+// Legacy I0 seeds contractType/state from Settings (sw_ct / sw_state) with
+// 'cost-plus' / 'NSW' fallbacks; margin is a fixed 15 in legacy (NOT read
+// from sw_margin). Wired in R4 (PARITY gap 2).
+const blank = (settings: Settings): FormState => ({
   name: '',
   clientId: '',
   address: '',
   startDate: '',
   margin: '15',
   estimatedValue: '0',
-  contractType: 'cost-plus',
-  state: 'NSW',
+  contractType: settings.defaultContractType ?? 'cost-plus',
+  state: settings.homeState ?? 'NSW',
   contractForm: 'HIA',
   contractClassification: 'Domestic',
   isRenovationWithUnknownCost: false,
@@ -100,9 +101,11 @@ const fromProject = (p: Project): FormState => ({
  * `attempted`, which red-lines the offending inputs.
  */
 export function ProjectForm({ open, onClose, initial }: ProjectFormProps) {
-  const { clients } = useAppState()
+  const { clients, settings } = useAppState()
   const dispatch = useDispatch()
-  const [form, setForm] = useState<FormState>(() => (initial ? fromProject(initial) : blank()))
+  const [form, setForm] = useState<FormState>(() =>
+    initial ? fromProject(initial) : blank(settings),
+  )
   const [attempted, setAttempted] = useState(false)
 
   const isEdit = !!initial
@@ -126,7 +129,7 @@ export function ProjectForm({ open, onClose, initial }: ProjectFormProps) {
   }
 
   function reset() {
-    setForm(initial ? fromProject(initial) : blank())
+    setForm(initial ? fromProject(initial) : blank(settings))
     setAttempted(false)
   }
 

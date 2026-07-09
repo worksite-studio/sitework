@@ -290,20 +290,41 @@ test('estimating module: tab switch + open template wizard', async ({ page }) =>
   await expect(page.getByText('Test Estimate')).toBeVisible()
 })
 
-test('settings module: edit + save flips the dirty/saved state', async ({ page }) => {
-  // Persistence (localStorage write-through) is covered by persistence unit
-  // tests; here we'd hit beforeEach's localStorage.clear() on reload, so we
-  // assert the in-page dirty → saved transition instead.
+test('settings module: full St1 field set, save flashes Saved!', async ({ page }) => {
   await page.goto('/settings')
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Save changes' })).toBeDisabled()
 
-  await page.getByLabel('Business name').fill('Acme Builders Pty Ltd')
-  await expect(page.getByText('Unsaved changes.')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Save changes' })).toBeEnabled()
-  await page.getByRole('button', { name: 'Save changes' }).click()
-  await expect(page.getByText('Saved.')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Save changes' })).toBeDisabled()
+  // Legacy St1 field set (PARITY gap 2)
+  await expect(page.getByLabel('Business Name')).toBeVisible()
+  await expect(page.getByLabel('Default Contract Type')).toBeVisible()
+  await expect(page.getByLabel('Default Margin (%)')).toBeVisible()
+  await expect(page.getByText('Registered for GST')).toBeVisible()
+  await expect(page.getByLabel('Home State')).toBeVisible()
+  await expect(page.getByLabel('Licence VIC')).toBeVisible()
+  await expect(page.getByLabel('QBCC (QLD)')).toBeVisible()
+  await expect(page.getByLabel('NT (no scheme)')).toBeVisible()
+  // Reset to Demo Data (gap 3)
+  await expect(page.getByRole('button', { name: 'Reset to Demo Data' })).toBeVisible()
+
+  await page.getByLabel('Business Name').fill('Acme Builders Pty Ltd')
+  await page.getByRole('button', { name: 'Save Settings' }).click()
+  await expect(page.getByText('Saved!')).toBeVisible()
+})
+
+test('settings defaults seed the project form (legacy sw_ct / sw_state wiring)', async ({
+  page,
+}) => {
+  await page.goto('/settings')
+  await page.getByLabel('Default Contract Type').selectOption('fixed-price')
+  await page.getByLabel('Home State').selectOption('VIC')
+  await page.getByRole('button', { name: 'Save Settings' }).click()
+  await expect(page.getByText('Saved!')).toBeVisible()
+
+  // Client-side nav (goto would reload and hit beforeEach's localStorage.clear()).
+  await page.getByRole('link', { name: 'Projects' }).click()
+  await page.getByRole('button', { name: '+ New Project' }).click()
+  await expect(page.getByLabel('Contract Type')).toHaveValue('fixed-price')
+  await expect(page.getByLabel('State')).toHaveValue('VIC')
 })
 
 test('suppliers + materials catalogues render at their direct URLs', async ({ page }) => {
