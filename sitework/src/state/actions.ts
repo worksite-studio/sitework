@@ -268,9 +268,8 @@ export type UpdateLeadAction = { type: 'UPDATE_LEAD'; leadId: LeadId; patch: Par
 export type ConvertLeadToProjectAction = {
   type: 'CONVERT_LEAD_TO_PROJECT'
   leadId: LeadId
-  project: Project
-  /** Optional Client to create at the same time. */
-  client?: Client
+  /** Client for the new project — legacy `Cv1` allows "(no client)". */
+  clientId: ClientId | null
 }
 
 // ─── Materials / Suppliers (new in Phase 4) ──────────────────────────────
@@ -308,10 +307,10 @@ export type CreateEstimateFromTemplateAction = {
   /** Used to compute absolute budgets from template percentages. */
   contractValue: number
 }
+// Legacy Z1 names the promoted project after the estimate — no name param.
 export type PromoteEstimateAction = {
   type: 'PROMOTE_ESTIMATE'
   estimateId: EstimateId
-  projectName: string
 }
 
 // ─── Settings (new in Phase 4) ───────────────────────────────────────────

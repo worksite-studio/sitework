@@ -710,26 +710,34 @@ describe('subs / clients / leads', () => {
     expect(s.leads[0]!.stage).toBe('tendering')
   })
 
-  it('CONVERT_LEAD_TO_PROJECT marks lead won + adds project + optional client', () => {
-    const s0 = emptyState({ leads: [lead] })
+  it('CONVERT_LEAD_TO_PROJECT builds the project from the lead (legacy Z1)', () => {
+    const s0 = emptyState({ leads: [lead], clients: [client] })
     const s = reducer(s0, {
       type: 'CONVERT_LEAD_TO_PROJECT',
       leadId: lead.id,
-      project: makeProject({ id: asId<ProjectId>('PRJ-NEW') }),
-      client,
+      clientId: client.id,
     })
     expect(s.leads[0]!.stage).toBe('won')
     expect(s.projects).toHaveLength(1)
-    expect(s.clients).toHaveLength(1)
+    const p = s.projects[0]!
+    expect(p.name).toBe(lead.name)
+    expect(p.clientId).toBe(client.id)
+    expect(p.status).toBe('live')
+    expect(p.margin).toBe(20)
+    expect(p.estimatedValue).toBe(lead.value)
+    expect(p.codes).toEqual([])
+    // The lead remembers where it went (legacy convertedToProjectId).
+    expect(s.leads[0]!.convertedToProjectId).toBe(p.id as string)
   })
 
-  it('CONVERT_LEAD_TO_PROJECT without client leaves clients untouched', () => {
+  it('CONVERT_LEAD_TO_PROJECT with no client leaves clientId null', () => {
     const s0 = emptyState({ leads: [lead] })
     const s = reducer(s0, {
       type: 'CONVERT_LEAD_TO_PROJECT',
       leadId: lead.id,
-      project: makeProject({ id: asId<ProjectId>('PRJ-NEW') }),
+      clientId: null,
     })
+    expect(s.projects[0]!.clientId).toBeNull()
     expect(s.clients).toHaveLength(0)
   })
 })
@@ -831,16 +839,16 @@ describe('estimates', () => {
     expect(s.estimates[0]!.codes[0]!.budget).toBe(5000) // 5% of 100k
   })
 
-  it('PROMOTE_ESTIMATE creates a project with copied codes', () => {
+  it('PROMOTE_ESTIMATE creates a project named after the estimate (legacy Z1)', () => {
     const s0 = emptyState({ estimates: [est] })
-    const s = reducer(s0, {
-      type: 'PROMOTE_ESTIMATE',
-      estimateId: est.id,
-      projectName: 'Promoted',
-    })
+    const s = reducer(s0, { type: 'PROMOTE_ESTIMATE', estimateId: est.id })
     expect(s.projects).toHaveLength(1)
-    expect(s.projects[0]!.name).toBe('Promoted')
-    expect(s.projects[0]!.codes[0]!.budget).toBe(1000)
+    const p = s.projects[0]!
+    expect(p.name).toBe(est.name)
+    expect(p.codes[0]!.budget).toBe(1000)
+    // estimatedValue = Σ code budgets; the estimate flips to won.
+    expect(p.estimatedValue).toBe(est.codes.reduce((sum, c) => sum + c.budget, 0))
+    expect(s.estimates[0]!.status).toBe('won')
   })
 })
 

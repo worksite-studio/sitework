@@ -1,98 +1,169 @@
 import { useState } from 'react'
 import { useAppState } from '@/state/context'
-import { Button, EmptyState, ExpiryChip } from '@/components/ui'
-import { getExpiryInfo } from '@/lib/certExpiry'
-import { cn } from '@/lib/cn'
+import { Button } from '@/components/ui'
+import { formatDate } from '@/lib/formatDate'
 import { SubForm } from './SubForm'
 import type { Subcontractor } from '@/types'
 
+interface CertStatus {
+  color: string
+  label: string
+}
+
 /**
- * Subcontractors module — port of legacy `V1`. Row click opens the edit
- * dialog. Each row shows the PL / WC chips (always present), then any
- * certificates[] chips with their type prefix (PL/WC/PI/Licence/Other).
- *
- * Project-count is shown via the sub.projects[] denormalised array so a
- * sub assigned to active jobs is obvious without a join.
+ * Legacy `V1` `u()` — cert status against a 60-day window (`Nl = today+60`):
+ * past → EXPIRED pink, within 60 days → Expiring violet, else Current green.
+ */
+function certStatus(dateIso: string | null | undefined, today: Date, soon: Date): CertStatus {
+  if (!dateIso) return { color: 'var(--sw-faint)', label: '—' }
+  const d = new Date(dateIso)
+  if (d < today) return { color: 'var(--sw-neg)', label: 'EXPIRED' }
+  if (d <= soon) return { color: 'var(--sw-violet)', label: 'Expiring' }
+  return { color: 'var(--sw-pos)', label: 'Current' }
+}
+
+/**
+ * Subcontractors — transliteration of legacy `V1` (R5, PARITY gap-12 row +
+ * the gap-10 pill-drift fix): "N registered · N compliance issues" sub-line,
+ * uppercase trade filter chips, six-column ruled table (Subcontractor w/
+ * contact · phone, Trade, mono Licence, Public Liability + Workers Comp as
+ * bare-text statuses with dates beneath, SWMS On file/Required), and the
+ * lilac row tint on non-compliant subs. Row click edits.
  */
 export function SubsPage() {
   const { subs } = useAppState()
   const [editing, setEditing] = useState<Subcontractor | null>(null)
   const [creating, setCreating] = useState(false)
+  const [trade, setTrade] = useState('All')
+
+  const today = new Date()
+  const soon = new Date()
+  soon.setDate(soon.getDate() + 60)
+
+  const status = (iso: string | null | undefined) => certStatus(iso, today, soon)
+  const trades = ['All', ...Array.from(new Set(subs.map((s) => s.trade)))]
+  const visible = trade === 'All' ? subs : subs.filter((s) => s.trade === trade)
+  const complianceIssues = subs.filter(
+    (s) =>
+      !s.swms || status(s.liabilityExp).label !== 'Current' || status(s.wcExp).label !== 'Current',
+  ).length
 
   return (
-    <div className="sw-page space-y-4">
-      <header className="flex items-center justify-between">
-        <h1 className="text-[26px] font-bold tracking-[-0.02em] text-sw-ink">Subcontractors</h1>
-        <Button onClick={() => setCreating(true)}>+ New Subcontractor</Button>
+    <div className="sw-page">
+      <header className="mb-5 flex items-center justify-between">
+        <div>
+          <h1 className="mb-1 text-[26px] font-bold tracking-[-0.02em] text-sw-ink">
+            Subcontractors
+          </h1>
+          <div className="text-[13px] text-sw-dim">
+            {subs.length} registered
+            {complianceIssues > 0 && (
+              <span className="ml-2 font-semibold" style={{ color: 'var(--sw-neg)' }}>
+                · {complianceIssues} compliance issue{complianceIssues !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+        </div>
+        <Button onClick={() => setCreating(true)}>+ Add Subcontractor</Button>
       </header>
 
-      {subs.length === 0 ? (
-        <EmptyState
-          title="No subcontractors yet"
-          description="Add a subcontractor to track licences, insurance expiries, and project assignments."
-          action={<Button onClick={() => setCreating(true)}>+ New Subcontractor</Button>}
-        />
-      ) : (
-        <div>
-          <ul className="divide-y divide-sw-border">
-            {subs.map((s) => {
-              const plInfo = getExpiryInfo(s.liabilityExp)
-              const wcInfo = getExpiryInfo(s.wcExp)
-              const certs = s.certificates ?? []
-              const hasIssue =
-                plInfo.status === 'expired' ||
-                plInfo.status === 'expiring' ||
-                wcInfo.status === 'expired' ||
-                wcInfo.status === 'expiring' ||
-                certs.some((c) => {
-                  const st = getExpiryInfo(c.expiry).status
-                  return st === 'expired' || st === 'expiring'
-                })
+      {/* Legacy trade filter chips: uppercase, ink-filled when active. */}
+      <div className="mb-4 flex flex-wrap gap-1.5">
+        {trades.map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTrade(t)}
+            className="cursor-pointer rounded-[1px] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.06em]"
+            style={{
+              border: `1px solid ${trade === t ? 'var(--sw-ink)' : 'var(--sw-rule)'}`,
+              background: trade === t ? 'var(--sw-ink)' : '#fff',
+              color: trade === t ? '#fff' : 'var(--sw-dim)',
+            }}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      <div className="border-t border-sw-ink bg-white">
+        <table className="sw-table">
+          <thead>
+            <tr>
+              <th>Subcontractor</th>
+              <th>Trade</th>
+              <th>Licence</th>
+              <th>Public Liability</th>
+              <th>Workers Comp</th>
+              <th>SWMS</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map((sub) => {
+              const pl = status(sub.liabilityExp)
+              const wc = status(sub.wcExp)
+              const nonCompliant = !sub.swms || pl.label !== 'Current' || wc.label !== 'Current'
               return (
-                <li key={s.id}>
-                  <button
-                    type="button"
-                    onClick={() => setEditing(s)}
-                    className="w-full text-left px-4 py-3 hover:bg-sw-muted/5 transition"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{s.name}</span>
-                          <span className="text-xs text-sw-muted">{s.trade}</span>
-                          {hasIssue && (
-                            <span
-                              className={cn(
-                                'text-[10px] uppercase font-medium tracking-wide px-1.5 py-0.5 rounded',
-                                'bg-sw-danger/10 text-sw-danger',
-                              )}
-                            >
-                              Attention
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-sw-muted">
-                          {[s.contact, s.phone, s.email].filter(Boolean).join(' · ') || s.id}
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1 shrink-0">
-                        <ExpiryChip kind="PL" iso={s.liabilityExp} />
-                        <ExpiryChip kind="WC" iso={s.wcExp} />
-                        {certs.map((c) => (
-                          <ExpiryChip key={c.id} kind={c.type} iso={c.expiry} />
-                        ))}
-                        <span className="text-xs text-sw-muted ml-2">
-                          {s.projects.length} {s.projects.length === 1 ? 'project' : 'projects'}
-                        </span>
-                      </div>
+                <tr
+                  key={sub.id as string}
+                  onClick={() => setEditing(sub)}
+                  className="cursor-pointer border-b border-sw-rule-l"
+                  style={{ background: nonCompliant ? '#F5F3FF' : '#fff' }}
+                >
+                  <td>
+                    <div className="text-[13px] font-bold text-sw-ink">{sub.name}</div>
+                    <div className="text-[11px] text-sw-faint">
+                      {sub.contact} · {sub.phone}
                     </div>
-                  </button>
-                </li>
+                  </td>
+                  <td className="text-[10px] tracking-[0.04em] text-sw-dim">{sub.trade}</td>
+                  <td className="font-mono text-sw-dim">{sub.licence || '—'}</td>
+                  <td>
+                    <div className="text-[11px] font-semibold" style={{ color: pl.color }}>
+                      {pl.label}
+                    </div>
+                    {sub.liabilityExp && (
+                      <div className="text-[10px] text-sw-faint">
+                        {formatDate(sub.liabilityExp)}
+                      </div>
+                    )}
+                  </td>
+                  <td>
+                    <div className="text-[11px] font-semibold" style={{ color: wc.color }}>
+                      {wc.label}
+                    </div>
+                    {sub.wcExp && (
+                      <div className="text-[10px] text-sw-faint">{formatDate(sub.wcExp)}</div>
+                    )}
+                  </td>
+                  <td>
+                    {sub.swms ? (
+                      <span
+                        className="text-[11px] font-semibold"
+                        style={{ color: 'var(--sw-pos)' }}
+                      >
+                        On file
+                      </span>
+                    ) : (
+                      <span
+                        className="text-[11px] font-semibold"
+                        style={{ color: 'var(--sw-neg)' }}
+                      >
+                        Required
+                      </span>
+                    )}
+                  </td>
+                </tr>
               )
             })}
-          </ul>
-        </div>
-      )}
+          </tbody>
+        </table>
+        {visible.length === 0 && (
+          <div className="p-10 text-center text-[13px] text-sw-faint">
+            No subcontractors in this trade.
+          </div>
+        )}
+      </div>
 
       <SubForm open={creating} onClose={() => setCreating(false)} />
       {editing && <SubForm open onClose={() => setEditing(null)} initial={editing} />}

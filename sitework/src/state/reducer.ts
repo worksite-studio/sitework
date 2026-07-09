@@ -400,10 +400,38 @@ export function reducer(state: RootState, action: Action): RootState {
       }
 
     case 'CONVERT_LEAD_TO_PROJECT': {
-      const nextLeads = updateWhere(state.leads, (l) => l.id === action.leadId, { stage: 'won' })
-      const nextProjects = [...state.projects, action.project]
-      const nextClients = action.client ? [...state.clients, action.client] : state.clients
-      return { ...state, leads: nextLeads, projects: nextProjects, clients: nextClients }
+      // Legacy Z1: build the project from the lead in the reducer — status
+      // live, margin 20, contractType/state from Settings defaults (legacy
+      // read sw_ct/sw_state with a 'fixed-price' fallback HERE, unlike I0's
+      // cost-plus), estimatedValue = lead value, empty codes; the lead flips
+      // to won and remembers convertedToProjectId.
+      const lead = state.leads.find((l) => l.id === action.leadId)
+      if (!lead) return state
+      const newProject: (typeof state.projects)[number] = {
+        id: asId(newId('PRJ')),
+        name: lead.name,
+        clientId: (action.clientId ?? null) as (typeof state.projects)[number]['clientId'],
+        address: '',
+        status: 'live',
+        startDate: new Date().toISOString().slice(0, 10),
+        margin: 20,
+        contractType: state.settings.defaultContractType ?? 'fixed-price',
+        state: state.settings.homeState ?? 'NSW',
+        contractForm: 'HIA',
+        contractClassification: 'Domestic',
+        estimatedValue: lead.value || 0,
+        isRenovationWithUnknownCost: false,
+        qldHwsAcknowledged: false,
+        codes: [],
+        lineItems: {},
+        variations: [],
+        invoices: [],
+      }
+      const nextLeads = updateWhere(state.leads, (l) => l.id === action.leadId, {
+        stage: 'won',
+        convertedToProjectId: newProject.id as string,
+      })
+      return { ...state, leads: nextLeads, projects: [...state.projects, newProject] }
     }
 
     // ─── Materials / Suppliers (new in Phase 4) ───────────────────────────
@@ -465,21 +493,24 @@ export function reducer(state: RootState, action: Action): RootState {
     }
 
     case 'PROMOTE_ESTIMATE': {
+      // Legacy Z1: project named after the estimate; contractType/state from
+      // Settings defaults ('fixed-price' fallback); estimatedValue = Σ code
+      // budgets; the estimate flips to won.
       const est = state.estimates.find((e) => e.id === action.estimateId)
       if (!est) return state
       const newProject: (typeof state.projects)[number] = {
         id: asId(newId('PRJ')),
-        name: action.projectName,
+        name: est.name,
         clientId: est.clientId,
         address: est.address,
         status: 'live',
         startDate: new Date().toISOString().slice(0, 10),
         margin: est.margin,
-        contractType: 'cost-plus',
-        state: 'NSW',
+        contractType: state.settings.defaultContractType ?? 'fixed-price',
+        state: state.settings.homeState ?? 'NSW',
         contractForm: 'HIA',
         contractClassification: 'Domestic',
-        estimatedValue: 0,
+        estimatedValue: est.codes.reduce((s, c) => s + (c.budget || 0), 0),
         isRenovationWithUnknownCost: false,
         qldHwsAcknowledged: false,
         codes: est.codes.map((ec) => ({
@@ -495,7 +526,13 @@ export function reducer(state: RootState, action: Action): RootState {
         invoices: [],
         lineItems: {},
       }
-      return { ...state, projects: [...state.projects, newProject] }
+      return {
+        ...state,
+        estimates: updateWhere(state.estimates, (e) => e.id === action.estimateId, {
+          status: 'won',
+        }),
+        projects: [...state.projects, newProject],
+      }
     }
 
     // ─── Settings (new in Phase 4) ────────────────────────────────────────

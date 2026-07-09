@@ -212,29 +212,34 @@ test('clients module: add then edit a client', async ({ page }) => {
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('Smoke Test Pty Ltd')).toBeVisible()
 
-  // Edit — click the row
+  // Edit — row click expands the L1 detail strip, then Edit Client
   await page.getByText('Smoke Test Pty Ltd').click()
+  await page.getByRole('button', { name: 'Edit Client' }).click()
   await page.getByLabel(/^Name/).fill('Smoke Test (renamed)')
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('Smoke Test (renamed)')).toBeVisible()
 })
 
-test('subcontractors module: list shows cert chips, add then edit a sub', async ({ page }) => {
+test('subcontractors module: V1 table, add then edit a sub', async ({ page }) => {
   await page.goto('/subs')
   await expect(page.getByRole('heading', { name: 'Subcontractors' })).toBeVisible()
 
-  // Seed includes Worksite Studio with a cert
+  // Legacy V1 anatomy: compliance sub-line, trade chips, licence/SWMS columns
+  await expect(page.getByText(/compliance issue/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'PLUMBING' })).toBeVisible()
+  await expect(page.getByText('Licence', { exact: true })).toBeVisible()
+  await expect(page.getByText('SWMS', { exact: true })).toBeVisible()
   await expect(page.getByText('Worksite Studio')).toBeVisible()
 
   // Add
-  await page.getByRole('button', { name: '+ New Subcontractor' }).first().click()
+  await page.getByRole('button', { name: '+ Add Subcontractor' }).first().click()
   await page.getByLabel(/^Name\*$/).fill('Smoke Subs Pty Ltd')
   await page.getByLabel(/^Trade\*$/).fill('Carpentry')
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('Smoke Subs Pty Ltd')).toBeVisible()
 
   // Edit — row click, rename
-  await page.getByRole('button', { name: /Smoke Subs Pty Ltd/ }).click()
+  await page.getByText('Smoke Subs Pty Ltd').click()
   await expect(page.getByRole('heading', { name: /Edit Smoke Subs Pty Ltd/i })).toBeVisible()
   await page.getByLabel(/^Name\*$/).fill('Smoke Subs (renamed)')
   await page.getByRole('button', { name: 'Save' }).click()
@@ -243,18 +248,23 @@ test('subcontractors module: list shows cert chips, add then edit a sub', async 
 
 test('subcontractors form requires Name and Trade', async ({ page }) => {
   await page.goto('/subs')
-  await page.getByRole('button', { name: '+ New Subcontractor' }).first().click()
+  await page.getByRole('button', { name: '+ Add Subcontractor' }).first().click()
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('Name is required')).toBeVisible()
   await expect(page.getByText('Trade is required')).toBeVisible()
 })
 
-test('leads module: filter chips + add a lead', async ({ page }) => {
+test('leads module: G1 kanban + add a lead + detail drill-in', async ({ page }) => {
   await page.goto('/leads')
-  await expect(page.getByRole('heading', { name: 'Leads / Tender' })).toBeVisible()
-  // Filter chips
-  await expect(page.getByRole('button', { name: 'All', exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Prospect', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Lead Pipeline' })).toBeVisible()
+  // Five kanban columns incl. the restored Quoted stage (gap 15)
+  for (const col of ['Prospect', 'Tendering', 'Quoted', 'Won', 'Lost']) {
+    await expect(page.getByText(col, { exact: true })).toBeVisible()
+  }
+  // Card click drills into the detail view
+  await page.getByText('Avalon Knockdown Rebuild').click()
+  await expect(page.getByText('Estimated Value')).toBeVisible()
+  await page.getByRole('button', { name: 'Pipeline' }).click()
 
   // Add a lead
   await page.getByRole('button', { name: '+ New Lead' }).first().click()
@@ -270,10 +280,10 @@ test('estimating module: tab switch + open template wizard', async ({ page }) =>
 
   // Switch to templates tab and verify a known template
   await page.getByRole('button', { name: /BOQ Templates/ }).click()
-  await expect(page.getByRole('heading', { name: 'Residential New Build' })).toBeVisible()
+  await expect(page.getByText('Residential New Build', { exact: true })).toBeVisible()
 
   // Open the wizard
-  await page.getByRole('button', { name: 'Use template' }).first().click()
+  await page.getByRole('button', { name: 'Use Template' }).first().click()
   await expect(page.getByRole('heading', { name: /New estimate from/ })).toBeVisible()
 
   // Validation: empty submit blocks

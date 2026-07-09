@@ -29,7 +29,8 @@ export type AustralianState = 'NSW' | 'VIC' | 'QLD' | 'WA' | 'SA' | 'TAS' | 'ACT
 /** 'planning' is what legacy `Z1` assigns to a DUPLICATE_PROJECT copy. */
 export type ProjectStatus = 'live' | 'quoted' | 'planning' | 'complete' | 'on-hold' | 'cancelled'
 
-export type LeadStage = 'prospect' | 'tendering' | 'won' | 'lost'
+/** Legacy `G1` pipeline columns — 'quoted' restored in R5 (PARITY gap 15). */
+export type LeadStage = 'prospect' | 'tendering' | 'quoted' | 'won' | 'lost'
 
 export type EstimateStatus = 'draft' | 'sent' | 'won' | 'lost'
 
