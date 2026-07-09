@@ -101,8 +101,8 @@ test('project Invoices tab — cost-plus substantiation gate blocks save', async
   // PRJ-001 is cost-plus in seed
   await page.goto('/projects/PRJ-001/invoices')
   await expect(page.getByRole('heading', { name: 'Invoices' })).toBeVisible()
-  await page.getByRole('button', { name: '+ New Invoice' }).first().click()
-  await expect(page.getByRole('heading', { name: 'New invoice' })).toBeVisible()
+  await page.getByRole('button', { name: '+ Invoice' }).first().click()
+  await expect(page.getByRole('heading', { name: 'New Invoice' })).toBeVisible()
   // Fill required fields BUT leave docs empty
   await page.getByLabel(/^Supplier \/ subcontractor\*$/).fill('Test Supplier')
   await page.getByRole('button', { name: 'Save' }).click()
@@ -112,8 +112,8 @@ test('project Invoices tab — cost-plus substantiation gate blocks save', async
 test('project Invoices tab — fixed-price doesn’t gate on docs', async ({ page }) => {
   // PRJ-005 is fixed-price in seed
   await page.goto('/projects/PRJ-005/invoices')
-  await page.getByRole('button', { name: '+ New Invoice' }).first().click()
-  await expect(page.getByRole('heading', { name: 'New invoice' })).toBeVisible()
+  await page.getByRole('button', { name: '+ Invoice' }).first().click()
+  await expect(page.getByRole('heading', { name: 'New Invoice' })).toBeVisible()
   // No "Supporting documents" field at all on fixed-price
   await expect(page.getByText('Supporting documents')).not.toBeVisible()
 })

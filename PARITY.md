@@ -51,9 +51,9 @@ Legacy-only content the port dropped, tab by tab. "Additive" = port-only, keep. 
 
 | Screen | Legacy has, port lacks | Port additive (keep) |
 |---|---|---|
-| Invoices | Doc Ref, full cost-code descriptions, GST + Total inc GST columns, Comments, status filter chips (All/Pending/Approved/Paid), 3-part header stat line ("$52,988 paid · $120,542 approved · $173,530 total"), totals footer ("7 invoices · Total inc GST: $190,883") | ID column, DOCS substantiation flag, per-row print icon |
-| Purchase Orders | Doc Ref, full cost-code descriptions, GST + Total inc GST columns, totals footer ("4 POs · Total inc GST: $104,309"), inline **RECEIVE** action button on ORDERED rows (functional), "+ Create PO" label | DATE column |
-| Progress Claims | 3 stat blocks (TOTAL CLAIMED / PAID TO DATE / OUTSTANDING), Claim Date + Due Date naming, GST + Total inc GST columns, totals footer ("7 claims · Total inc GST: $289,022") — and see gap 18 for the retention numbers | Retention cert button, DOCS flag, print icon |
+| Invoices | ✅ Closed R2 — `O1v2` transliterated: stat line, filter chips, Doc Ref + full cost-code + GST + Total-inc-GST columns, zebra rows, totals footer, legacy Comments-header quirk preserved bug-for-bug. Port's ID column dropped for column parity; DOCS flag + print icon kept (appended). `InvFormV2` gains Subcontractor select + Document Reference; amount label corrected to "Amount (ex GST)" | DOCS substantiation flag, per-row print icon |
+| Purchase Orders | ✅ Closed R2 — `M1v2` transliterated: PO # / Doc Ref / description / full cost-code / GST / Total-inc-GST columns, zebra, totals footer, inline RECEIVE on any non-received/cancelled PO, "+ Create PO". `POFormV2` transliterated (subcontractor auto-fill, docRef, GST preview strip, poNum auto-number, no status field — new POs start `pending` per legacy) | DATE column |
+| Progress Claims | ✅ Closed R2 — `Cl1` transliterated: "claimed of contract" sub-line, 3 stat blocks, Claim/Due Date naming, GST + Total-inc-GST columns, zebra, totals footer ($289,022 matches :8766) | Retention cert button, DOCS flag, print icon |
 | Variations | REQUESTED BY column, formatted reason values, count in sub-line ("7 variations · …"), STATUS-before-DATE order | — |
 | PC & PS | "PC & PS" page title + margin-on-excess explainer, "+ Add PC/PS Item" buttons (gap 5), inline totals footer line, grey RECONCILED. ~~Net-to-Claim semantics~~ fixed in R0 (net = variance + margin-on-excess; renders $1,800/$5,200/$5,000 exactly as :8766) | TOTALS table row style |
 | Timesheets | COST CODE column (timesheet→cost allocation!), "23h logged · $2,005 labour cost" sub-line, unit formatting ("8h", "$95/hr"), "+ Log Time" label | — |
@@ -89,7 +89,7 @@ The port's reinterpreted screens are rebuilt from the legacy source under the tr
 | PV | Visual parity — design system, splash, dashboard layout | 7, 10, 11 | ✅ 2026-07-06 |
 | R0 | **Financial semantics core** — legacy money maths transliterated into `computeFinancials.ts`; retention units bug; unit tests pin legacy's exact on-screen numbers | 17, 18 | ✅ 2026-07-08 |
 | R1 | Project Overview (`D1`) + BOQ edit tab (`w1`/`p1`) | 13, 16, 8a, 9 | ✅ 2026-07-08 |
-| R2 | Money tables: Invoices (`O1v2`) / POs (`M1v2`, incl. RECEIVE) / Claims (`Cl1`) columns, filters, footers | 12 (3 rows) | ⬜ |
+| R2 | Money tables: Invoices (`O1v2`) / POs (`M1v2`, incl. RECEIVE) / Claims (`Cl1`) columns, filters, footers + both forms transliterated | 12 (3 rows) | ✅ 2026-07-09 |
 | R3 | Cash Flow (`j1v2`): stat blocks, chart, month table, forward forecast | 14, 8b | ⬜ |
 | R4 | Settings (`St1`) + Reset to Demo Data + wire `sw_ct`/`sw_state` defaults into ProjectForm | 2, 3 | ⬜ |
 | R5 | Leads kanban (`G1`) + Estimating (`H1`) + Clients (`L1`) / Subs (`V1`) tables incl. bare-text badge fix | 15, 12 (4 rows) | ⬜ |

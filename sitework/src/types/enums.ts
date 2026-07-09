@@ -45,11 +45,12 @@ export type VariationReasonCategory =
 export type InvoiceStatus = 'Pending' | 'Approved' | 'Paid' | 'Disputed'
 
 /**
- * Legacy baseline statuses are 'ordered' | 'received' | 'cancelled' (the
- * seed data uses 'ordered'/'received'). 'draft' / 'sent' are port-era values
- * kept only until the R2 PO-table rebuild retires them (PARITY.md).
+ * Legacy baseline statuses: new POs start 'pending' (`POFormV2` has no status
+ * field), seed carries 'ordered'/'received', RECEIVE shows on anything that
+ * isn't received/cancelled. 'draft' / 'sent' are deprecated port-era values
+ * retained only so persisted pre-R2 state still typechecks.
  */
-export type PurchaseStatus = 'draft' | 'sent' | 'ordered' | 'received' | 'cancelled'
+export type PurchaseStatus = 'pending' | 'ordered' | 'received' | 'cancelled' | 'draft' | 'sent'
 
 export type ProgressClaimStatus = 'Draft' | 'Issued' | 'Pending' | 'Approved' | 'Paid' | 'Disputed'
 

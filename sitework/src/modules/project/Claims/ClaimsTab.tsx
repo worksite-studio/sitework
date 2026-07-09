@@ -6,19 +6,23 @@ import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
 import { useAppState } from '@/state/context'
 import { useProject } from '../useProject'
-import { claimNetCertified, claimRetention, retentionRatePct } from '../computeFinancials'
+import {
+  claimNetCertified,
+  claimRetention,
+  computeProjectFinancials,
+  retentionRatePct,
+} from '../computeFinancials'
 import { ClaimForm } from './ClaimForm'
 import type { ProgressClaim } from '@/types'
 
 /**
- * Progress Claims tab — port of legacy Cl1. The canary for the React port:
- * substantiation gate (1.5-A), claimNo auto-fill + positional fallback for
- * legacy bad records (session 28), retention applied at the calc layer
- * (Net Certified shown alongside Amount).
- *
- * Retention maths transliterated from legacy Cl1 (R0, PARITY gap 18):
- * amount is ex-GST; retention = amount × rate%/100; Net Certified =
- * amount × (1 − rate%/100) × 1.1 — GST applies to the retained net.
+ * Progress Claims — transliteration of legacy `Cl1` (R2, PARITY gap 12):
+ * header sub-line ("X claimed of Y contract"), three stat blocks (TOTAL
+ * CLAIMED / PAID TO DATE / OUTSTANDING), the full column set (Claim Date,
+ * Due Date, GST, Total inc GST, Retention, Net Certified), zebra rows,
+ * totals footer. Retention maths per R0 (rate is a percent; net certified
+ * carries GST on the retained net). Retention-cert button, Docs flag and
+ * print icon are port-additive (PARITY gap-12 "keep").
  */
 export function ClaimsTab() {
   const project = useProject()
@@ -34,44 +38,51 @@ export function ClaimsTab() {
 
   if (!project) return null
 
+  const fin = computeProjectFinancials(project)
+
   // Positional fallback for legacy claims with missing claimNo (session 28).
   function displayNo(c: ProgressClaim): number {
     return c.claimNo || claims.findIndex((x) => x.id === c.id) + 1
   }
 
   const nextNo = claims.reduce((max, c) => Math.max(max, c.claimNo || 0), 0) + 1
-  const totalIssued = claims.reduce((s, c) => s + (c.amount || 0), 0)
-  const totalPaid = claims
-    .filter((c) => c.status === 'Paid')
-    .reduce((s, c) => s + (c.amount || 0), 0)
+  const tot = claims.reduce((s, c) => s + (c.amount || 0), 0)
+  const paid = claims.filter((c) => c.status === 'Paid').reduce((s, c) => s + (c.amount || 0), 0)
+  const due = claims.filter((c) => c.status === 'Approved').reduce((s, c) => s + (c.amount || 0), 0)
 
   return (
-    <div className="space-y-4">
-      <header className="flex items-center justify-between gap-3 flex-wrap">
+    <div>
+      <header className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-[18px] font-bold tracking-[-0.01em]">Progress Claims</h2>
-          <p className="text-xs text-sw-muted">
-            Paid: <span className="text-sw-text font-medium">{formatCurrency(totalPaid)}</span> ·
-            Total issued: {formatCurrency(totalIssued)}
-            {project.contractType === 'cost-plus' && (
-              <>
-                {' '}
-                · <span className="text-sw-muted">Substantiation required (cost-plus)</span>
-              </>
-            )}
-          </p>
+          <h2 className="mb-1 text-[26px] font-bold tracking-[-0.02em] text-sw-ink">
+            Progress Claims
+          </h2>
+          <div className="text-[13px] text-sw-dim">
+            {formatCurrency(tot)} claimed of {formatCurrency(fin.contractValue)} contract
+          </div>
         </div>
         <div className="flex gap-2">
           <Link
             to={`/print/retention/${project.id}`}
             target="_blank"
-            className="inline-flex items-center rounded-md border border-sw-border bg-sw-surface px-3 py-1.5 text-sm font-medium hover:bg-sw-muted/5 transition"
+            className="inline-flex items-center border border-sw-rule rounded-[1px] bg-transparent px-3 py-1.5 text-sm font-medium text-sw-ink hover:bg-sw-muted/5 transition"
           >
             Retention cert
           </Link>
           <Button onClick={() => setCreating(true)}>+ New Claim</Button>
         </div>
       </header>
+
+      {/* Legacy Cl1 stat blocks: 1px rule top, 9px label, 20px value. */}
+      <div className="mb-8 flex gap-10">
+        <ClaimStat label="Total Claimed" value={formatCurrency(tot)} />
+        <ClaimStat label="Paid to Date" value={formatCurrency(paid)} color="var(--sw-pos)" />
+        <ClaimStat
+          label="Outstanding"
+          value={formatCurrency(due)}
+          color={due > 0 ? 'var(--sw-violet)' : 'var(--sw-pos)'}
+        />
+      </div>
 
       {claims.length === 0 ? (
         <EmptyState
@@ -80,45 +91,57 @@ export function ClaimsTab() {
           action={<Button onClick={() => setCreating(true)}>+ New Claim</Button>}
         />
       ) : (
-        <div>
+        <div className="border-t border-sw-ink">
           <table className="sw-table">
             <thead>
               <tr>
                 <th>#</th>
                 <th>Description</th>
-                <th className="text-right">Amount</th>
+                <th>Claim Date</th>
+                <th>Due Date</th>
+                <th className="text-right">Amount (ex GST)</th>
+                <th className="text-right">GST</th>
+                <th className="text-right">Total inc GST</th>
                 <th className="text-right">Retention</th>
-                <th className="text-right">Net certified</th>
-                <th>Date</th>
-                <th>Due</th>
-                <th>Docs</th>
+                <th className="text-right">Net Certified</th>
                 <th>Status</th>
+                <th>Docs</th>
                 <th aria-label="Print" />
               </tr>
             </thead>
             <tbody>
-              {claims.map((c) => {
-                const retention = claimRetention(c.amount || 0, ratePct)
-                const netCertified = claimNetCertified(c.amount || 0, ratePct)
+              {claims.map((c, idx) => {
                 const docCount = c.supportingDocs?.length ?? 0
                 const needsDocs = project.contractType === 'cost-plus' && docCount === 0
                 return (
                   <tr
                     key={c.id}
                     onClick={() => setEditing(c)}
-                    className="border-b border-sw-border last:border-0 cursor-pointer hover:bg-sw-muted/5"
+                    className="cursor-pointer"
+                    style={{ background: idx % 2 === 0 ? '#fff' : 'var(--sw-bg)' }}
                   >
-                    <td className="font-mono font-medium">#{displayNo(c)}</td>
-                    <td>{c.desc}</td>
-                    <td className="text-right font-mono">{formatCurrency(c.amount)}</td>
-                    <td className="text-right font-mono text-sw-muted">
-                      −{formatCurrency(retention)}
+                    <td className="font-mono text-sw-dim">#{displayNo(c)}</td>
+                    <td className="font-medium">{c.desc}</td>
+                    <td className="text-sw-dim">{formatDate(c.date)}</td>
+                    <td className="text-sw-dim">{formatDate(c.due)}</td>
+                    <td className="text-right font-mono font-semibold">
+                      {formatCurrency(c.amount)}
                     </td>
-                    <td className="text-right font-mono font-medium">
-                      {formatCurrency(netCertified)}
+                    <td className="text-right font-mono text-sw-dim">
+                      {formatCurrency((c.amount || 0) * 0.1)}
                     </td>
-                    <td className="text-sw-muted">{formatDate(c.date)}</td>
-                    <td className="text-sw-muted">{formatDate(c.due)}</td>
+                    <td className="text-right font-mono font-semibold">
+                      {formatCurrency((c.amount || 0) * 1.1)}
+                    </td>
+                    <td className="text-right font-mono text-sw-dim">
+                      −{formatCurrency(claimRetention(c.amount || 0, ratePct))}
+                    </td>
+                    <td className="text-right font-mono font-semibold">
+                      {formatCurrency(claimNetCertified(c.amount || 0, ratePct))}
+                    </td>
+                    <td>
+                      <StatusBadge status={c.status} />
+                    </td>
                     <td>
                       {project.contractType === 'fixed-price' ? (
                         <span className="text-xs text-sw-muted">—</span>
@@ -135,9 +158,6 @@ export function ClaimsTab() {
                         </span>
                       )}
                     </td>
-                    <td>
-                      <StatusBadge status={c.status} />
-                    </td>
                     <td className="text-right" onClick={(e) => e.stopPropagation()}>
                       <Link
                         to={`/print/claim/${project.id}/${c.id}`}
@@ -153,6 +173,14 @@ export function ClaimsTab() {
               })}
             </tbody>
           </table>
+          <div className="flex justify-between border-t border-sw-rule bg-sw-bg px-4 py-3">
+            <span className="text-[12px] text-sw-dim">
+              {claims.length} claim{claims.length !== 1 ? 's' : ''}
+            </span>
+            <span className="font-mono text-[13px] font-semibold">
+              Total inc GST: {formatCurrency(tot * 1.1)}
+            </span>
+          </div>
         </div>
       )}
 
@@ -171,6 +199,20 @@ export function ClaimsTab() {
           nextNo={displayNo(editing)}
         />
       )}
+    </div>
+  )
+}
+
+/** Legacy Cl1 mini stat: 1px rule top, 9px caption, 20px value. */
+function ClaimStat({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div className="border-t border-sw-rule py-3">
+      <div className="mb-1.5 text-[9px] font-medium uppercase tracking-[0.1em] text-sw-dim">
+        {label}
+      </div>
+      <div className="text-[20px] font-bold" style={{ color: color ?? 'var(--sw-ink)' }}>
+        {value}
+      </div>
     </div>
   )
 }

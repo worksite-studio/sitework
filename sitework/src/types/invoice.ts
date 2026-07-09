@@ -16,6 +16,11 @@ export interface Invoice {
   ccId: CostCodeId
   /** Supplier *name* — Phase 5 normalises to a SupplierId FK. */
   supplier: string
+  /** Linked subcontractor (legacy subId) — takes display precedence over supplier. */
+  subId?: string | null
+  /** External document reference (legacy field, shown in the invoices table). */
+  docRef?: string
+  /** Ex-GST — the tables derive GST (×0.1) and Total inc GST (×1.1) from it. */
   amount: number
   status: InvoiceStatus
   date: string
