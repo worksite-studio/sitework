@@ -82,19 +82,43 @@ test('project BOQ tab renders codes table and supports add', async ({ page }) =>
   await expect(page.getByLabel(/^Code\*$/)).not.toHaveValue('')
 })
 
-test('project PC & PS tab renders reconciliation tables', async ({ page }) => {
+test('project PC & PS tab — Pcps anatomy + pcf add form (gap 5)', async ({ page }) => {
   await page.goto('/projects/PRJ-001/pcps')
-  await expect(page.getByRole('heading', { name: /Prime Cost items/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'PC & PS' })).toBeVisible()
+  await expect(page.getByText(/Margin is applied on excess only/)).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Prime Cost Items/ })).toBeVisible()
   await expect(page.getByRole('heading', { name: /Provisional Sums/ })).toBeVisible()
-  // Reconciliation column exists
-  await expect(page.getByText('Margin on excess', { exact: true }).first()).toBeVisible()
+  await expect(page.getByText('Margin on Excess', { exact: true }).first()).toBeVisible()
+  // Legacy inline totals footer
+  await expect(page.getByText(/Allowance total:/).first()).toBeVisible()
+
+  // pcf add form: validation then happy path
+  await page.getByRole('button', { name: '+ Add PC Item' }).click()
+  await expect(page.getByRole('heading', { name: 'Add PC Item' })).toBeVisible()
+  await page.getByRole('button', { name: 'Add PC Item', exact: true }).last().click()
+  await expect(page.getByText('Required')).toBeVisible()
+  await page.getByLabel(/^Description\*$/).fill('Smoke PC allowance')
+  await page.getByLabel(/^Allowance/).fill('5000')
+  await page.getByRole('button', { name: 'Add PC Item', exact: true }).last().click()
+  await expect(page.getByText('Smoke PC allowance')).toBeVisible()
 })
 
-test('project Variations tab renders and dialog opens', async ({ page }) => {
+test('project Variations tab — requestedBy column + v1 form (gap 4)', async ({ page }) => {
   await page.goto('/projects/PRJ-001/variations')
   await expect(page.getByRole('heading', { name: 'Variations', exact: true })).toBeVisible()
+  // Legacy B1 sub-line with count + REQUESTED BY column
+  await expect(page.getByText(/7 variations ·/)).toBeVisible()
+  await expect(page.getByText('Requested By', { exact: true })).toBeVisible()
+
   await page.getByRole('button', { name: '+ New Variation' }).first().click()
-  await expect(page.getByRole('heading', { name: 'New variation' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'New Variation' })).toBeVisible()
+  // v1 fields: Requested By select (default Owner), Reason Category with Other
+  await expect(page.getByLabel('Requested By')).toHaveValue('Owner')
+  // Conditional comment fields appear on Other
+  await page.getByLabel('Reason Category').selectOption('Other')
+  await expect(page.getByLabel('Comment / Reason Detail')).toBeVisible()
+  await page.getByLabel('Requested By').selectOption('Other')
+  await expect(page.getByLabel(/Requested By — Comment/)).toBeVisible()
 })
 
 test('project Invoices tab — cost-plus substantiation gate blocks save', async ({ page }) => {

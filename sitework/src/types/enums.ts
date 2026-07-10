@@ -36,12 +36,17 @@ export type EstimateStatus = 'draft' | 'sent' | 'won' | 'lost'
 
 export type VariationStatus = 'Pending' | 'Approved' | 'Rejected' | 'Disputed'
 
+/** 'Other' restored in R6 — legacy `v1` offers it with a conditional comment. */
 export type VariationReasonCategory =
   | 'OwnerRequested'
   | 'LatentCondition'
   | 'Regulatory'
   | 'DesignClarification'
   | 'BuilderFault'
+  | 'Other'
+
+/** Legacy `v1` Requested By options (default Owner) — PARITY gap 4. */
+export type VariationRequestedBy = 'Owner' | 'Builder' | 'Architect' | 'Other'
 
 export type InvoiceStatus = 'Pending' | 'Approved' | 'Paid' | 'Disputed'
 

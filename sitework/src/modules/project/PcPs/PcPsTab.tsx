@@ -1,213 +1,183 @@
-import { useAppState, useDispatch } from '@/state/context'
-import { EmptyState } from '@/components/ui'
+import { useState } from 'react'
+import { useAppState } from '@/state/context'
+import { Button } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { useProject } from '../useProject'
 import { reconcilePcPs } from '../computeFinancials'
-import type {
-  PrimeCostItem,
-  PrimeCostItemId,
-  ProjectId,
-  ProvisionalSum,
-  ProvisionalSumId,
-} from '@/types'
+import { PcPsForm } from './PcPsForm'
+import type { PrimeCostItem, ProvisionalSum } from '@/types'
 
-interface ReconciledRow {
-  id: string
-  description: string
-  allowance: number
-  actualCost: number
-  variance: number
-  /** Margin applies to the excess only, per CONTRACTS_REFERENCE.md §7.4. */
-  marginOnExcess: number
-  /** variance + marginOnExcess — legacy `Pcps` net (R0, PARITY gap 17 note). */
-  netToClaim: number
-  status: string
-}
+type Item = PrimeCostItem | ProvisionalSum
 
 /**
- * PC & PS tab — port of legacy `Pcps`. Two tables (Prime Cost items +
- * Provisional Sums) with the reconciliation columns added in Phase 1.5
- * item 1. Margin applies to the excess only (CONTRACTS_REFERENCE §7.4).
- * Maths transliterated via reconcilePcPs (computeFinancials, R0); values
- * render abs-with-sign-prefix exactly like legacy `k()`.
- *
- * Read-only for now — the legacy `pcf`/`psf` add/edit forms aren't ported
- * yet; that lands in rebuild session R6. The tab is still useful because
- * seed has rows and the math wires up.
+ * PC & PS — transliteration of legacy `Pcps` (R6, PARITY gap 5 + gap-12
+ * anatomy): 26px title + margin-on-excess explainer, two sections with
+ * "+ Add PC Item" / "+ Add PS Item" buttons (`pcf`/`psf` forms), row-click
+ * edit, legacy value display (— for zero actual/margin, abs-with-sign
+ * variance and net), and the inline right-aligned totals footer line.
+ * Maths via reconcilePcPs (R0): net = variance + margin-on-excess.
  */
 export function PcPsTab() {
   const project = useProject()
   const state = useAppState()
-  const dispatch = useDispatch()
+  const [adding, setAdding] = useState<'pc' | 'ps' | null>(null)
+  const [editing, setEditing] = useState<{ kind: 'pc' | 'ps'; item: Item } | null>(null)
   if (!project) return null
 
   const pcRows: PrimeCostItem[] = state.primeCostItems[project.id as string] ?? []
   const psRows: ProvisionalSum[] = state.provisionalSums[project.id as string] ?? []
 
-  const pcReconciled: ReconciledRow[] = pcRows.map((r) => ({
-    id: r.id as string,
-    description: r.description,
-    status: r.status,
-    ...reconcilePcPs(r.allowance, r.actualCost, r.marginRate),
-  }))
-  const psReconciled: ReconciledRow[] = psRows.map((r) => ({
-    id: r.id as string,
-    description: r.description,
-    status: r.status,
-    ...reconcilePcPs(r.allowance, r.actualCost, r.marginRate),
-  }))
-
-  function quickDelete(kind: 'pc' | 'ps', id: string) {
-    const ok = window.confirm('Remove this allowance? It will be cleared from this project.')
-    if (!ok || !project) return
-    if (kind === 'pc') {
-      dispatch({
-        type: 'DELETE_PC_ITEM',
-        projectId: project.id as ProjectId,
-        itemId: id as unknown as PrimeCostItemId,
-      })
-    } else {
-      dispatch({
-        type: 'DELETE_PS_ITEM',
-        projectId: project.id as ProjectId,
-        itemId: id as unknown as ProvisionalSumId,
-      })
-    }
-  }
-
   return (
-    <div className="space-y-6">
+    <div>
+      <header className="mb-6">
+        <h2 className="mb-1 text-[26px] font-bold tracking-[-0.02em] text-sw-ink">PC & PS</h2>
+        <div className="text-[13px] text-sw-dim">
+          Prime Cost Items and Provisional Sums. Margin is applied on excess only — never on the
+          full actual cost.
+        </div>
+      </header>
+
       <Section
-        title="Prime Cost items"
-        empty="No PC items yet. PC items track allowance vs reconciled cost; margin applies to the excess only."
-        rows={pcReconciled}
-        onDelete={(id) => quickDelete('pc', id)}
+        title="Prime Cost Items"
+        addLabel="+ Add PC Item"
+        rows={pcRows}
+        onAdd={() => setAdding('pc')}
+        onEdit={(item) => setEditing({ kind: 'pc', item })}
       />
       <Section
         title="Provisional Sums"
-        empty="No PS items yet. PS items track allowance vs reconciled cost; margin applies to the excess only."
-        rows={psReconciled}
-        onDelete={(id) => quickDelete('ps', id)}
+        addLabel="+ Add PS Item"
+        rows={psRows}
+        onAdd={() => setAdding('ps')}
+        onEdit={(item) => setEditing({ kind: 'ps', item })}
       />
+
+      {adding && (
+        <PcPsForm open onClose={() => setAdding(null)} projectId={project.id} kind={adding} />
+      )}
+      {editing && (
+        <PcPsForm
+          open
+          onClose={() => setEditing(null)}
+          projectId={project.id}
+          kind={editing.kind}
+          initial={editing.item}
+        />
+      )}
     </div>
   )
 }
 
-/**
- * Legacy `k()` display: absolute value, sign carried by an explicit "+"
- * prefix on positives only — a $4,500-under-allowance row renders "$4,500".
- */
+/** Legacy `k()` display: absolute value, "+" prefix on positives only. */
 function signedAbs(n: number): string {
   return `${n > 0 ? '+' : ''}${formatCurrency(Math.abs(n))}`
 }
 
 interface SectionProps {
   title: string
-  empty: string
-  rows: ReconciledRow[]
-  onDelete: (id: string) => void
+  addLabel: string
+  rows: Item[]
+  onAdd: () => void
+  onEdit: (item: Item) => void
 }
 
-function Section({ title, empty, rows, onDelete }: SectionProps) {
-  if (rows.length === 0) {
-    return (
-      <section className="space-y-2">
-        <h2 className="text-[12px] font-semibold text-sw-ink">{title}</h2>
-        <EmptyState title={title} description={empty} />
-      </section>
-    )
-  }
-
+function Section({ title, addLabel, rows, onAdd, onEdit }: SectionProps) {
   const totals = rows.reduce(
-    (acc, r) => ({
-      allowance: acc.allowance + r.allowance,
-      actualCost: acc.actualCost + r.actualCost,
-      marginOnExcess: acc.marginOnExcess + r.marginOnExcess,
-      netToClaim: acc.netToClaim + r.netToClaim,
-    }),
-    { allowance: 0, actualCost: 0, marginOnExcess: 0, netToClaim: 0 },
+    (acc, r) => {
+      const calc = reconcilePcPs(r.allowance, r.actualCost, r.marginRate)
+      return {
+        allowance: acc.allowance + calc.allowance,
+        actualCost: acc.actualCost + calc.actualCost,
+        net: acc.net + calc.netToClaim,
+      }
+    },
+    { allowance: 0, actualCost: 0, net: 0 },
   )
 
   return (
-    <section className="space-y-2">
-      <h2 className="text-[12px] font-semibold text-sw-ink">{title}</h2>
-      <div>
+    <div className="mb-9">
+      <div className="mb-3.5 flex items-center justify-between">
+        <h3 className="text-[18px] font-bold tracking-[-0.01em] text-sw-ink">{title}</h3>
+        <Button onClick={onAdd}>{addLabel}</Button>
+      </div>
+      <div className="border-t border-sw-ink bg-white">
         <table className="sw-table">
           <thead>
             <tr>
               <th>Description</th>
               <th className="text-right">Allowance</th>
-              <th className="text-right">Actual</th>
+              <th className="text-right">Actual Cost</th>
               <th className="text-right">Variance</th>
-              <th className="text-right">Margin on excess</th>
-              <th className="text-right">Net to claim</th>
+              <th className="text-right">Margin on Excess</th>
+              <th className="text-right">Net to Claim</th>
               <th>Status</th>
-              <th aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="border-b border-sw-border last:border-0">
-                <td>{r.description}</td>
-                <td className="text-right font-mono">{formatCurrency(r.allowance)}</td>
-                <td className="text-right font-mono">
-                  {r.actualCost > 0 ? formatCurrency(r.actualCost) : '—'}
-                </td>
-                <td
-                  className={`px-3 py-2 text-right font-mono ${
-                    r.variance > 0
-                      ? 'text-sw-danger'
-                      : r.variance < 0
-                        ? 'text-sw-success'
-                        : 'text-sw-muted'
-                  }`}
-                >
-                  {r.variance === 0 ? '—' : signedAbs(r.variance)}
-                </td>
-                <td className="text-right font-mono">
-                  {r.marginOnExcess > 0 ? formatCurrency(r.marginOnExcess) : '—'}
-                </td>
-                <td
-                  className={`text-right font-mono font-medium ${
-                    r.variance > 0
-                      ? 'text-sw-danger'
-                      : r.variance < 0
-                        ? 'text-sw-success'
-                        : 'text-sw-muted'
-                  }`}
-                >
-                  {r.netToClaim === 0 ? '—' : signedAbs(r.netToClaim)}
-                </td>
-                <td>
-                  <StatusBadge status={r.status} />
-                </td>
-                <td className="text-right">
-                  <button
-                    type="button"
-                    onClick={() => onDelete(r.id)}
-                    aria-label={`Remove ${r.description}`}
-                    className="text-sw-muted hover:text-sw-danger transition px-2"
-                  >
-                    ×
-                  </button>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="p-10 text-center text-[13px] text-sw-faint">
+                  No {title.toLowerCase()} yet — click {addLabel} to add one.
                 </td>
               </tr>
-            ))}
-            <tr className="bg-sw-muted/5 font-medium text-sm">
-              <td className="text-sw-muted text-xs uppercase">Totals</td>
-              <td className="text-right font-mono">{formatCurrency(totals.allowance)}</td>
-              <td className="text-right font-mono">{formatCurrency(totals.actualCost)}</td>
-              <td />
-              <td className="text-right font-mono">{formatCurrency(totals.marginOnExcess)}</td>
-              <td className="text-right font-mono">
-                {formatCurrency(Math.abs(totals.netToClaim))}
-              </td>
-              <td colSpan={2} />
-            </tr>
+            ) : (
+              rows.map((r) => {
+                const calc = reconcilePcPs(r.allowance, r.actualCost, r.marginRate)
+                const col =
+                  calc.variance > 0
+                    ? 'var(--sw-neg)'
+                    : calc.variance < 0
+                      ? 'var(--sw-pos)'
+                      : 'var(--sw-dim)'
+                return (
+                  <tr
+                    key={r.id as string}
+                    onClick={() => onEdit(r)}
+                    className="cursor-pointer border-b border-sw-rule-l"
+                  >
+                    <td>{r.description}</td>
+                    <td className="text-right font-mono">{formatCurrency(calc.allowance)}</td>
+                    <td className="text-right font-mono">
+                      {calc.actualCost > 0 ? formatCurrency(calc.actualCost) : '—'}
+                    </td>
+                    <td className="text-right font-mono" style={{ color: col }}>
+                      {calc.variance === 0 ? '—' : signedAbs(calc.variance)}
+                    </td>
+                    <td className="text-right font-mono text-sw-dim">
+                      {calc.marginOnExcess > 0 ? formatCurrency(calc.marginOnExcess) : '—'}
+                    </td>
+                    <td className="text-right font-mono font-semibold" style={{ color: col }}>
+                      {calc.netToClaim === 0 ? '—' : signedAbs(calc.netToClaim)}
+                    </td>
+                    <td>
+                      <StatusBadge status={r.status} />
+                    </td>
+                  </tr>
+                )
+              })
+            )}
           </tbody>
         </table>
       </div>
-    </section>
+      {rows.length > 0 && (
+        <div className="mt-2 flex justify-end gap-8 px-4 py-2.5 text-[11px] text-sw-dim">
+          <span>
+            Allowance total:{' '}
+            <strong className="font-mono text-sw-ink">{formatCurrency(totals.allowance)}</strong>
+          </span>
+          <span>
+            Actual total:{' '}
+            <strong className="font-mono text-sw-ink">{formatCurrency(totals.actualCost)}</strong>
+          </span>
+          <span>
+            Net to Claim:{' '}
+            <strong className="font-mono" style={{ color: 'var(--sw-pos)' }}>
+              {formatCurrency(Math.abs(totals.net))}
+            </strong>
+          </span>
+        </div>
+      )}
+    </div>
   )
 }

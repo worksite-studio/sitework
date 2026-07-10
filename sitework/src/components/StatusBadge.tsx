@@ -16,7 +16,8 @@ const VARIANT_FOR_STATUS: Record<string, Variant> = {
   Closed: 'success',
   complete: 'success',
   Complete: 'success',
-  Reconciled: 'success',
+  // Legacy He has no 'Reconciled' entry — it falls to the faint default (R6).
+  Reconciled: 'neutral',
   received: 'success',
   approved: 'success',
   won: 'success',

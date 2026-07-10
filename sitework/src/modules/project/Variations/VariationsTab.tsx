@@ -8,11 +8,11 @@ import { VariationForm } from './VariationForm'
 import type { CostCodeId, Variation } from '@/types'
 
 /**
- * Variations tab — port of legacy `B1`. Variation list with row-click edit,
- * approved-amount running tally, and reason-category visibility.
- *
- * Approved variations roll into the project's adjusted contract value on
- * the Overview tab via computeProjectFinancials().
+ * Variations — transliteration of legacy `B1` (R6, PARITY gap 4): 26px
+ * header with "N variations · X approved · Y pending" sub-line (pending
+ * violet when > 0), columns ID / Description / **Requested By** / Cost
+ * Code ("001 — desc") / Amount / Status / Date, row-click edit. The port's
+ * raw-enum Reason column is gone (legacy shows the reason in the form only).
  */
 export function VariationsTab() {
   const project = useProject()
@@ -25,7 +25,7 @@ export function VariationsTab() {
   )
   const codeLookup = useMemo(() => {
     const m = new Map<string, string>()
-    if (project) for (const c of project.codes) m.set(c.id as string, `${c.code} · ${c.desc}`)
+    if (project) for (const c of project.codes) m.set(c.id as string, `${c.code} — ${c.desc}`)
     return (id: CostCodeId) => m.get(id as string) ?? '—'
   }, [project])
 
@@ -40,15 +40,16 @@ export function VariationsTab() {
     .reduce((s, v) => s + (v.amount || 0), 0)
 
   return (
-    <div className="space-y-4">
-      <header className="flex items-center justify-between gap-3 flex-wrap">
+    <div>
+      <header className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-[18px] font-bold tracking-[-0.01em]">Variations</h2>
-          <p className="text-xs text-sw-muted">
-            Approved:{' '}
-            <span className="text-sw-text font-medium">{formatCurrency(approvedTotal)}</span> ·
-            Pending: {formatCurrency(pendingTotal)}
-          </p>
+          <h2 className="mb-1 text-[26px] font-bold tracking-[-0.02em] text-sw-ink">Variations</h2>
+          <div className="text-[13px] text-sw-dim">
+            {variations.length} variations · {formatCurrency(approvedTotal)} approved ·{' '}
+            <span style={{ color: pendingTotal > 0 ? 'var(--sw-violet)' : 'var(--sw-dim)' }}>
+              {formatCurrency(pendingTotal)} pending
+            </span>
+          </div>
         </div>
         <Button onClick={() => setCreating(true)} disabled={codes.length === 0}>
           + New Variation
@@ -67,17 +68,17 @@ export function VariationsTab() {
           action={<Button onClick={() => setCreating(true)}>+ New Variation</Button>}
         />
       ) : (
-        <div>
+        <div className="border-t border-sw-ink bg-white">
           <table className="sw-table">
             <thead>
               <tr>
                 <th>ID</th>
                 <th>Description</th>
-                <th>Code</th>
-                <th>Reason</th>
+                <th>Requested By</th>
+                <th>Cost Code</th>
                 <th className="text-right">Amount</th>
-                <th>Date</th>
                 <th>Status</th>
+                <th>Date</th>
               </tr>
             </thead>
             <tbody>
@@ -85,17 +86,17 @@ export function VariationsTab() {
                 <tr
                   key={v.id}
                   onClick={() => setEditing(v)}
-                  className="border-b border-sw-border last:border-0 cursor-pointer hover:bg-sw-muted/5"
+                  className="cursor-pointer border-b border-sw-rule-l"
                 >
-                  <td className="text-sw-muted font-mono">{v.id}</td>
-                  <td>{v.desc}</td>
-                  <td className="text-xs text-sw-muted">{codeLookup(v.ccId)}</td>
-                  <td className="text-xs text-sw-muted">{v.reasonCategory}</td>
-                  <td className="text-right font-mono">{formatCurrency(v.amount)}</td>
-                  <td className="text-sw-muted">{formatDate(v.date)}</td>
+                  <td className="font-mono text-sw-dim">{v.id}</td>
+                  <td className="font-medium">{v.desc}</td>
+                  <td className="text-sw-dim">{v.requestedBy || '—'}</td>
+                  <td className="text-sw-dim">{codeLookup(v.ccId)}</td>
+                  <td className="text-right font-mono font-semibold">{formatCurrency(v.amount)}</td>
                   <td>
                     <StatusBadge status={v.status} />
                   </td>
+                  <td className="text-sw-dim">{formatDate(v.date)}</td>
                 </tr>
               ))}
             </tbody>
@@ -108,6 +109,7 @@ export function VariationsTab() {
         onClose={() => setCreating(false)}
         projectId={project.id}
         codes={codes}
+        nextNum={variations.length + 1}
       />
       {editing && (
         <VariationForm
