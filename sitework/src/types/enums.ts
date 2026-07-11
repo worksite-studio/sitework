@@ -62,9 +62,11 @@ export type ProgressClaimStatus = 'Draft' | 'Issued' | 'Pending' | 'Approved' | 
 
 export type MilestoneStatus = 'upcoming' | 'in-progress' | 'complete' | 'delayed'
 
-export type SelectionStatus = 'pending' | 'approved' | 'declined'
+/** Legacy `T1` creates selections as 'open'; N1 counts open as "awaiting decision" (R7). */
+export type SelectionStatus = 'open' | 'pending' | 'approved' | 'declined'
 
-export type DefectStatus = 'Open' | 'Rectified' | 'Disputed'
+/** Legacy `DefectForm` offers Open / In Progress / Rectified (R7). */
+export type DefectStatus = 'Open' | 'In Progress' | 'Rectified' | 'Disputed'
 
 export type RfiStatus = 'Open' | 'Closed' | 'Overdue'
 

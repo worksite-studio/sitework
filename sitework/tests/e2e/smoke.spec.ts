@@ -161,7 +161,7 @@ test('project Defects + Schedule + Diary + RFIs + Selections + Timesheets tabs r
   page,
 }) => {
   for (const [path, heading] of [
-    ['defects', 'Defects'],
+    ['defects', 'Retention & FFC'],
     ['schedule', 'Schedule'],
     ['diary', 'Site Diary'],
     ['rfis', 'RFI Register'],
@@ -182,7 +182,8 @@ test('project Calendar tab aggregates milestones + sub expiries', async ({ page 
 
 test('project Open Book tab renders read-only summary', async ({ page }) => {
   await page.goto('/projects/PRJ-001/openbook')
-  await expect(page.getByText(/Open-book report/i)).toBeVisible()
+  await expect(page.getByText('OPEN-BOOK REPORT', { exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Contract & Cost Summary' })).toBeVisible()
   await expect(page.getByRole('button', { name: /Print/ })).toBeVisible()
 })
 
@@ -231,16 +232,16 @@ test('clients module: add then edit a client', async ({ page }) => {
 
   // Add
   await page.getByRole('button', { name: '+ New Client' }).first().click()
-  await page.getByLabel(/^Name/).fill('Smoke Test Pty Ltd')
+  await page.getByLabel(/^Company \/ Client Name/).fill('Smoke Test Pty Ltd')
   await page.getByLabel('Phone').fill('0400 000 000')
-  await page.getByRole('button', { name: 'Save' }).click()
+  await page.getByRole('button', { name: 'Save Client' }).click()
   await expect(page.getByText('Smoke Test Pty Ltd')).toBeVisible()
 
   // Edit — row click expands the L1 detail strip, then Edit Client
   await page.getByText('Smoke Test Pty Ltd').click()
   await page.getByRole('button', { name: 'Edit Client' }).click()
-  await page.getByLabel(/^Name/).fill('Smoke Test (renamed)')
-  await page.getByRole('button', { name: 'Save' }).click()
+  await page.getByLabel(/^Company \/ Client Name/).fill('Smoke Test (renamed)')
+  await page.getByRole('button', { name: 'Save Client' }).click()
   await expect(page.getByText('Smoke Test (renamed)')).toBeVisible()
 })
 
@@ -374,6 +375,6 @@ test('suppliers + materials catalogues render at their direct URLs', async ({ pa
 test('clients form blocks save when Name is empty', async ({ page }) => {
   await page.goto('/clients')
   await page.getByRole('button', { name: '+ New Client' }).first().click()
-  await page.getByRole('button', { name: 'Save' }).click()
+  await page.getByRole('button', { name: 'Save Client' }).click()
   await expect(page.getByText('Name is required')).toBeVisible()
 })

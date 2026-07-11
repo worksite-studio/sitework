@@ -1,194 +1,126 @@
 import { useMemo } from 'react'
-import { EmptyState, ExpiryChip } from '@/components/ui'
 import { formatDate } from '@/lib/formatDate'
-import { getExpiryInfo } from '@/lib/certExpiry'
 import { useAppState } from '@/state/context'
 import { useProject } from '../useProject'
 
-type CalendarKind = 'milestone' | 'sub-pl' | 'sub-wc' | 'cert' | 'pc' | 'ps' | 'defect'
-
-interface CalendarItem {
+interface CalEvent {
   date: string
-  kind: CalendarKind
+  type: string
   label: string
-  detail: string
-}
-
-const KIND_LABEL: Record<CalendarKind, string> = {
-  milestone: 'MILESTONE',
-  'sub-pl': 'PL',
-  'sub-wc': 'WC',
-  cert: 'CERT',
-  pc: 'PC',
-  ps: 'PS',
-  defect: 'DEFECT',
 }
 
 /**
- * Project Calendar tab — port of Calx (Phase 1.5-D). Aggregates dated
- * surfaces from across the project: milestones, defect warranty expiries,
- * subcontractor PL/WC + certificate expiries (for any sub assigned to the
- * project), and PC/PS items with a due date. Sorted chronologically and
- * grouped by month.
+ * Calendar — transliteration of legacy `Calx` (R7, PARITY gap-12 row):
+ * "N events" counter, events from milestones + defect logs + sub PL/WC/
+ * certificate expiries, sorted and grouped by month (uppercase mono month
+ * headers over rules), rows = mono date · bold event type · muted label,
+ * with a pink EXPIRED pill for past dates and an amber "≤30d" pill for
+ * the next 30 days.
  */
 export function CalendarTab() {
   const project = useProject()
   const state = useAppState()
 
-  const items = useMemo<CalendarItem[]>(() => {
+  const events: CalEvent[] = useMemo(() => {
     if (!project) return []
-    const out: CalendarItem[] = []
-
-    // Milestones
-    const milestones = state.milestones[project.id as string] ?? []
-    for (const m of milestones) {
-      if (!m.date) continue
-      out.push({
-        date: m.date,
-        kind: 'milestone',
-        label: m.name,
-        detail: m.status,
-      })
+    const evts: CalEvent[] = []
+    for (const m of state.milestones[project.id as string] ?? []) {
+      if (m.date) evts.push({ date: m.date, type: 'Milestone', label: m.name })
     }
-
-    // Defects — when rectified, the rectification date is the warranty
-    // anchor; when open, we surface the logged date so it stays visible.
-    const defects = state.defects[project.id as string] ?? []
-    for (const d of defects) {
-      const anchor = d.dateRectified || d.dateLogged
-      if (!anchor) continue
-      out.push({
-        date: anchor,
-        kind: 'defect',
-        label: d.item,
-        detail: `${d.location} · ${d.status}`,
-      })
+    for (const def of state.defects[project.id as string] ?? []) {
+      if (def.dateLogged)
+        evts.push({
+          date: def.dateLogged,
+          type: 'Defect logged',
+          label: def.item + (def.location ? ' · ' + def.location : ''),
+        })
     }
-
-    // Subs assigned to the project — PL + WC expiries + cert expiries
     for (const sub of state.subs) {
-      if (!sub.projects.includes(project.id)) continue
-      if (sub.liabilityExp) {
-        out.push({
-          date: sub.liabilityExp,
-          kind: 'sub-pl',
-          label: `${sub.name} — Public Liability`,
-          detail: sub.trade,
-        })
-      }
-      if (sub.wcExp) {
-        out.push({
-          date: sub.wcExp,
-          kind: 'sub-wc',
-          label: `${sub.name} — Workers Comp`,
-          detail: sub.trade,
-        })
-      }
+      if (sub.liabilityExp)
+        evts.push({ date: sub.liabilityExp, type: 'Public Liability expiry', label: sub.name })
+      if (sub.wcExp) evts.push({ date: sub.wcExp, type: 'Workers Comp expiry', label: sub.name })
       for (const cert of sub.certificates ?? []) {
-        if (!cert.expiry) continue
-        out.push({
-          date: cert.expiry,
-          kind: 'cert',
-          label: `${sub.name} — ${cert.type}`,
-          detail: cert.file.name || 'Certificate',
-        })
+        if (cert.expiry)
+          evts.push({
+            date: cert.expiry,
+            type: `${cert.type} expiry`,
+            label: sub.name + (cert.file?.name ? ' · ' + cert.file.name : ''),
+          })
       }
     }
-
-    // Sort chronologically
-    return out.sort((a, b) => (a.date < b.date ? -1 : 1))
-  }, [project, state])
+    return evts.sort((a, b) => a.date.localeCompare(b.date))
+  }, [project, state.milestones, state.defects, state.subs])
 
   if (!project) return null
 
-  // Group by YYYY-MM
-  const groups = new Map<string, CalendarItem[]>()
-  for (const it of items) {
-    const key = it.date.slice(0, 7)
-    const bucket = groups.get(key) ?? []
-    bucket.push(it)
-    groups.set(key, bucket)
+  const today = new Date().toISOString().slice(0, 10)
+  const in30D = new Date()
+  in30D.setDate(in30D.getDate() + 30)
+  const in30 = in30D.toISOString().slice(0, 10)
+
+  const groups = new Map<string, CalEvent[]>()
+  for (const e of events) {
+    const ym = e.date.slice(0, 7)
+    if (!groups.has(ym)) groups.set(ym, [])
+    groups.get(ym)!.push(e)
   }
 
-  if (items.length === 0) {
-    return (
-      <div className="space-y-4">
-        <header>
-          <h2 className="text-[18px] font-bold tracking-[-0.01em]">Calendar</h2>
-        </header>
-        <EmptyState
-          title="Nothing dated yet"
-          description="Add milestones, log defects, or assign subcontractors with expiries to see them here."
-        />
-      </div>
-    )
+  const chip = (date: string): { label: string; bg: string } | null => {
+    if (date < today) return { label: 'EXPIRED', bg: 'var(--sw-neg)' }
+    if (date < in30) return { label: '≤30d', bg: '#f59e0b' }
+    return null
   }
 
   return (
-    <div className="space-y-4">
-      <header>
-        <h2 className="text-[18px] font-bold tracking-[-0.01em]">Calendar</h2>
-        <p className="text-xs text-sw-muted">
-          Aggregated milestones, defects, and insurance expiries — chronological.
-        </p>
+    <div>
+      <header className="mb-6 flex items-center justify-between">
+        <h2 className="text-[26px] font-bold tracking-[-0.02em] text-sw-ink">Calendar</h2>
+        <div className="text-[12px] text-sw-dim">
+          {events.length} event{events.length === 1 ? '' : 's'}
+        </div>
       </header>
 
-      <div className="space-y-4">
-        {Array.from(groups.entries()).map(([month, entries]) => (
-          <section key={month} className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-sw-muted">
-              {formatMonthHeader(month)}
-            </h3>
-            <div>
-              <ul className="divide-y divide-sw-border">
-                {entries.map((it, idx) => (
-                  <li
-                    key={`${it.kind}-${it.date}-${idx}`}
-                    className="flex items-center justify-between gap-3 px-4 py-2 text-sm"
-                  >
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{it.label}</div>
-                      <div className="text-xs text-sw-muted">{it.detail}</div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs text-sw-muted tabular-nums">
-                        {formatDate(it.date)}
-                      </span>
-                      {it.kind === 'sub-pl' || it.kind === 'sub-wc' || it.kind === 'cert' ? (
-                        <ExpiryChip iso={it.date} kind={KIND_LABEL[it.kind]} />
-                      ) : (
-                        <span
-                          className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${toneFor(it)}`}
-                        >
-                          {KIND_LABEL[it.kind]}
-                        </span>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+      {events.length === 0 ? (
+        <div className="p-10 text-center text-[13px] text-sw-faint">
+          No dated events yet. Milestones, defect logs, and insurance expiries will appear here as
+          you populate them.
+        </div>
+      ) : (
+        [...groups.keys()].sort().map((ym) => (
+          <div key={ym} className="mb-6">
+            <div className="mb-2 border-b border-sw-rule pb-1.5 font-mono text-[11px] font-semibold tracking-[0.06em] text-sw-dim">
+              {new Date(`${ym}-01`)
+                .toLocaleDateString('en-AU', { year: 'numeric', month: 'long' })
+                .toUpperCase()}
             </div>
-          </section>
-        ))}
-      </div>
+            <div className="flex flex-col gap-1.5">
+              {groups.get(ym)!.map((e, idx) => {
+                const c = chip(e.date)
+                return (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-3 rounded border border-sw-rule bg-white px-3 py-2.5 text-[13px]"
+                  >
+                    <span className="min-w-[90px] font-mono text-[12px] text-sw-dim">
+                      {formatDate(e.date)}
+                    </span>
+                    <span className="min-w-[180px] font-semibold text-sw-ink">{e.type}</span>
+                    <span className="flex-1 truncate text-sw-dim">{e.label}</span>
+                    {c && (
+                      <span
+                        className="rounded-full px-2 py-[3px] font-mono text-[10px] font-semibold text-white"
+                        style={{ background: c.bg }}
+                      >
+                        {c.label}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))
+      )}
     </div>
   )
-}
-
-function formatMonthHeader(yyyymm: string): string {
-  const date = new Date(`${yyyymm}-01`)
-  if (Number.isNaN(date.getTime())) return yyyymm
-  return date.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })
-}
-
-function toneFor(it: CalendarItem): string {
-  if (it.kind === 'milestone') return 'bg-sw-info/10 text-sw-info ring-sw-info/20'
-  if (it.kind === 'defect') {
-    const status = getExpiryInfo(it.date).status
-    if (status === 'expiring' || status === 'expired') {
-      return 'bg-sw-warning/10 text-sw-warning ring-sw-warning/20'
-    }
-    return 'bg-sw-muted/10 text-sw-muted ring-sw-muted/20'
-  }
-  return 'bg-sw-muted/10 text-sw-muted ring-sw-muted/20'
 }

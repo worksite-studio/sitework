@@ -1,57 +1,151 @@
-import { useMemo, useState } from 'react'
-import { Button, Dialog, EmptyState, Field, Input, Select } from '@/components/ui'
+import { useState } from 'react'
+import { useAppState, useDispatch } from '@/state/context'
+import { Button, Dialog, Field, Input, Select } from '@/components/ui'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
-import { useAppState, useDispatch } from '@/state/context'
 import { useProject } from '../useProject'
-import { asId } from '@/types'
-import type { CostCodeId, ProjectId, Timesheet, TimesheetId } from '@/types'
 import { newId } from '@/lib/newId'
+import { asId } from '@/types'
+import type { CostCodeId, Timesheet, TimesheetId } from '@/types'
 
-interface FormProps {
-  open: boolean
-  onClose: () => void
-  projectId: ProjectId
-  codes: Array<{ id: CostCodeId; code: string; desc: string }>
+/**
+ * Timesheets — transliteration of legacy `U1` + `C1` (R7, PARITY gap-12
+ * row): "Nh logged · $X labour cost" sub-line, columns Date / Worker /
+ * Role / Cost Code ("012 — desc") / Hours ("8h") / Rate ("$95/hr") /
+ * Total / × delete, rows sorted newest-first, "+ Log Time" modal.
+ */
+export function TimesheetsTab() {
+  const project = useProject()
+  const state = useAppState()
+  const dispatch = useDispatch()
+  const [logging, setLogging] = useState(false)
+  if (!project) return null
+
+  const entries: Timesheet[] = state.timesheets[project.id as string] ?? []
+  const hoursTotal = entries.reduce((s, t) => s + (t.hours || 0), 0)
+  const labourCost = entries.reduce((s, t) => s + (t.hours || 0) * (t.rate || 0), 0)
+  const sorted = [...entries].sort((a, b) => b.date.localeCompare(a.date))
+
+  function codeText(ccId: CostCodeId): string {
+    const cc = project?.codes.find((c) => c.id === ccId)
+    return cc ? `${cc.code} — ${cc.desc}` : '—'
+  }
+
+  return (
+    <div>
+      <header className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="mb-1 text-[26px] font-bold tracking-[-0.02em] text-sw-ink">Timesheets</h2>
+          <div className="text-[13px] text-sw-dim">
+            {hoursTotal.toFixed(0)}h logged · {formatCurrency(labourCost)} labour cost
+          </div>
+        </div>
+        <Button onClick={() => setLogging(true)}>+ Log Time</Button>
+      </header>
+
+      <div className="border-t border-sw-ink bg-white">
+        <table className="sw-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Worker</th>
+              <th>Role</th>
+              <th>Cost Code</th>
+              <th className="text-right">Hours</th>
+              <th className="text-right">Rate</th>
+              <th className="text-right">Total</th>
+              <th aria-label="Delete" />
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="p-10 text-center text-[13px] text-sw-faint">
+                  No timesheet entries yet.
+                </td>
+              </tr>
+            ) : (
+              sorted.map((t) => (
+                <tr key={t.id as string} className="border-b border-sw-rule-l">
+                  <td className="text-sw-dim">{formatDate(t.date)}</td>
+                  <td className="font-semibold">{t.worker}</td>
+                  <td className="text-sw-dim">{t.role}</td>
+                  <td className="text-sw-dim">{codeText(t.ccId)}</td>
+                  <td className="text-right font-mono">{t.hours}h</td>
+                  <td className="text-right font-mono text-sw-dim">${t.rate}/hr</td>
+                  <td className="text-right font-mono font-semibold">
+                    {formatCurrency(t.hours * t.rate)}
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        dispatch({
+                          type: 'DELETE_TIMESHEET',
+                          projectId: project.id,
+                          timesheetId: t.id,
+                        })
+                      }
+                      aria-label={`Delete entry ${t.id}`}
+                      className="cursor-pointer bg-transparent text-[11px] text-sw-faint hover:text-sw-danger"
+                    >
+                      ×
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {logging && <TimesheetForm onClose={() => setLogging(false)} />}
+    </div>
+  )
 }
 
-function TimesheetForm({ open, onClose, projectId, codes }: FormProps) {
+/** Legacy `C1` — Log Time modal: worker + hours required. */
+function TimesheetForm({ onClose }: { onClose: () => void }) {
+  const project = useProject()
   const dispatch = useDispatch()
-  const [form, setForm] = useState<Omit<Timesheet, 'id'>>({
+  const [form, setForm] = useState({
     date: new Date().toISOString().slice(0, 10),
     worker: '',
     role: '',
-    ccId: (codes[0]?.id ?? ('' as unknown as CostCodeId)) as CostCodeId,
-    hours: 0,
-    rate: 0,
+    ccId: (project?.codes[0]?.id as string) ?? '',
+    hours: '',
+    rate: '',
     notes: '',
   })
   const [attempted, setAttempted] = useState(false)
-  const workerMissing = form.worker.trim() === ''
+  if (!project) return null
 
   function save() {
-    if (workerMissing) {
+    if (!project) return
+    if (!form.worker.trim() || !form.hours) {
       setAttempted(true)
       return
     }
-    const id = asId<TimesheetId>(newId('TS'))
-    dispatch({ type: 'ADD_TIMESHEET', projectId, timesheet: { id, ...form } })
+    const timesheet: Timesheet = {
+      id: asId<TimesheetId>(newId('TS')),
+      date: form.date,
+      worker: form.worker,
+      role: form.role,
+      ccId: form.ccId as unknown as CostCodeId,
+      hours: parseFloat(form.hours) || 0,
+      rate: parseFloat(form.rate) || 0,
+      notes: form.notes,
+    }
+    dispatch({ type: 'ADD_TIMESHEET', projectId: project.id, timesheet })
     onClose()
   }
 
   return (
     <Dialog
-      open={open}
+      open
       onClose={onClose}
-      title="New timesheet"
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={save}>Save</Button>
-        </>
-      }
+      title="Log Time"
+      footer={<Button onClick={save}>Log Time</Button>}
     >
       <div className="grid grid-cols-2 gap-3">
         <Field label="Date">
@@ -61,153 +155,52 @@ function TimesheetForm({ open, onClose, projectId, codes }: FormProps) {
             onChange={(e) => setForm({ ...form, date: e.target.value })}
           />
         </Field>
-        <Field label="Worker" required error={attempted && workerMissing ? 'Required' : undefined}>
+        <Field
+          label="Worker Name"
+          required
+          error={attempted && !form.worker.trim() ? 'Required' : undefined}
+        >
           <Input
             value={form.worker}
             onChange={(e) => setForm({ ...form, worker: e.target.value })}
-            invalid={attempted && workerMissing}
+            invalid={attempted && !form.worker.trim()}
           />
         </Field>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
         <Field label="Role">
           <Input
             value={form.role}
             onChange={(e) => setForm({ ...form, role: e.target.value })}
-            placeholder="e.g. Carpenter"
+            placeholder="Builder / Carpenter..."
           />
         </Field>
-        <Field label="Cost code">
-          <Select
-            value={form.ccId as string}
-            onChange={(e) => setForm({ ...form, ccId: e.target.value as CostCodeId })}
-          >
-            {codes.map((c) => (
+        <Field label="Cost Code">
+          <Select value={form.ccId} onChange={(e) => setForm({ ...form, ccId: e.target.value })}>
+            {project.codes.map((c) => (
               <option key={c.id} value={c.id as string}>
-                {c.code} · {c.desc}
+                {c.code} — {c.desc}
               </option>
             ))}
           </Select>
         </Field>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Hours">
+        <Field label="Hours" required error={attempted && !form.hours ? 'Required' : undefined}>
           <Input
             type="number"
-            min={0}
-            step="0.25"
             value={form.hours}
-            onChange={(e) => setForm({ ...form, hours: Number(e.target.value) || 0 })}
+            onChange={(e) => setForm({ ...form, hours: e.target.value })}
+            invalid={attempted && !form.hours}
           />
         </Field>
         <Field label="Rate ($/hr)">
           <Input
             type="number"
-            min={0}
-            step="0.01"
             value={form.rate}
-            onChange={(e) => setForm({ ...form, rate: Number(e.target.value) || 0 })}
+            onChange={(e) => setForm({ ...form, rate: e.target.value })}
           />
         </Field>
       </div>
+      <Field label="Notes">
+        <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+      </Field>
     </Dialog>
-  )
-}
-
-export function TimesheetsTab() {
-  const project = useProject()
-  const state = useAppState()
-  const dispatch = useDispatch()
-  const [creating, setCreating] = useState(false)
-
-  const codes = useMemo(
-    () => (project ? project.codes.map((c) => ({ id: c.id, code: c.code, desc: c.desc })) : []),
-    [project],
-  )
-
-  if (!project) return null
-  const timesheets = state.timesheets[project.id as string] ?? []
-  const total = timesheets.reduce((s, t) => s + (t.hours || 0) * (t.rate || 0), 0)
-
-  function del(ts: Timesheet) {
-    if (!project) return
-    const ok = window.confirm(`Delete timesheet for ${ts.worker} on ${ts.date}?`)
-    if (!ok) return
-    dispatch({ type: 'DELETE_TIMESHEET', projectId: project.id, timesheetId: ts.id })
-  }
-
-  return (
-    <div className="space-y-4">
-      <header className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="text-[18px] font-bold tracking-[-0.01em]">Timesheets</h2>
-          <p className="text-xs text-sw-muted">
-            Total: <span className="text-sw-text font-medium">{formatCurrency(total)}</span>
-          </p>
-        </div>
-        <Button onClick={() => setCreating(true)} disabled={codes.length === 0}>
-          + New Entry
-        </Button>
-      </header>
-
-      {timesheets.length === 0 ? (
-        <EmptyState
-          title="No timesheets yet"
-          description="Record hours against cost codes to track in-house labour cost."
-          action={
-            <Button onClick={() => setCreating(true)} disabled={codes.length === 0}>
-              + New Entry
-            </Button>
-          }
-        />
-      ) : (
-        <div>
-          <table className="sw-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Worker</th>
-                <th>Role</th>
-                <th className="text-right">Hours</th>
-                <th className="text-right">Rate</th>
-                <th className="text-right">Total</th>
-                <th aria-label="Actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {timesheets.map((t) => (
-                <tr key={t.id} className="border-b border-sw-border last:border-0">
-                  <td className="text-sw-muted">{formatDate(t.date)}</td>
-                  <td>{t.worker}</td>
-                  <td className="text-sw-muted">{t.role}</td>
-                  <td className="text-right font-mono">{t.hours}</td>
-                  <td className="text-right font-mono">{formatCurrency(t.rate)}</td>
-                  <td className="text-right font-mono font-medium">
-                    {formatCurrency(t.hours * t.rate)}
-                  </td>
-                  <td className="text-right">
-                    <button
-                      type="button"
-                      onClick={() => del(t)}
-                      aria-label={`Delete timesheet for ${t.worker}`}
-                      className="text-sw-muted hover:text-sw-danger transition px-2"
-                    >
-                      ×
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <TimesheetForm
-        open={creating}
-        onClose={() => setCreating(false)}
-        projectId={project.id}
-        codes={codes}
-      />
-    </div>
   )
 }

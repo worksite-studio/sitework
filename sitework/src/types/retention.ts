@@ -17,4 +17,13 @@ export interface Retention {
   rate: number
   held?: number
   released?: number
+  /** Adjusted contract value snapshot the retention was set against (legacy k1). */
+  contractValue?: number
+  /** Practical Completion date (ISO) — drives the k1 Completion Timeline. */
+  pcDate?: string | null
+  /** Final Financial Completion date (ISO) — set by "Issue FFC Certificate". */
+  ffcDate?: string | null
+  /** Defects liability period, months (legacy k1 "End of DLP"). */
+  dlpMonths?: number
+  notes?: string
 }
