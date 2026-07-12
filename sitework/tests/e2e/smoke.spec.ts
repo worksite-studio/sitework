@@ -362,6 +362,30 @@ test('settings defaults seed the project form (legacy sw_ct / sw_state wiring)',
   await expect(page.getByLabel('State')).toHaveValue('VIC')
 })
 
+test('help & education — X1 four tabs with real content (gap 6)', async ({ page }) => {
+  await page.goto('/education')
+  await expect(page.getByRole('heading', { name: 'Help & Education' })).toBeVisible()
+  // Getting Started default: first guide + numbered steps
+  await expect(page.getByText('Welcome to SITEWORK', { exact: true }).first()).toBeVisible()
+  await expect(page.getByText('Create your first project or import an estimate')).toBeVisible()
+  // Guide switch
+  await page.getByText('Connecting Xero', { exact: true }).click()
+  await expect(page.getByText(/OAuth 2\.0/)).toBeVisible()
+  // Module Guides + Pro Tip callout
+  await page.getByRole('button', { name: 'Module Guides' }).click()
+  await expect(page.getByText('Pro Tip')).toBeVisible()
+  await expect(page.getByText(/Rawlinson Rate Lookup/).first()).toBeVisible()
+  // Glossary: 14 terms
+  await page.getByRole('button', { name: 'Glossary' }).click()
+  await expect(page.getByText('14 terms')).toBeVisible()
+  await expect(page.getByText('SWMS', { exact: true })).toBeVisible()
+  // Rawlinson Rates: handbook + location factors
+  await page.getByRole('button', { name: 'Rawlinson Rates' }).click()
+  await expect(page.getByText(/Australian Construction Handbook/)).toBeVisible()
+  await expect(page.getByText('Regional Location Factors')).toBeVisible()
+  await expect(page.getByText('+25% (remote premium)')).toBeVisible()
+})
+
 test('suppliers + materials catalogues render at their direct URLs', async ({ page }) => {
   await page.goto('/suppliers')
   await expect(page.getByRole('heading', { name: 'Suppliers' })).toBeVisible()

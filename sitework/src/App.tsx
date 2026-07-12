@@ -28,6 +28,7 @@ import { SubsPage } from '@/modules/Subcontractors'
 import { LeadsPage } from '@/modules/Leads'
 import { EstimatingPage } from '@/modules/Estimating'
 import { SettingsPage } from '@/modules/Settings'
+import { EducationPage } from '@/modules/Education/EducationPage'
 import { MaterialsPage } from '@/modules/Materials'
 import { SuppliersPage } from '@/modules/Suppliers'
 import { ProgressClaimPrint } from '@/modules/print/ProgressClaimPrint'
@@ -71,10 +72,7 @@ const router = createBrowserRouter([
       { path: 'estimating', element: <EstimatingPage /> },
       { path: 'clients', element: <ClientsPage /> },
       { path: 'subs', element: <SubsPage /> },
-      {
-        path: 'education',
-        element: <Placeholder title="Help & Learn" note="Ported in a later session." />,
-      },
+      { path: 'education', element: <EducationPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'materials', element: <MaterialsPage /> },
       { path: 'suppliers', element: <SuppliersPage /> },
