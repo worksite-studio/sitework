@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useAppState, useDispatch } from '@/state/context'
 import { Button } from '@/components/ui'
+import { parseAmount } from '@/lib/money'
 import { exportStateFile, parseBackupFile } from '@/lib/backup'
 import { STATE_KEY, LEGACY_KEY } from '@/state/persistence'
 import { seed } from '@/state/seed'
@@ -150,7 +151,7 @@ export function SettingsPage() {
           max={100}
           className={`${boxInput} w-[100px]`}
           value={form.defaultMarginPct ?? 15}
-          onChange={(e) => set('defaultMarginPct', Number(e.target.value) || 0)}
+          onChange={(e) => set('defaultMarginPct', parseAmount(e.target.value))}
         />
       </Sec>
 

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button, Dialog, Field, Input, Select } from '@/components/ui'
+import { parseAmount } from '@/lib/money'
 import { useAppState, useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import type { Material, MaterialId, SupplierId } from '@/types'
@@ -105,7 +106,7 @@ export function MaterialForm({ open, onClose, initial }: Props) {
             min={0}
             step="0.01"
             value={form.price}
-            onChange={(e) => setForm({ ...form, price: Number(e.target.value) || 0 })}
+            onChange={(e) => setForm({ ...form, price: parseAmount(e.target.value) })}
           />
         </Field>
         <Field label="Supplier">

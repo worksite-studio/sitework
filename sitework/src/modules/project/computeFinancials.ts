@@ -1,4 +1,5 @@
 import type { Project, Purchase, RootState } from '@/types'
+import { gstOf, incGst } from '@/lib/money'
 
 /**
  * Financial semantics core — transliterated from the legacy baseline
@@ -152,14 +153,14 @@ export function retentionRatePct(state: RootState, projectId: string): number {
   return state.retention[projectId]?.rate ?? 5
 }
 
-/** GST on a claim amount — legacy `Cl1`: amount × 0.1. */
+/** GST on a claim amount — legacy `Cl1`: amount × 0.1 (via central `gstOf`). */
 export function claimGst(amount: number): number {
-  return amount * 0.1
+  return gstOf(amount)
 }
 
-/** Claim total including GST — legacy `Cl1`: amount × 1.1. */
+/** Claim total including GST — legacy `Cl1`: amount × 1.1 (via central `incGst`). */
 export function claimTotalIncGst(amount: number): number {
-  return amount * 1.1
+  return incGst(amount)
 }
 
 /** Retention withheld on a claim — legacy `Cl1`: amount × rate% ÷ 100. */
@@ -172,7 +173,7 @@ export function claimRetention(amount: number, ratePct: number): number {
  * Retention comes off the ex-GST amount; GST applies to the retained net.
  */
 export function claimNetCertified(amount: number, ratePct: number): number {
-  return amount * (1 - ratePct / 100) * 1.1
+  return incGst(amount * (1 - ratePct / 100))
 }
 
 /**

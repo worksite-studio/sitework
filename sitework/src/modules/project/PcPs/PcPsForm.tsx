@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button, Dialog, Field, Input, Select } from '@/components/ui'
+import { parseAmount } from '@/lib/money'
 import { useDispatch } from '@/state/context'
 import { newId } from '@/lib/newId'
 import { asId } from '@/types'
@@ -43,7 +44,7 @@ export function PcPsForm({ open, onClose, projectId, kind, initial }: Props) {
   const isEdit = !!initial
 
   const descMissing = form.description.trim() === ''
-  const allowanceInvalid = !((parseFloat(form.allowance) || 0) > 0)
+  const allowanceInvalid = !(parseAmount(form.allowance) > 0)
   const statuses = kind === 'pc' ? PC_STATUSES : PS_STATUSES
 
   function save() {
@@ -53,9 +54,9 @@ export function PcPsForm({ open, onClose, projectId, kind, initial }: Props) {
     }
     const fields = {
       description: form.description,
-      allowance: parseFloat(form.allowance) || 0,
-      marginRate: parseFloat(form.marginRate) || 0.2,
-      actualCost: parseFloat(form.actualCost) || 0,
+      allowance: parseAmount(form.allowance),
+      marginRate: parseAmount(form.marginRate, 0.2),
+      actualCost: parseAmount(form.actualCost),
     }
     if (kind === 'pc') {
       const status = form.status as PrimeCostItem['status']

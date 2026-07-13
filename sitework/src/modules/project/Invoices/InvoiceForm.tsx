@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button, Dialog, Field, Input, Select } from '@/components/ui'
+import { parseAmount } from '@/lib/money'
 import { FilePicker } from '@/components/FilePicker'
 import { useAppState, useDispatch } from '@/state/context'
 import { asId } from '@/types'
@@ -165,7 +166,7 @@ export function InvoiceForm({ open, onClose, project, initial }: Props) {
             type="number"
             step="0.01"
             value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: Number(e.target.value) || 0 })}
+            onChange={(e) => setForm({ ...form, amount: parseAmount(e.target.value) })}
           />
         </Field>
         <Field label="Date">

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button, Dialog, Field, Input, Select } from '@/components/ui'
+import { parseAmount } from '@/lib/money'
 import { useAppState, useDispatch } from '@/state/context'
 import { newId } from '@/lib/newId'
 import { asId } from '@/types'
@@ -39,9 +40,9 @@ export function LineItemForm({ open, onClose, projectId, ccId }: Props) {
     const lineItem: LineItem = {
       id: asId<LineItemId>(newId('LI')),
       desc: form.desc,
-      qty: Number(form.qty) || 1,
+      qty: parseAmount(form.qty, 1),
       unit: form.unit,
-      rate: Number(form.rate) || 0,
+      rate: parseAmount(form.rate),
       matId: null,
       supId: form.supId ? asId<SupplierId>(form.supId) : null,
     }
@@ -77,7 +78,7 @@ export function LineItemForm({ open, onClose, projectId, ccId }: Props) {
           <Input
             type="number"
             value={form.qty}
-            onChange={(e) => setForm({ ...form, qty: Number(e.target.value) || 0 })}
+            onChange={(e) => setForm({ ...form, qty: parseAmount(e.target.value) })}
           />
         </Field>
         <Field label="Unit">
@@ -94,7 +95,7 @@ export function LineItemForm({ open, onClose, projectId, ccId }: Props) {
             type="number"
             step="0.01"
             value={form.rate}
-            onChange={(e) => setForm({ ...form, rate: Number(e.target.value) || 0 })}
+            onChange={(e) => setForm({ ...form, rate: parseAmount(e.target.value) })}
           />
         </Field>
       </div>

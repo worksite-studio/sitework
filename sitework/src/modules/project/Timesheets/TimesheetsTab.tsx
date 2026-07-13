@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAppState, useDispatch } from '@/state/context'
 import { Button, Dialog, Field, Input, Select } from '@/components/ui'
+import { parseAmount } from '@/lib/money'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
 import { useProject } from '../useProject'
@@ -132,8 +133,8 @@ function TimesheetForm({ onClose }: { onClose: () => void }) {
       worker: form.worker,
       role: form.role,
       ccId: form.ccId as unknown as CostCodeId,
-      hours: parseFloat(form.hours) || 0,
-      rate: parseFloat(form.rate) || 0,
+      hours: parseAmount(form.hours),
+      rate: parseAmount(form.rate),
       notes: form.notes,
     }
     dispatch({ type: 'ADD_TIMESHEET', projectId: project.id, timesheet })

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button, Dialog, Field, Input } from '@/components/ui'
+import { parseAmount } from '@/lib/money'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import type { CostCode, CostCodeId, ProjectId } from '@/types'
@@ -111,7 +112,7 @@ export function CostCodeForm({ open, onClose, projectId, initial, nextCode }: Pr
           min={0}
           step="0.01"
           value={form.budget}
-          onChange={(e) => setForm({ ...form, budget: Number(e.target.value) || 0 })}
+          onChange={(e) => setForm({ ...form, budget: parseAmount(e.target.value) })}
         />
       </Field>
     </Dialog>

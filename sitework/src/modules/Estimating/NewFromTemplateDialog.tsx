@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button, Dialog, Field, Input } from '@/components/ui'
+import { parseAmount } from '@/lib/money'
 import { useDispatch } from '@/state/context'
 import type { BoqTemplate } from '@/types'
 
@@ -93,7 +94,7 @@ export function NewFromTemplateDialog({ open, onClose, template }: Props) {
           type="number"
           min={0}
           value={contractValue}
-          onChange={(e) => setContractValue(Number(e.target.value) || 0)}
+          onChange={(e) => setContractValue(parseAmount(e.target.value))}
           invalid={attempted && valueMissing}
         />
       </Field>

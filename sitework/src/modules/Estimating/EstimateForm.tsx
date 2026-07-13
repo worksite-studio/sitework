@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button, Dialog, Field, Input, Select } from '@/components/ui'
+import { parseAmount } from '@/lib/money'
 import { useAppState, useDispatch } from '@/state/context'
 import { newId } from '@/lib/newId'
 import { asId } from '@/types'
@@ -37,7 +38,7 @@ export function EstimateForm({ open, onClose, initial }: EstimateFormProps) {
       name: form.name,
       clientId: form.clientId as unknown as ClientId,
       address: form.address,
-      margin: parseFloat(form.margin) || 20,
+      margin: parseAmount(form.margin, 20),
     }
     if (isEdit && initial) {
       dispatch({ type: 'UPDATE_ESTIMATE', estimateId: initial.id, patch })
@@ -126,7 +127,7 @@ export function EstCodeForm({ open, onClose, estimateId }: EstCodeFormProps) {
       id: asId<EstimateCodeId>(newId('EC')),
       code: form.code,
       desc: form.desc,
-      budget: parseFloat(form.budget) || 0,
+      budget: parseAmount(form.budget),
     }
     dispatch({ type: 'ADD_EST_CODE', estimateId, code })
     setForm({ code: '', desc: '', budget: '' })

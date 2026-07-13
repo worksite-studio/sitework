@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button, Dialog, Field, Input } from '@/components/ui'
+import { parseAmount } from '@/lib/money'
 import { formatDate } from '@/lib/formatDate'
 import { useAppState, useDispatch } from '@/state/context'
 import { useProject } from '../useProject'
@@ -134,9 +135,9 @@ function DiaryForm({ onClose }: { onClose: () => void }) {
       id: asId<DiaryEntryId>(newId('DIA')),
       date: form.date,
       weather: form.weather,
-      workers: parseFloat(form.workers) || 0,
+      workers: parseAmount(form.workers),
       subs: selectedSubs,
-      hours: parseFloat(form.hours) || 0,
+      hours: parseAmount(form.hours),
       notes: form.notes,
       incidents: form.incidents,
     }

@@ -7,8 +7,10 @@ import { formatDate } from '@/lib/formatDate'
 import { useAppState } from '@/state/context'
 import { useProject } from '../useProject'
 import {
+  claimGst,
   claimNetCertified,
   claimRetention,
+  claimTotalIncGst,
   computeProjectFinancials,
   retentionRatePct,
 } from '../computeFinancials'
@@ -128,10 +130,10 @@ export function ClaimsTab() {
                       {formatCurrency(c.amount)}
                     </td>
                     <td className="text-right font-mono text-sw-dim">
-                      {formatCurrency((c.amount || 0) * 0.1)}
+                      {formatCurrency(claimGst(c.amount || 0))}
                     </td>
                     <td className="text-right font-mono font-semibold">
-                      {formatCurrency((c.amount || 0) * 1.1)}
+                      {formatCurrency(claimTotalIncGst(c.amount || 0))}
                     </td>
                     <td className="text-right font-mono text-sw-dim">
                       −{formatCurrency(claimRetention(c.amount || 0, ratePct))}
@@ -178,7 +180,7 @@ export function ClaimsTab() {
               {claims.length} claim{claims.length !== 1 ? 's' : ''}
             </span>
             <span className="font-mono text-[13px] font-semibold">
-              Total inc GST: {formatCurrency(tot * 1.1)}
+              Total inc GST: {formatCurrency(claimTotalIncGst(tot))}
             </span>
           </div>
         </div>

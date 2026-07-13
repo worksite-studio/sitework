@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button, Dialog, Field, Input, Select } from '@/components/ui'
+import { parseAmount } from '@/lib/money'
 import { useAppState, useDispatch } from '@/state/context'
 import { newId } from '@/lib/newId'
 import {
@@ -110,7 +111,7 @@ export function ProjectForm({ open, onClose, initial }: ProjectFormProps) {
 
   const isEdit = !!initial
   const nameMissing = form.name.trim() === ''
-  const estimatedValueParsed = parseFloat(form.estimatedValue) || 0
+  const estimatedValueParsed = parseAmount(form.estimatedValue)
 
   const vicBlocked = vicS13Blocked({
     state: form.state,
@@ -148,7 +149,7 @@ export function ProjectForm({ open, onClose, initial }: ProjectFormProps) {
       clientId: asId<ClientId>(form.clientId),
       address: form.address,
       startDate: form.startDate,
-      margin: parseFloat(form.margin) || 15,
+      margin: parseAmount(form.margin, 15),
       estimatedValue: estimatedValueParsed,
       contractType: form.contractType,
       state: form.state,

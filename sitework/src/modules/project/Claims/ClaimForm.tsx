@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button, Dialog, Field, Input, Select } from '@/components/ui'
+import { parseAmount } from '@/lib/money'
 import { FilePicker } from '@/components/FilePicker'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
@@ -130,7 +131,7 @@ export function ClaimForm({ open, onClose, project, initial, nextNo = 1 }: Props
             type="number"
             min={1}
             value={form.claimNo}
-            onChange={(e) => setForm({ ...form, claimNo: Number(e.target.value) || 1 })}
+            onChange={(e) => setForm({ ...form, claimNo: parseAmount(e.target.value, 1) })}
           />
         </Field>
         <Field
@@ -153,7 +154,7 @@ export function ClaimForm({ open, onClose, project, initial, nextNo = 1 }: Props
             type="number"
             step="0.01"
             value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: Number(e.target.value) || 0 })}
+            onChange={(e) => setForm({ ...form, amount: parseAmount(e.target.value) })}
           />
         </Field>
         <Field label="Date">

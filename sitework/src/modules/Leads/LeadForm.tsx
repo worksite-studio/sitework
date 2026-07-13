@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button, Dialog, Field, Input, Select } from '@/components/ui'
+import { parseAmount } from '@/lib/money'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import type { Lead, LeadId, LeadStage } from '@/types'
@@ -111,7 +112,7 @@ export function LeadForm({ open, onClose, initial }: LeadFormProps) {
             type="number"
             min={0}
             value={form.value}
-            onChange={(e) => setForm({ ...form, value: Number(e.target.value) || 0 })}
+            onChange={(e) => setForm({ ...form, value: parseAmount(e.target.value) })}
           />
         </Field>
         <Field label="Stage">

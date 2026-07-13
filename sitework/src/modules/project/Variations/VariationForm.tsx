@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button, Dialog, Field, Input, Select } from '@/components/ui'
+import { parseAmount } from '@/lib/money'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import type {
@@ -74,14 +75,14 @@ export function VariationForm({ open, onClose, projectId, codes, initial, nextNu
     const fields = {
       ccId: form.ccId,
       desc: form.desc,
-      amount: Number(form.amount) || 0,
+      amount: parseAmount(form.amount),
       status: form.status,
       date: form.date,
       requestedBy: form.requestedBy,
       requestedByComment: form.requestedByComment,
       reasonCategory: form.reasonCategory,
       reasonComment: form.reasonComment,
-      timeImpactDays: Number(form.timeImpactDays) || 0,
+      timeImpactDays: parseAmount(form.timeImpactDays),
     }
     if (isEdit && initial) {
       dispatch({ type: 'UPDATE_VARIATION', projectId, variationId: initial.id, patch: fields })
@@ -140,7 +141,7 @@ export function VariationForm({ open, onClose, projectId, codes, initial, nextNu
             type="number"
             step="0.01"
             value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: Number(e.target.value) || 0 })}
+            onChange={(e) => setForm({ ...form, amount: parseAmount(e.target.value) })}
           />
         </Field>
       </div>
@@ -189,7 +190,7 @@ export function VariationForm({ open, onClose, projectId, codes, initial, nextNu
           <Input
             type="number"
             value={form.timeImpactDays}
-            onChange={(e) => setForm({ ...form, timeImpactDays: Number(e.target.value) || 0 })}
+            onChange={(e) => setForm({ ...form, timeImpactDays: parseAmount(e.target.value) })}
           />
         </Field>
       </div>

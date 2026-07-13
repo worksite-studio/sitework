@@ -3,6 +3,7 @@ import { Button, EmptyState } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
+import { gstOf, incGst } from '@/lib/money'
 import { useAppState, useDispatch } from '@/state/context'
 import { useProject } from '../useProject'
 import { POForm } from './POForm'
@@ -103,10 +104,10 @@ export function POsTab() {
                     {formatCurrency(po.amount)}
                   </td>
                   <td className="text-right font-mono text-sw-dim">
-                    {formatCurrency(po.amount * 0.1)}
+                    {formatCurrency(gstOf(po.amount))}
                   </td>
                   <td className="text-right font-mono font-semibold">
-                    {formatCurrency(po.amount * 1.1)}
+                    {formatCurrency(incGst(po.amount))}
                   </td>
                   <td className="text-sw-dim">{formatDate(po.date)}</td>
                   <td className="whitespace-nowrap">
@@ -130,7 +131,7 @@ export function POsTab() {
               {purchases.length} PO{purchases.length !== 1 ? 's' : ''}
             </span>
             <span className="font-mono text-[13px] font-semibold">
-              Total inc GST: {formatCurrency(total * 1.1)}
+              Total inc GST: {formatCurrency(incGst(total))}
             </span>
           </div>
         </div>
