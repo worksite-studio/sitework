@@ -26,32 +26,47 @@ export type ContractClassification = 'Domestic' | 'Commercial'
 
 export type AustralianState = 'NSW' | 'VIC' | 'QLD' | 'WA' | 'SA' | 'TAS' | 'ACT' | 'NT'
 
-export type ProjectStatus = 'live' | 'quoted' | 'complete' | 'on-hold' | 'cancelled'
+/** 'planning' is what legacy `Z1` assigns to a DUPLICATE_PROJECT copy. */
+export type ProjectStatus = 'live' | 'quoted' | 'planning' | 'complete' | 'on-hold' | 'cancelled'
 
-export type LeadStage = 'prospect' | 'tendering' | 'won' | 'lost'
+/** Legacy `G1` pipeline columns — 'quoted' restored in R5 (PARITY gap 15). */
+export type LeadStage = 'prospect' | 'tendering' | 'quoted' | 'won' | 'lost'
 
 export type EstimateStatus = 'draft' | 'sent' | 'won' | 'lost'
 
 export type VariationStatus = 'Pending' | 'Approved' | 'Rejected' | 'Disputed'
 
+/** 'Other' restored in R6 — legacy `v1` offers it with a conditional comment. */
 export type VariationReasonCategory =
   | 'OwnerRequested'
   | 'LatentCondition'
   | 'Regulatory'
   | 'DesignClarification'
   | 'BuilderFault'
+  | 'Other'
+
+/** Legacy `v1` Requested By options (default Owner) — PARITY gap 4. */
+export type VariationRequestedBy = 'Owner' | 'Builder' | 'Architect' | 'Other'
 
 export type InvoiceStatus = 'Pending' | 'Approved' | 'Paid' | 'Disputed'
 
-export type PurchaseStatus = 'draft' | 'sent' | 'received'
+/**
+ * Legacy baseline statuses: new POs start 'pending' (`POFormV2` has no status
+ * field), seed carries 'ordered'/'received', RECEIVE shows on anything that
+ * isn't received/cancelled. 'draft' / 'sent' are deprecated port-era values
+ * retained only so persisted pre-R2 state still typechecks.
+ */
+export type PurchaseStatus = 'pending' | 'ordered' | 'received' | 'cancelled' | 'draft' | 'sent'
 
 export type ProgressClaimStatus = 'Draft' | 'Issued' | 'Pending' | 'Approved' | 'Paid' | 'Disputed'
 
 export type MilestoneStatus = 'upcoming' | 'in-progress' | 'complete' | 'delayed'
 
-export type SelectionStatus = 'pending' | 'approved' | 'declined'
+/** Legacy `T1` creates selections as 'open'; N1 counts open as "awaiting decision" (R7). */
+export type SelectionStatus = 'open' | 'pending' | 'approved' | 'declined'
 
-export type DefectStatus = 'Open' | 'Rectified' | 'Disputed'
+/** Legacy `DefectForm` offers Open / In Progress / Rectified (R7). */
+export type DefectStatus = 'Open' | 'In Progress' | 'Rectified' | 'Disputed'
 
 export type RfiStatus = 'Open' | 'Closed' | 'Overdue'
 

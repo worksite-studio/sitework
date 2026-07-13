@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Dialog, Field } from '@/components/ui'
+import { Button, Dialog, Field, Select } from '@/components/ui'
 import { useAppState, useDispatch } from '@/state/context'
 import type { BoqTemplateId, ProjectId } from '@/types'
 
@@ -38,7 +38,7 @@ export function BoqTemplateImportDialog({ open, onClose, projectId }: Props) {
         reset()
         onClose()
       }}
-      title="Import from BOQ template"
+      title="Import BOQ Template"
       description="Adds any codes from the template that aren't already on this project. Dedupes by code string."
       footer={
         <>
@@ -58,18 +58,14 @@ export function BoqTemplateImportDialog({ open, onClose, projectId }: Props) {
       }
     >
       <Field label="Template">
-        <select
-          value={selected}
-          onChange={(e) => setSelected(e.target.value as BoqTemplateId)}
-          className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
-        >
+        <Select value={selected} onChange={(e) => setSelected(e.target.value as BoqTemplateId)}>
           <option value="">— Choose a template —</option>
           {templates.map((t) => (
             <option key={t.id} value={t.id as string}>
               {t.name} ({t.codes.length} codes)
             </option>
           ))}
-        </select>
+        </Select>
       </Field>
       {tpl && (
         <div className="text-xs text-sw-muted">

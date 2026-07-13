@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Button, Card, EmptyState } from '@/components/ui'
+import { Button, EmptyState } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
@@ -8,11 +8,11 @@ import { VariationForm } from './VariationForm'
 import type { CostCodeId, Variation } from '@/types'
 
 /**
- * Variations tab — port of legacy `B1`. Variation list with row-click edit,
- * approved-amount running tally, and reason-category visibility.
- *
- * Approved variations roll into the project's adjusted contract value on
- * the Overview tab via computeProjectFinancials().
+ * Variations — transliteration of legacy `B1` (R6, PARITY gap 4): 26px
+ * header with "N variations · X approved · Y pending" sub-line (pending
+ * violet when > 0), columns ID / Description / **Requested By** / Cost
+ * Code ("001 — desc") / Amount / Status / Date, row-click edit. The port's
+ * raw-enum Reason column is gone (legacy shows the reason in the form only).
  */
 export function VariationsTab() {
   const project = useProject()
@@ -25,7 +25,7 @@ export function VariationsTab() {
   )
   const codeLookup = useMemo(() => {
     const m = new Map<string, string>()
-    if (project) for (const c of project.codes) m.set(c.id as string, `${c.code} · ${c.desc}`)
+    if (project) for (const c of project.codes) m.set(c.id as string, `${c.code} — ${c.desc}`)
     return (id: CostCodeId) => m.get(id as string) ?? '—'
   }, [project])
 
@@ -40,15 +40,16 @@ export function VariationsTab() {
     .reduce((s, v) => s + (v.amount || 0), 0)
 
   return (
-    <div className="space-y-4">
-      <header className="flex items-center justify-between gap-3 flex-wrap">
+    <div>
+      <header className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Variations</h2>
-          <p className="text-xs text-sw-muted">
-            Approved:{' '}
-            <span className="text-sw-text font-medium">{formatCurrency(approvedTotal)}</span> ·
-            Pending: {formatCurrency(pendingTotal)}
-          </p>
+          <h2 className="mb-1 text-[26px] font-bold tracking-[-0.02em] text-sw-ink">Variations</h2>
+          <div className="text-[13px] text-sw-dim">
+            {variations.length} variations · {formatCurrency(approvedTotal)} approved ·{' '}
+            <span style={{ color: pendingTotal > 0 ? 'var(--sw-violet)' : 'var(--sw-dim)' }}>
+              {formatCurrency(pendingTotal)} pending
+            </span>
+          </div>
         </div>
         <Button onClick={() => setCreating(true)} disabled={codes.length === 0}>
           + New Variation
@@ -67,17 +68,17 @@ export function VariationsTab() {
           action={<Button onClick={() => setCreating(true)}>+ New Variation</Button>}
         />
       ) : (
-        <Card>
-          <table className="w-full text-sm">
+        <div className="border-t border-sw-ink bg-white">
+          <table className="sw-table">
             <thead>
-              <tr className="text-xs uppercase text-sw-muted text-left border-b border-sw-border">
-                <th className="px-3 py-2 font-medium">ID</th>
-                <th className="px-3 py-2 font-medium">Description</th>
-                <th className="px-3 py-2 font-medium">Code</th>
-                <th className="px-3 py-2 font-medium">Reason</th>
-                <th className="px-3 py-2 font-medium text-right">Amount</th>
-                <th className="px-3 py-2 font-medium">Date</th>
-                <th className="px-3 py-2 font-medium">Status</th>
+              <tr>
+                <th>ID</th>
+                <th>Description</th>
+                <th>Requested By</th>
+                <th>Cost Code</th>
+                <th className="text-right">Amount</th>
+                <th>Status</th>
+                <th>Date</th>
               </tr>
             </thead>
             <tbody>
@@ -85,22 +86,22 @@ export function VariationsTab() {
                 <tr
                   key={v.id}
                   onClick={() => setEditing(v)}
-                  className="border-b border-sw-border last:border-0 cursor-pointer hover:bg-sw-muted/5"
+                  className="cursor-pointer border-b border-sw-rule-l"
                 >
-                  <td className="px-3 py-2 text-sw-muted tabular-nums">{v.id}</td>
-                  <td className="px-3 py-2">{v.desc}</td>
-                  <td className="px-3 py-2 text-xs text-sw-muted">{codeLookup(v.ccId)}</td>
-                  <td className="px-3 py-2 text-xs text-sw-muted">{v.reasonCategory}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(v.amount)}</td>
-                  <td className="px-3 py-2 text-sw-muted">{formatDate(v.date)}</td>
-                  <td className="px-3 py-2">
+                  <td className="font-mono text-sw-dim">{v.id}</td>
+                  <td className="font-medium">{v.desc}</td>
+                  <td className="text-sw-dim">{v.requestedBy || '—'}</td>
+                  <td className="text-sw-dim">{codeLookup(v.ccId)}</td>
+                  <td className="text-right font-mono font-semibold">{formatCurrency(v.amount)}</td>
+                  <td>
                     <StatusBadge status={v.status} />
                   </td>
+                  <td className="text-sw-dim">{formatDate(v.date)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </Card>
+        </div>
       )}
 
       <VariationForm
@@ -108,6 +109,7 @@ export function VariationsTab() {
         onClose={() => setCreating(false)}
         projectId={project.id}
         codes={codes}
+        nextNum={variations.length + 1}
       />
       {editing && (
         <VariationForm

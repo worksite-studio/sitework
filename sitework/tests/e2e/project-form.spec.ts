@@ -4,7 +4,10 @@ import { test, expect } from '@playwright/test'
 // Acceptance mirror of the legacy baseline behaviour on :8766.
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.clear())
+  await page.addInitScript(() => {
+    localStorage.clear()
+    sessionStorage.setItem('sw:skipSplash', '1')
+  })
 })
 
 test('creates a project from + New Project (happy path, NSW)', async ({ page }) => {

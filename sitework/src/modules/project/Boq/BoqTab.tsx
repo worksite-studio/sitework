@@ -1,33 +1,37 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useDispatch } from '@/state/context'
-import { Button, Card, EmptyState } from '@/components/ui'
-import { StatusBadge } from '@/components/StatusBadge'
-import { formatCurrency } from '@/lib/formatCurrency'
+import { useAppState, useDispatch } from '@/state/context'
+import { Button } from '@/components/ui'
+import { formatCurrency, formatCurrencyExact } from '@/lib/formatCurrency'
+import { formatDate } from '@/lib/formatDate'
 import { useProject } from '../useProject'
+import { codeDocTotals } from '../computeFinancials'
 import { CostCodeForm } from './CostCodeForm'
 import { BoqTemplateImportDialog } from './BoqTemplateImportDialog'
-import type { CostCode } from '@/types'
+import { LineItemForm } from './LineItemForm'
+import type { CostCode, CostCodeId } from '@/types'
 
 /**
- * BOQ tab — port of legacy `D1` (the BOQ table) + the row-edit + form
- * (`w1`/`p1`) + template-import button (`Bti`).
+ * BOQ & Budget — transliteration of legacy `w1` (R1, PARITY gap 16): the
+ * EDIT surface, not the analytic table (that lives on Overview, `D1`).
  *
- * Each row: code, description, original budget, approved-variation overlay,
- * adjusted budget, actual cost, overrun, on/over-budget status. Row click
- * opens the cost-code form for edit. "+ Cost Code" auto-numbers the next
- * code (Session 28 / 1.5-B fix).
+ * Every cost code is an expandable row: [+/−] · mono code · description ·
+ * live committed (from invoices + POs, legacy `Gc`) coloured by budget
+ * health · "/ budget" · ↑ ↓ ✎ × actions. Expanded: the line-items table,
+ * "+ Add Line Item", and an amber Approved Variations sub-table when VOs
+ * target the code. Header: Import Template + "+ Cost Code" (Export is
+ * port-additive, kept per PARITY gap-12).
  */
 export function BoqTab() {
   const project = useProject()
+  const state = useAppState()
   const dispatch = useDispatch()
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [editing, setEditing] = useState<CostCode | null>(null)
   const [creating, setCreating] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [addingItemFor, setAddingItemFor] = useState<CostCodeId | null>(null)
 
-  // Pre-compute the next auto code as a zero-padded 3-digit string after the
-  // highest numeric code currently on the project, e.g. "045". Falls back to
-  // "001" if no codes exist.
   const nextCode = useMemo(() => {
     if (!project) return '001'
     const max = project.codes
@@ -38,150 +42,196 @@ export function BoqTab() {
   }, [project])
 
   if (!project) return null
+  const purchases = state.purchases[project.id as string] ?? []
 
-  const rows = project.codes
-  const totals = rows.reduce(
-    (acc, r) => ({
-      budget: acc.budget + (r.budget || 0),
-      vars: acc.vars + (r.vars || 0),
-      actual: acc.actual + (r.actual || 0),
-    }),
-    { budget: 0, vars: 0, actual: 0 },
-  )
+  function toggle(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  // Legacy `Ma` colour for the committed figure vs the code budget.
+  function healthColor(budget: number, committed: number): string {
+    if (!budget) return 'var(--sw-faint)'
+    if (committed <= budget) return 'var(--sw-pos)'
+    if (committed <= budget * 1.1) return 'var(--sw-violet)'
+    return 'var(--sw-neg)'
+  }
 
   function deleteCode(c: CostCode) {
     if (!project) return
-    const ok = window.confirm(
-      `Delete cost code ${c.code} "${c.desc}"? Variations + invoices that reference it stay but become orphaned.`,
-    )
-    if (!ok) return
+    // Legacy w1 confirm copy, verbatim.
+    if (!window.confirm(`Delete cost code ${c.code}?`)) return
     dispatch({ type: 'DELETE_CODE', projectId: project.id, codeId: c.id })
   }
 
   return (
-    <div className="space-y-4">
-      <header className="flex items-center justify-between gap-2 flex-wrap">
-        <h2 className="text-lg font-semibold">BOQ & Budget</h2>
+    <div>
+      <header className="mb-6 flex items-center justify-between">
+        <h2 className="text-[26px] font-bold tracking-[-0.02em] text-sw-ink">BOQ & Budget</h2>
         <div className="flex gap-2">
           <Link
             to={`/print/boq/${project.id}`}
             target="_blank"
-            className="inline-flex items-center rounded-md border border-sw-border bg-sw-surface px-4 h-9 text-sm font-medium hover:bg-sw-muted/5 transition"
+            className="inline-flex items-center border border-sw-rule rounded-[1px] bg-transparent px-4 h-9 text-sm font-medium text-sw-ink hover:bg-sw-muted/5 transition"
           >
             Export
           </Link>
           <Button variant="secondary" onClick={() => setImporting(true)}>
-            Import from template
+            Import Template
           </Button>
           <Button onClick={() => setCreating(true)}>+ Cost Code</Button>
         </div>
       </header>
 
-      {rows.length === 0 ? (
-        <EmptyState
-          title="No cost codes yet"
-          description="Add cost codes manually or import from a BOQ template to populate the project budget."
-          action={
-            <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => setImporting(true)}>
-                Import from template
-              </Button>
-              <Button onClick={() => setCreating(true)}>+ Cost Code</Button>
+      {project.codes.map((code) => {
+        const items = project.lineItems[code.id as string] ?? []
+        const open = expanded.has(code.id as string)
+        const live = codeDocTotals(code.id as string, project.invoices, purchases)
+        const vos = project.variations.filter((v) => v.status === 'Approved' && v.ccId === code.id)
+        return (
+          <div key={code.id as string} className="border-b border-sw-rule">
+            {/* Code header row */}
+            <div
+              onClick={() => toggle(code.id as string)}
+              className="flex cursor-pointer items-center gap-3 border-b border-sw-rule bg-white py-3.5"
+            >
+              <span className="text-[10px] text-sw-faint">{open ? '−' : '+'}</span>
+              <span className="w-[30px] font-mono text-[11px] text-sw-dim">{code.code}</span>
+              <span className="flex-1 text-[13px] font-semibold text-sw-ink">{code.desc}</span>
+              <span
+                className="font-mono text-[13px] font-bold"
+                style={{ color: healthColor(code.budget || 0, live.committed) }}
+              >
+                {formatCurrency(live.committed)}
+              </span>
+              <span className="font-mono text-[12px] text-sw-dim">
+                / {formatCurrency(code.budget || 0)}
+              </span>
+              <span className="ml-2 flex gap-1" onClick={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  title="Move up"
+                  onClick={() =>
+                    dispatch({ type: 'MOVE_CODE_UP', projectId: project.id, codeId: code.id })
+                  }
+                  className="px-[3px] text-[11px] leading-none text-sw-faint hover:text-sw-ink"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  title="Move down"
+                  onClick={() =>
+                    dispatch({ type: 'MOVE_CODE_DOWN', projectId: project.id, codeId: code.id })
+                  }
+                  className="px-[3px] text-[11px] leading-none text-sw-faint hover:text-sw-ink"
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  title="Edit code"
+                  onClick={() => setEditing(code)}
+                  className="px-1 text-[10px] text-sw-dim hover:text-sw-ink"
+                >
+                  ✎
+                </button>
+                <button
+                  type="button"
+                  title="Delete code"
+                  onClick={() => deleteCode(code)}
+                  className="px-1 text-[11px] text-sw-danger"
+                >
+                  ×
+                </button>
+              </span>
             </div>
-          }
-        />
-      ) : (
-        <Card>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-xs uppercase text-sw-muted text-left border-b border-sw-border">
-                <th className="px-3 py-2 font-medium">Code</th>
-                <th className="px-3 py-2 font-medium">Description</th>
-                <th className="px-3 py-2 font-medium text-right">Orig. budget</th>
-                <th className="px-3 py-2 font-medium text-right">Variations</th>
-                <th className="px-3 py-2 font-medium text-right">Adj. budget</th>
-                <th className="px-3 py-2 font-medium text-right">Actual</th>
-                <th className="px-3 py-2 font-medium text-right">Overrun</th>
-                <th className="px-3 py-2 font-medium">Status</th>
-                <th className="px-3 py-2 font-medium" aria-label="Actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((c) => {
-                const adj = (c.budget || 0) + (c.vars || 0)
-                const overrun = (c.actual || 0) - adj
-                return (
-                  <tr
-                    key={c.id}
-                    onClick={() => setEditing(c)}
-                    className="border-b border-sw-border last:border-0 cursor-pointer hover:bg-sw-muted/5"
-                  >
-                    <td className="px-3 py-2 tabular-nums">{c.code}</td>
-                    <td className="px-3 py-2">{c.desc}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {formatCurrency(c.budget || 0)}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {c.vars ? formatCurrency(c.vars) : '—'}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(adj)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {formatCurrency(c.actual || 0)}
-                    </td>
-                    <td
-                      className={`px-3 py-2 text-right tabular-nums ${
-                        overrun > 0 ? 'text-sw-danger' : 'text-sw-muted'
-                      }`}
-                    >
-                      {overrun > 0 ? `+${formatCurrency(overrun)}` : '—'}
-                    </td>
-                    <td className="px-3 py-2">
-                      <StatusBadge
-                        variant={overrun > 0 ? 'danger' : 'success'}
-                        label={overrun > 0 ? 'OVER BUDGET' : 'ON BUDGET'}
-                        status="—"
-                      />
-                    </td>
-                    <td
-                      className="px-3 py-2 text-right"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => deleteCode(c)}
-                        aria-label={`Delete code ${c.code}`}
-                        className="text-sw-muted hover:text-sw-danger transition px-2"
-                      >
-                        ×
-                      </button>
-                    </td>
-                  </tr>
-                )
-              })}
-              <tr className="bg-sw-muted/5 font-medium text-sm">
-                <td colSpan={2} className="px-3 py-2 text-sw-muted text-xs uppercase">
-                  Totals
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums">
-                  {formatCurrency(totals.budget)}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums">
-                  {totals.vars ? formatCurrency(totals.vars) : '—'}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums">
-                  {formatCurrency(totals.budget + totals.vars)}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums">
-                  {formatCurrency(totals.actual)}
-                </td>
-                <td colSpan={3} />
-              </tr>
-            </tbody>
-          </table>
-        </Card>
-      )}
+
+            {/* Expanded: line items + approved variations */}
+            {open && (
+              <div className="border-b border-sw-rule py-3 pl-6 pb-4">
+                <table className="sw-table mb-2.5">
+                  <thead>
+                    <tr>
+                      <th>Description</th>
+                      <th className="text-right">Qty</th>
+                      <th>Unit</th>
+                      <th className="text-right">Rate</th>
+                      <th className="text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((li) => (
+                      <tr key={li.id as string} className="border-b border-sw-rule-l">
+                        <td>{li.desc}</td>
+                        <td className="text-right font-mono">{li.qty}</td>
+                        <td className="text-sw-dim">{li.unit}</td>
+                        <td className="text-right font-mono">{formatCurrencyExact(li.rate)}</td>
+                        <td className="text-right font-mono font-semibold">
+                          {formatCurrency(li.qty * li.rate)}
+                        </td>
+                      </tr>
+                    ))}
+                    {items.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-2.5 text-[12px] text-sw-faint">
+                          No line items. Add one below.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+                <button
+                  type="button"
+                  onClick={() => setAddingItemFor(code.id)}
+                  className="text-[11px] font-medium text-sw-violet hover:underline"
+                >
+                  + Add Line Item
+                </button>
+
+                {vos.length > 0 && (
+                  <div className="mt-3 border-t border-dashed border-[#E5E7EB] pt-2.5">
+                    <div className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-[#D97706]">
+                      Approved Variations
+                    </div>
+                    <table className="sw-table">
+                      <thead>
+                        <tr>
+                          <th>VO Ref</th>
+                          <th>Description</th>
+                          <th>Date</th>
+                          <th className="text-right">Variation Cost</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {vos.map((v) => (
+                          <tr key={v.id as string} className="bg-[#FFFBEB]">
+                            <td className="font-mono text-sw-dim">{v.id as string}</td>
+                            <td>{v.desc}</td>
+                            <td className="text-sw-dim">{v.date ? formatDate(v.date) : '—'}</td>
+                            <td className="text-right font-mono font-semibold text-[#D97706]">
+                              {formatCurrency(v.amount)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div className="flex justify-end pt-1.5 pr-4">
+                      <span className="font-mono text-[11px] font-semibold text-[#D97706]">
+                        Total Variations: {formatCurrency(vos.reduce((s, v) => s + v.amount, 0))}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
 
       <CostCodeForm
         open={creating}
@@ -202,6 +252,14 @@ export function BoqTab() {
         onClose={() => setImporting(false)}
         projectId={project.id}
       />
+      {addingItemFor && (
+        <LineItemForm
+          open
+          onClose={() => setAddingItemFor(null)}
+          projectId={project.id}
+          ccId={addingItemFor}
+        />
+      )}
     </div>
   )
 }

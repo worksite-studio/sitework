@@ -9,16 +9,17 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: Size
 }
 
+/** Port of legacy `Q` — square, padding-sized, black primary / pink danger. */
 const VARIANT: Record<Variant, string> = {
-  primary: 'bg-sw-primary text-white hover:opacity-90',
-  secondary: 'border border-sw-border bg-sw-surface text-sw-text hover:bg-sw-muted/5',
-  ghost: 'text-sw-text hover:bg-sw-muted/10',
-  danger: 'bg-sw-danger text-white hover:opacity-90',
+  primary: 'bg-sw-ink text-white',
+  secondary: 'bg-white text-sw-ink border border-sw-rule',
+  ghost: 'bg-white text-sw-ink border border-sw-rule',
+  danger: 'bg-sw-neg text-white',
 }
 
 const SIZE: Record<Size, string> = {
-  sm: 'h-8 px-3 text-xs',
-  md: 'h-9 px-4 text-sm',
+  sm: 'px-3 py-[5px] text-[11px]',
+  md: 'px-[18px] py-2 text-[12px]',
 }
 
 export function Button({
@@ -32,7 +33,7 @@ export function Button({
     <button
       type={type}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-md font-medium transition disabled:opacity-50 disabled:cursor-not-allowed',
+        'inline-flex items-center justify-center gap-2 rounded-[1px] font-semibold tracking-[0.02em] whitespace-nowrap cursor-pointer transition disabled:opacity-50 disabled:cursor-not-allowed',
         VARIANT[variant],
         SIZE[size],
         className,

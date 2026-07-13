@@ -1,144 +1,251 @@
 import { Link } from 'react-router-dom'
 import { useMemo } from 'react'
+import { StatBlock } from '@/components/ui'
 import { useAppState } from '@/state/context'
-import { Card, EmptyState, KpiTile } from '@/components/ui'
-import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
-import { computeDashboardKpis, computePipelineCounts } from './computeKpis'
-
-const STAGE_LABEL: Record<string, string> = {
-  prospect: 'Prospect',
-  tendering: 'Tendering',
-  won: 'Won',
-  lost: 'Lost',
-}
+import { computeDashboardKpis } from './computeKpis'
+import type { RootState } from '@/types'
 
 /**
- * Dashboard — port of legacy `Y1v2`. Headline KPI tiles + Project Health
- * (active projects, clickable into the project overview) + Pipeline counts
- * (clickable into Leads). Compliance Alerts uses the same sub-cert /
- * insurance-expiry signals the Calendar tab (Phase 1.5-D) surfaces.
+ * Dashboard — faithful port of legacy `Y1v2` + `AlertPanel` (PARITY gaps 10/11):
+ * Alerts & Compliance panel leads, then the greeting block, five editorial
+ * stat blocks over 2px ink rules, and the ruled Project Health / Budget &
+ * Margin columns. All styling values are lifted verbatim from the baseline.
  */
+
+interface Alert {
+  type: 'error' | 'warn' | 'info'
+  text: string
+}
+
+const ALERT_ROW_BG: Record<Alert['type'], string> = {
+  error: '#FEE2E240',
+  warn: '#FEF3C740',
+  info: '#EFF6FF40',
+}
+const ALERT_DOT: Record<Alert['type'], string> = {
+  error: '#EF4444',
+  warn: '#F59E0B',
+  info: '#3B82F6',
+}
+
+/** Port of legacy `AlertPanel` alert building — same rules, same copy. */
+function buildAlerts(state: RootState): Alert[] {
+  const today = new Date()
+  const soon = new Date()
+  soon.setDate(today.getDate() + 30)
+  const alerts: Alert[] = []
+
+  for (const sub of state.subs) {
+    const checks = [
+      { label: `${sub.name} — Public Liability expires`, date: sub.liabilityExp },
+      { label: `${sub.name} — Workers Comp expires`, date: sub.wcExp },
+    ]
+    for (const { label, date } of checks) {
+      if (!date) continue
+      const d = new Date(date)
+      if (d < today) {
+        alerts.push({ type: 'error', text: `${label} (EXPIRED)` })
+      } else if (d < soon) {
+        const days = Math.ceil((d.getTime() - today.getTime()) / 86400000)
+        alerts.push({ type: 'warn', text: `${label} in ${days} days` })
+      }
+    }
+    if (!sub.swms) alerts.push({ type: 'warn', text: `${sub.name} — SWMS not on file` })
+  }
+
+  for (const [projectId, rfis] of Object.entries(state.rfis)) {
+    const project = state.projects.find((p) => (p.id as string) === projectId)
+    for (const rfi of rfis ?? []) {
+      if (rfi.status === 'Open' && rfi.dateRequired && new Date(rfi.dateRequired) < today) {
+        alerts.push({
+          type: 'warn',
+          text: `RFI overdue: ${rfi.subject}${project ? ` — ${project.name}` : ''}`,
+        })
+      }
+    }
+  }
+
+  for (const p of state.projects.filter((p) => p.status === 'live')) {
+    const pending = p.variations.filter((v) => v.status === 'Pending')
+    if (pending.length > 0) {
+      alerts.push({
+        type: 'info',
+        text: `${pending.length} pending variation${pending.length > 1 ? 's' : ''} on ${p.name}`,
+      })
+    }
+  }
+
+  return alerts
+}
+
+/** Legacy `Ma` — committed vs budget health. */
+function health(budget: number, committed: number): { color: string; label: string } {
+  if (!budget) return { color: 'var(--sw-faint)', label: '—' }
+  if (committed <= budget) return { color: 'var(--sw-pos)', label: 'On Budget' }
+  if (committed <= budget * 1.1) return { color: 'var(--sw-violet)', label: 'At Risk' }
+  return { color: 'var(--sw-neg)', label: 'Over' }
+}
+
 export function DashboardPage() {
   const state = useAppState()
   const kpis = useMemo(() => computeDashboardKpis(state), [state])
-  const pipeline = useMemo(() => computePipelineCounts(state), [state])
+  const alerts = useMemo(() => buildAlerts(state), [state])
   const active = state.projects.filter((p) => p.status === 'live')
 
-  const complianceTone =
-    kpis.expiredCertsCount > 0 ? 'danger' : kpis.expiringCertsCount > 0 ? 'warning' : 'neutral'
+  const userName = typeof state.settings.userName === 'string' ? state.settings.userName : ''
+  const subsNeedingAttention = state.subs.filter((sub) => {
+    const today = new Date()
+    const soon = new Date()
+    soon.setDate(today.getDate() + 30)
+    const expiring = (d: string) => !!d && new Date(d) < soon
+    return expiring(sub.liabilityExp) || expiring(sub.wcExp) || !sub.swms
+  }).length
+
+  const shown = alerts.slice(0, 8)
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-sw-muted">
-          Portfolio overview — active projects, money in motion, compliance flags.
-        </p>
-      </header>
+    <div className="sw-page">
+      {/* Alerts & Compliance — leads the page, exactly like the baseline */}
+      {alerts.length > 0 && (
+        <div className="mb-8 overflow-hidden rounded-[1px] border border-sw-rule">
+          <div className="flex items-center justify-between border-b border-sw-rule bg-white px-4 py-2.5">
+            <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-sw-ink">
+              Alerts & Compliance
+            </div>
+            <div className="text-[11px] text-sw-dim">
+              {alerts.length} item{alerts.length !== 1 ? 's' : ''}
+            </div>
+          </div>
+          {shown.map((alert, idx) => (
+            <div
+              key={idx}
+              className="flex items-center gap-2.5 px-4 py-[9px]"
+              style={{
+                background: ALERT_ROW_BG[alert.type],
+                borderBottom: idx < shown.length - 1 ? '1px solid var(--sw-rule)' : 'none',
+              }}
+            >
+              <div
+                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ background: ALERT_DOT[alert.type] }}
+              />
+              <div className="text-xs text-sw-ink">{alert.text}</div>
+            </div>
+          ))}
+          {alerts.length > 8 && (
+            <div className="bg-white px-4 py-2 text-[11px] text-sw-dim">
+              +{alerts.length - 8} more alerts
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* KPI tiles */}
-      <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        <KpiTile
+      {/* Greeting */}
+      <div className="mb-7">
+        <div className="mb-1.5 text-[26px] font-bold tracking-[-0.02em] text-sw-ink">
+          {userName ? `Good morning, ${userName}.` : 'Good morning.'}
+        </div>
+        <div className="text-[13px] text-sw-dim">Here's where things stand today.</div>
+      </div>
+
+      {/* Editorial stat blocks */}
+      <div className="mb-12 flex gap-12">
+        <StatBlock
           label="Active Projects"
-          value={kpis.activeProjectsCount}
-          sublabel={`${state.projects.length - kpis.activeProjectsCount} other`}
+          value={active.length}
+          sublabel={`$${(kpis.portfolioContractValue / 1e6).toFixed(1)}M contract value`}
         />
-        <KpiTile
+        <StatBlock
           label="Outstanding Invoices"
           value={formatCurrency(kpis.outstandingInvoicesTotal)}
-          sublabel={`${kpis.outstandingInvoicesCount} approved/pending`}
+          sublabel="Approved, awaiting payment"
+          accent="var(--sw-violet)"
         />
-        <KpiTile
+        <StatBlock
           label="Open Variations"
           value={formatCurrency(kpis.openVariationsTotal)}
-          sublabel={`${kpis.openVariationsCount} pending approval`}
+          sublabel="Pending approval"
         />
-        <KpiTile
+        <StatBlock
           label="Portfolio Margin"
-          value={`${kpis.portfolioMarginPct.toFixed(1)}%`}
+          value={`${Math.round(kpis.portfolioMarginPct)}%`}
           sublabel="Across active projects"
         />
-        <KpiTile
+        <StatBlock
           label="Compliance Alerts"
-          tone={complianceTone}
-          value={kpis.expiredCertsCount + kpis.expiringCertsCount}
-          sublabel={
-            kpis.expiredCertsCount > 0
-              ? `${kpis.expiredCertsCount} expired, ${kpis.expiringCertsCount} ≤30d`
-              : kpis.expiringCertsCount > 0
-                ? `${kpis.expiringCertsCount} expiring ≤30d`
-                : 'All current'
-          }
+          value={subsNeedingAttention}
+          sublabel="Subs needing attention"
+          accent={subsNeedingAttention > 0 ? 'var(--sw-neg)' : undefined}
         />
-      </section>
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Project Health */}
-        <section className="lg:col-span-2 space-y-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-sw-muted">
-            Project Health
-          </h2>
-          {active.length === 0 ? (
-            <EmptyState title="No active projects" description="Create a project to see it here." />
-          ) : (
-            <Card>
-              <ul className="divide-y divide-sw-border">
-                {active.map((p) => {
-                  const budget = p.codes.reduce((s, c) => s + c.budget, 0)
-                  const actual = p.codes.reduce((s, c) => s + c.actual, 0)
-                  const overrun = actual - budget
-                  return (
-                    <li key={p.id}>
-                      <Link
-                        to={`/projects/${p.id}/overview`}
-                        className="block px-4 py-3 hover:bg-sw-muted/5 transition"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="font-medium truncate">{p.name}</div>
-                            <div className="text-xs text-sw-muted">
-                              {p.id} · {p.state} · {p.contractType}
-                            </div>
-                          </div>
-                          <div className="text-right text-xs">
-                            <div className="font-medium text-sw-text">
-                              {formatCurrency(actual)} <span className="text-sw-muted">/</span>{' '}
-                              {formatCurrency(budget)}
-                            </div>
-                            {budget > 0 && (
-                              <div className={overrun > 0 ? 'text-sw-danger' : 'text-sw-success'}>
-                                {overrun > 0 ? `+${formatCurrency(overrun)} over` : 'On budget'}
-                              </div>
-                            )}
-                          </div>
-                          <StatusBadge status={p.status} />
-                        </div>
-                      </Link>
-                    </li>
-                  )
-                })}
-              </ul>
-            </Card>
+      {/* Project Health | Budget & Margin — ruled columns */}
+      <div className="grid grid-cols-2 gap-12">
+        <section className="border-t border-sw-ink pt-5">
+          <h2 className="mb-4 text-[13px] font-bold text-sw-ink">Project Health</h2>
+          {active.map((p) => {
+            const budget = p.codes.reduce((s, c) => s + c.budget, 0)
+            const committed = p.codes.reduce((s, c) => s + c.committed, 0)
+            const h = health(budget, committed)
+            const client = state.clients.find((c) => c.id === p.clientId)
+            return (
+              <Link
+                key={p.id}
+                to={`/projects/${p.id}/overview`}
+                className="flex items-center gap-3 border-b border-sw-rule-l py-2.5"
+              >
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: h.color }} />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-semibold text-sw-ink">{p.name}</span>
+                  <span className="block text-[11px] text-sw-faint">{client?.name}</span>
+                </span>
+                <span className="text-right">
+                  <span
+                    className="block font-mono text-xs font-semibold"
+                    style={{ color: h.color }}
+                  >
+                    {budget > 0 ? Math.round((committed / budget) * 100) : 0}%
+                  </span>
+                  <span className="block text-[10px] text-sw-faint">
+                    {h.label} · committed vs budget
+                  </span>
+                </span>
+              </Link>
+            )
+          })}
+          {active.length === 0 && (
+            <div className="py-5 text-center text-[13px] text-sw-faint">No active projects</div>
           )}
         </section>
 
-        {/* Pipeline */}
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-sw-muted">Pipeline</h2>
-          <Card className="p-4 space-y-2">
-            {(['prospect', 'tendering', 'won', 'lost'] as const).map((stage) => (
-              <Link
-                key={stage}
-                to="/leads"
-                className="flex items-center justify-between text-sm py-1 hover:text-sw-info transition"
+        <section className="border-t border-sw-ink pt-5">
+          <h2 className="mb-4 text-[13px] font-bold text-sw-ink">Budget & Margin</h2>
+          {active.map((p) => {
+            const budget = p.codes.reduce((s, c) => s + c.budget, 0)
+            const committed = p.codes.reduce((s, c) => s + c.committed, 0)
+            const spent = budget > 0 ? Math.round((committed / budget) * 100) : 0
+            return (
+              <div
+                key={p.id}
+                className="flex items-center gap-3 border-b border-sw-rule-l py-[9px]"
               >
-                <span>{STAGE_LABEL[stage]}</span>
-                <span className="font-medium tabular-nums">{pipeline[stage]}</span>
-              </Link>
-            ))}
-            {state.leads.length === 0 && <p className="text-xs text-sw-muted">No leads yet.</p>}
-          </Card>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xs font-semibold text-sw-ink">{p.name}</span>
+                  <span className="block text-[10px] text-sw-faint">
+                    ${(budget / 1e3).toFixed(0)}K budget
+                  </span>
+                </span>
+                <span className="text-right">
+                  <span className="block font-mono text-xs font-bold text-sw-pos">{p.margin}%</span>
+                  <span className="block text-[10px] text-sw-faint">{spent}% spent</span>
+                </span>
+              </div>
+            )
+          })}
+          {active.length === 0 && (
+            <div className="py-5 text-center text-[13px] text-sw-faint">No active projects</div>
+          )}
         </section>
       </div>
     </div>

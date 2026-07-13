@@ -3,18 +3,21 @@ import { test, expect } from '@playwright/test'
 test.beforeEach(async ({ page }) => {
   // Start each spec from a clean slate so the persisted dispatch from a
   // previous spec doesn't bleed in.
-  await page.addInitScript(() => localStorage.clear())
+  await page.addInitScript(() => {
+    localStorage.clear()
+    sessionStorage.setItem('sw:skipSplash', '1')
+  })
 })
 
-test('dashboard renders KPI tiles + Project Health + Pipeline', async ({ page }) => {
+test('dashboard renders stat blocks + Project Health + Budget & Margin', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
+  await expect(page.getByText(/^Good morning/)).toBeVisible()
   await expect(page.getByText('Active Projects', { exact: true })).toBeVisible()
   await expect(page.getByText('Outstanding Invoices', { exact: true })).toBeVisible()
   await expect(page.getByText('Portfolio Margin', { exact: true })).toBeVisible()
   await expect(page.getByText('Compliance Alerts', { exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { level: 2, name: /Project Health/i })).toBeVisible()
-  await expect(page.getByRole('heading', { level: 2, name: /Pipeline/i })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: /Budget & Margin/i })).toBeVisible()
 
   // Click a Project Health row navigates to the project overview
   await page
@@ -28,7 +31,10 @@ test('navigates to Projects list and into a project tab', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Projects' }).click()
   await expect(page).toHaveURL(/\/projects$/)
-  await expect(page.getByText('Akademie')).toBeVisible()
+  // Role-anchored: during the route swap the dashboard's Project Health
+  // "Akademie" briefly coexists with the list row — bare getByText is
+  // ambiguous mid-transition (strict-mode violation).
+  await expect(page.getByRole('link', { name: /Akademie/ })).toBeVisible()
 
   await page.getByRole('link', { name: /Akademie/ }).click()
   await expect(page).toHaveURL(/\/projects\/PRJ-001\/overview$/)
@@ -45,11 +51,21 @@ test('deep-link into a project tab works', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Progress Claims' })).toBeVisible()
 })
 
-test('project Overview tab renders Contract vs Cost panel', async ({ page }) => {
+test('project Overview tab renders D1 stats + BOQ table + Contract vs Cost panel', async ({
+  page,
+}) => {
   await page.goto('/projects/PRJ-001/overview')
-  await expect(page.getByText('Contract Value', { exact: true })).toBeVisible()
+  // D1 stat row (legacy-only stats)
+  await expect(page.getByText('True Overrun')).toBeVisible()
+  await expect(page.getByText('Original Budget', { exact: true })).toBeVisible()
+  // D1 analytic BOQ table (zero-placeholder codes filtered out)
+  await expect(
+    page.getByText('Preliminary Costs, Consultant Fees, Site Establishment'),
+  ).toBeVisible()
+  await expect(page.getByText('Surveying — Set-Out, TBM, Pins')).not.toBeVisible()
+  // D1v2 panel + Duplicate Project button
   await expect(page.getByRole('heading', { name: /Contract vs Cost/ })).toBeVisible()
-  await expect(page.getByText('Adjusted contract value')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Duplicate Project' })).toBeVisible()
 })
 
 test('project BOQ tab renders codes table and supports add', async ({ page }) => {
@@ -61,32 +77,56 @@ test('project BOQ tab renders codes table and supports add', async ({ page }) =>
 
   // Open the cost-code form via the + Cost Code button
   await page.getByRole('button', { name: '+ Cost Code' }).first().click()
-  await expect(page.getByRole('heading', { name: 'New cost code' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Add Cost Code' })).toBeVisible()
   // Auto-numbered Code (next 3-digit) is pre-filled
   await expect(page.getByLabel(/^Code\*$/)).not.toHaveValue('')
 })
 
-test('project PC & PS tab renders reconciliation tables', async ({ page }) => {
+test('project PC & PS tab — Pcps anatomy + pcf add form (gap 5)', async ({ page }) => {
   await page.goto('/projects/PRJ-001/pcps')
-  await expect(page.getByRole('heading', { name: /Prime Cost items/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'PC & PS' })).toBeVisible()
+  await expect(page.getByText(/Margin is applied on excess only/)).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Prime Cost Items/ })).toBeVisible()
   await expect(page.getByRole('heading', { name: /Provisional Sums/ })).toBeVisible()
-  // Reconciliation column exists
-  await expect(page.getByText('Margin on excess', { exact: true }).first()).toBeVisible()
+  await expect(page.getByText('Margin on Excess', { exact: true }).first()).toBeVisible()
+  // Legacy inline totals footer
+  await expect(page.getByText(/Allowance total:/).first()).toBeVisible()
+
+  // pcf add form: validation then happy path
+  await page.getByRole('button', { name: '+ Add PC Item' }).click()
+  await expect(page.getByRole('heading', { name: 'Add PC Item' })).toBeVisible()
+  await page.getByRole('button', { name: 'Add PC Item', exact: true }).last().click()
+  await expect(page.getByText('Required')).toBeVisible()
+  await page.getByLabel(/^Description\*$/).fill('Smoke PC allowance')
+  await page.getByLabel(/^Allowance/).fill('5000')
+  await page.getByRole('button', { name: 'Add PC Item', exact: true }).last().click()
+  await expect(page.getByText('Smoke PC allowance')).toBeVisible()
 })
 
-test('project Variations tab renders and dialog opens', async ({ page }) => {
+test('project Variations tab — requestedBy column + v1 form (gap 4)', async ({ page }) => {
   await page.goto('/projects/PRJ-001/variations')
   await expect(page.getByRole('heading', { name: 'Variations', exact: true })).toBeVisible()
+  // Legacy B1 sub-line with count + REQUESTED BY column
+  await expect(page.getByText(/7 variations ·/)).toBeVisible()
+  await expect(page.getByText('Requested By', { exact: true })).toBeVisible()
+
   await page.getByRole('button', { name: '+ New Variation' }).first().click()
-  await expect(page.getByRole('heading', { name: 'New variation' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'New Variation' })).toBeVisible()
+  // v1 fields: Requested By select (default Owner), Reason Category with Other
+  await expect(page.getByLabel('Requested By')).toHaveValue('Owner')
+  // Conditional comment fields appear on Other
+  await page.getByLabel('Reason Category').selectOption('Other')
+  await expect(page.getByLabel('Comment / Reason Detail')).toBeVisible()
+  await page.getByLabel('Requested By').selectOption('Other')
+  await expect(page.getByLabel(/Requested By — Comment/)).toBeVisible()
 })
 
 test('project Invoices tab — cost-plus substantiation gate blocks save', async ({ page }) => {
   // PRJ-001 is cost-plus in seed
   await page.goto('/projects/PRJ-001/invoices')
   await expect(page.getByRole('heading', { name: 'Invoices' })).toBeVisible()
-  await page.getByRole('button', { name: '+ New Invoice' }).first().click()
-  await expect(page.getByRole('heading', { name: 'New invoice' })).toBeVisible()
+  await page.getByRole('button', { name: '+ Invoice' }).first().click()
+  await expect(page.getByRole('heading', { name: 'New Invoice' })).toBeVisible()
   // Fill required fields BUT leave docs empty
   await page.getByLabel(/^Supplier \/ subcontractor\*$/).fill('Test Supplier')
   await page.getByRole('button', { name: 'Save' }).click()
@@ -96,8 +136,8 @@ test('project Invoices tab — cost-plus substantiation gate blocks save', async
 test('project Invoices tab — fixed-price doesn’t gate on docs', async ({ page }) => {
   // PRJ-005 is fixed-price in seed
   await page.goto('/projects/PRJ-005/invoices')
-  await page.getByRole('button', { name: '+ New Invoice' }).first().click()
-  await expect(page.getByRole('heading', { name: 'New invoice' })).toBeVisible()
+  await page.getByRole('button', { name: '+ Invoice' }).first().click()
+  await expect(page.getByRole('heading', { name: 'New Invoice' })).toBeVisible()
   // No "Supporting documents" field at all on fixed-price
   await expect(page.getByText('Supporting documents')).not.toBeVisible()
 })
@@ -121,7 +161,7 @@ test('project Defects + Schedule + Diary + RFIs + Selections + Timesheets tabs r
   page,
 }) => {
   for (const [path, heading] of [
-    ['defects', 'Defects'],
+    ['defects', 'Retention & FFC'],
     ['schedule', 'Schedule'],
     ['diary', 'Site Diary'],
     ['rfis', 'RFI Register'],
@@ -142,7 +182,8 @@ test('project Calendar tab aggregates milestones + sub expiries', async ({ page 
 
 test('project Open Book tab renders read-only summary', async ({ page }) => {
   await page.goto('/projects/PRJ-001/openbook')
-  await expect(page.getByText(/Open-book report/i)).toBeVisible()
+  await expect(page.getByText('OPEN-BOOK REPORT', { exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Contract & Cost Summary' })).toBeVisible()
   await expect(page.getByRole('button', { name: /Print/ })).toBeVisible()
 })
 
@@ -191,34 +232,39 @@ test('clients module: add then edit a client', async ({ page }) => {
 
   // Add
   await page.getByRole('button', { name: '+ New Client' }).first().click()
-  await page.getByLabel(/^Name/).fill('Smoke Test Pty Ltd')
+  await page.getByLabel(/^Company \/ Client Name/).fill('Smoke Test Pty Ltd')
   await page.getByLabel('Phone').fill('0400 000 000')
-  await page.getByRole('button', { name: 'Save' }).click()
+  await page.getByRole('button', { name: 'Save Client' }).click()
   await expect(page.getByText('Smoke Test Pty Ltd')).toBeVisible()
 
-  // Edit — click the row
+  // Edit — row click expands the L1 detail strip, then Edit Client
   await page.getByText('Smoke Test Pty Ltd').click()
-  await page.getByLabel(/^Name/).fill('Smoke Test (renamed)')
-  await page.getByRole('button', { name: 'Save' }).click()
+  await page.getByRole('button', { name: 'Edit Client' }).click()
+  await page.getByLabel(/^Company \/ Client Name/).fill('Smoke Test (renamed)')
+  await page.getByRole('button', { name: 'Save Client' }).click()
   await expect(page.getByText('Smoke Test (renamed)')).toBeVisible()
 })
 
-test('subcontractors module: list shows cert chips, add then edit a sub', async ({ page }) => {
+test('subcontractors module: V1 table, add then edit a sub', async ({ page }) => {
   await page.goto('/subs')
   await expect(page.getByRole('heading', { name: 'Subcontractors' })).toBeVisible()
 
-  // Seed includes Worksite Studio with a cert
+  // Legacy V1 anatomy: compliance sub-line, trade chips, licence/SWMS columns
+  await expect(page.getByText(/compliance issue/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'PLUMBING' })).toBeVisible()
+  await expect(page.getByText('Licence', { exact: true })).toBeVisible()
+  await expect(page.getByText('SWMS', { exact: true })).toBeVisible()
   await expect(page.getByText('Worksite Studio')).toBeVisible()
 
   // Add
-  await page.getByRole('button', { name: '+ New Subcontractor' }).first().click()
+  await page.getByRole('button', { name: '+ Add Subcontractor' }).first().click()
   await page.getByLabel(/^Name\*$/).fill('Smoke Subs Pty Ltd')
   await page.getByLabel(/^Trade\*$/).fill('Carpentry')
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('Smoke Subs Pty Ltd')).toBeVisible()
 
   // Edit — row click, rename
-  await page.getByRole('button', { name: /Smoke Subs Pty Ltd/ }).click()
+  await page.getByText('Smoke Subs Pty Ltd').click()
   await expect(page.getByRole('heading', { name: /Edit Smoke Subs Pty Ltd/i })).toBeVisible()
   await page.getByLabel(/^Name\*$/).fill('Smoke Subs (renamed)')
   await page.getByRole('button', { name: 'Save' }).click()
@@ -227,18 +273,23 @@ test('subcontractors module: list shows cert chips, add then edit a sub', async 
 
 test('subcontractors form requires Name and Trade', async ({ page }) => {
   await page.goto('/subs')
-  await page.getByRole('button', { name: '+ New Subcontractor' }).first().click()
+  await page.getByRole('button', { name: '+ Add Subcontractor' }).first().click()
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('Name is required')).toBeVisible()
   await expect(page.getByText('Trade is required')).toBeVisible()
 })
 
-test('leads module: filter chips + add a lead', async ({ page }) => {
+test('leads module: G1 kanban + add a lead + detail drill-in', async ({ page }) => {
   await page.goto('/leads')
-  await expect(page.getByRole('heading', { name: 'Leads / Tender' })).toBeVisible()
-  // Filter chips
-  await expect(page.getByRole('button', { name: 'All', exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Prospect', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Lead Pipeline' })).toBeVisible()
+  // Five kanban columns incl. the restored Quoted stage (gap 15)
+  for (const col of ['Prospect', 'Tendering', 'Quoted', 'Won', 'Lost']) {
+    await expect(page.getByText(col, { exact: true })).toBeVisible()
+  }
+  // Card click drills into the detail view
+  await page.getByText('Avalon Knockdown Rebuild').click()
+  await expect(page.getByText('Estimated Value')).toBeVisible()
+  await page.getByRole('button', { name: 'Pipeline' }).click()
 
   // Add a lead
   await page.getByRole('button', { name: '+ New Lead' }).first().click()
@@ -254,10 +305,10 @@ test('estimating module: tab switch + open template wizard', async ({ page }) =>
 
   // Switch to templates tab and verify a known template
   await page.getByRole('button', { name: /BOQ Templates/ }).click()
-  await expect(page.getByRole('heading', { name: 'Residential New Build' })).toBeVisible()
+  await expect(page.getByText('Residential New Build', { exact: true })).toBeVisible()
 
   // Open the wizard
-  await page.getByRole('button', { name: 'Use template' }).first().click()
+  await page.getByRole('button', { name: 'Use Template' }).first().click()
   await expect(page.getByRole('heading', { name: /New estimate from/ })).toBeVisible()
 
   // Validation: empty submit blocks
@@ -274,20 +325,65 @@ test('estimating module: tab switch + open template wizard', async ({ page }) =>
   await expect(page.getByText('Test Estimate')).toBeVisible()
 })
 
-test('settings module: edit + save flips the dirty/saved state', async ({ page }) => {
-  // Persistence (localStorage write-through) is covered by persistence unit
-  // tests; here we'd hit beforeEach's localStorage.clear() on reload, so we
-  // assert the in-page dirty → saved transition instead.
+test('settings module: full St1 field set, save flashes Saved!', async ({ page }) => {
   await page.goto('/settings')
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Save changes' })).toBeDisabled()
 
-  await page.getByLabel('Business name').fill('Acme Builders Pty Ltd')
-  await expect(page.getByText('Unsaved changes.')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Save changes' })).toBeEnabled()
-  await page.getByRole('button', { name: 'Save changes' }).click()
-  await expect(page.getByText('Saved.')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Save changes' })).toBeDisabled()
+  // Legacy St1 field set (PARITY gap 2)
+  await expect(page.getByLabel('Business Name')).toBeVisible()
+  await expect(page.getByLabel('Default Contract Type')).toBeVisible()
+  await expect(page.getByLabel('Default Margin (%)')).toBeVisible()
+  await expect(page.getByText('Registered for GST')).toBeVisible()
+  await expect(page.getByLabel('Home State')).toBeVisible()
+  await expect(page.getByLabel('Licence VIC')).toBeVisible()
+  await expect(page.getByLabel('QBCC (QLD)')).toBeVisible()
+  await expect(page.getByLabel('NT (no scheme)')).toBeVisible()
+  // Reset to Demo Data (gap 3)
+  await expect(page.getByRole('button', { name: 'Reset to Demo Data' })).toBeVisible()
+
+  await page.getByLabel('Business Name').fill('Acme Builders Pty Ltd')
+  await page.getByRole('button', { name: 'Save Settings' }).click()
+  await expect(page.getByText('Saved!')).toBeVisible()
+})
+
+test('settings defaults seed the project form (legacy sw_ct / sw_state wiring)', async ({
+  page,
+}) => {
+  await page.goto('/settings')
+  await page.getByLabel('Default Contract Type').selectOption('fixed-price')
+  await page.getByLabel('Home State').selectOption('VIC')
+  await page.getByRole('button', { name: 'Save Settings' }).click()
+  await expect(page.getByText('Saved!')).toBeVisible()
+
+  // Client-side nav (goto would reload and hit beforeEach's localStorage.clear()).
+  await page.getByRole('link', { name: 'Projects' }).click()
+  await page.getByRole('button', { name: '+ New Project' }).click()
+  await expect(page.getByLabel('Contract Type')).toHaveValue('fixed-price')
+  await expect(page.getByLabel('State')).toHaveValue('VIC')
+})
+
+test('help & education — X1 four tabs with real content (gap 6)', async ({ page }) => {
+  await page.goto('/education')
+  await expect(page.getByRole('heading', { name: 'Help & Education' })).toBeVisible()
+  // Getting Started default: first guide + numbered steps
+  await expect(page.getByText('Welcome to SITEWORK', { exact: true }).first()).toBeVisible()
+  await expect(page.getByText('Create your first project or import an estimate')).toBeVisible()
+  // Guide switch
+  await page.getByText('Connecting Xero', { exact: true }).click()
+  await expect(page.getByText(/OAuth 2\.0/)).toBeVisible()
+  // Module Guides + Pro Tip callout
+  await page.getByRole('button', { name: 'Module Guides' }).click()
+  await expect(page.getByText('Pro Tip')).toBeVisible()
+  await expect(page.getByText(/Rawlinson Rate Lookup/).first()).toBeVisible()
+  // Glossary: 14 terms
+  await page.getByRole('button', { name: 'Glossary' }).click()
+  await expect(page.getByText('14 terms')).toBeVisible()
+  await expect(page.getByText('SWMS', { exact: true })).toBeVisible()
+  // Rawlinson Rates: handbook + location factors
+  await page.getByRole('button', { name: 'Rawlinson Rates' }).click()
+  await expect(page.getByText(/Australian Construction Handbook/)).toBeVisible()
+  await expect(page.getByText('Regional Location Factors')).toBeVisible()
+  await expect(page.getByText('+25% (remote premium)')).toBeVisible()
 })
 
 test('suppliers + materials catalogues render at their direct URLs', async ({ page }) => {
@@ -303,6 +399,6 @@ test('suppliers + materials catalogues render at their direct URLs', async ({ pa
 test('clients form blocks save when Name is empty', async ({ page }) => {
   await page.goto('/clients')
   await page.getByRole('button', { name: '+ New Client' }).first().click()
-  await page.getByRole('button', { name: 'Save' }).click()
+  await page.getByRole('button', { name: 'Save Client' }).click()
   await expect(page.getByText('Name is required')).toBeVisible()
 })

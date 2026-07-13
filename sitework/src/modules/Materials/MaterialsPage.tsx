@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useAppState } from '@/state/context'
-import { Button, Card, EmptyState } from '@/components/ui'
+import { Button, EmptyState } from '@/components/ui'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { MaterialForm } from './MaterialForm'
 import type { Material } from '@/types'
@@ -22,9 +22,9 @@ export function MaterialsPage() {
   }, [suppliers])
 
   return (
-    <div className="space-y-4">
+    <div className="sw-page space-y-4">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Materials</h1>
+        <h1 className="text-[26px] font-bold tracking-[-0.02em] text-sw-ink">Materials</h1>
         <Button onClick={() => setCreating(true)}>+ New Material</Button>
       </header>
 
@@ -35,7 +35,7 @@ export function MaterialsPage() {
           action={<Button onClick={() => setCreating(true)}>+ New Material</Button>}
         />
       ) : (
-        <Card>
+        <div>
           <ul className="divide-y divide-sw-border">
             {materials.map((mat) => (
               <li key={mat.id}>
@@ -57,7 +57,7 @@ export function MaterialsPage() {
               </li>
             ))}
           </ul>
-        </Card>
+        </div>
       )}
 
       <MaterialForm open={creating} onClose={() => setCreating(false)} />

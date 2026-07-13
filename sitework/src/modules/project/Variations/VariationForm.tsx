@@ -1,14 +1,14 @@
 import { useState } from 'react'
-import { Button, Dialog, Field, Input } from '@/components/ui'
+import { Button, Dialog, Field, Input, Select } from '@/components/ui'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
-import { newId } from '@/lib/newId'
 import type {
   CostCodeId,
   ProjectId,
   Variation,
   VariationId,
   VariationReasonCategory,
+  VariationRequestedBy,
   VariationStatus,
 } from '@/types'
 
@@ -18,106 +18,124 @@ interface Props {
   projectId: ProjectId
   codes: Array<{ id: CostCodeId; code: string; desc: string }>
   initial?: Variation
+  /** Next positional number for the auto "VO-00N" id (legacy `v1` nextNum). */
+  nextNum?: number
 }
 
-const REASONS: VariationReasonCategory[] = [
-  'OwnerRequested',
-  'LatentCondition',
-  'Regulatory',
-  'DesignClarification',
-  'BuilderFault',
+// Legacy v1 option sets, verbatim (labels spaced; values stay camel-case).
+const REQUESTED_BY: VariationRequestedBy[] = ['Owner', 'Builder', 'Architect', 'Other']
+const REASONS: Array<{ value: VariationReasonCategory; label: string }> = [
+  { value: 'OwnerRequested', label: 'Owner Requested' },
+  { value: 'LatentCondition', label: 'Latent Condition' },
+  { value: 'Regulatory', label: 'Regulatory' },
+  { value: 'DesignClarification', label: 'Design Clarification' },
+  { value: 'BuilderFault', label: 'Builder Fault' },
+  { value: 'Other', label: 'Other' },
 ]
+const STATUSES: VariationStatus[] = ['Pending', 'Approved', 'Rejected']
 
-const STATUSES: VariationStatus[] = ['Pending', 'Approved', 'Rejected', 'Disputed']
-
-const blank = (firstCodeId?: CostCodeId): Omit<Variation, 'id'> => ({
-  ccId: (firstCodeId ?? ('' as unknown as CostCodeId)) as CostCodeId,
-  desc: '',
-  amount: 0,
-  status: 'Pending',
-  date: new Date().toISOString().slice(0, 10),
-  reasonCategory: 'OwnerRequested',
-  timeImpactDays: 0,
-})
-
-export function VariationForm({ open, onClose, projectId, codes, initial }: Props) {
+/**
+ * Variation add/edit — transliteration of legacy `v1` (R6, PARITY gap 4):
+ * editable mono Variation ID (auto "VO-00N"), Requested By (default Owner),
+ * Cost Code ("code — desc"), Amount, Description (required), Status
+ * (Pending/Approved/Rejected — legacy has no Disputed option), Date,
+ * Reason Category incl. Other, Time Impact (days), and the two conditional
+ * comment fields (reasonCategory Other → "Comment / Reason Detail";
+ * requestedBy Other → "Requested By — Comment").
+ */
+export function VariationForm({ open, onClose, projectId, codes, initial, nextNum }: Props) {
   const dispatch = useDispatch()
-  const [form, setForm] = useState<Omit<Variation, 'id'>>(() =>
-    initial ? { ...initial } : blank(codes[0]?.id),
+  const [form, setForm] = useState(() =>
+    initial
+      ? { ...initial, idText: initial.id as string }
+      : {
+          idText: `VO-${String(nextNum ?? 1).padStart(3, '0')}`,
+          ccId: (codes[0]?.id ?? '') as CostCodeId,
+          desc: '',
+          amount: 0,
+          status: 'Pending' as VariationStatus,
+          date: new Date().toISOString().slice(0, 10),
+          requestedBy: 'Owner' as VariationRequestedBy,
+          reasonCategory: 'OwnerRequested' as VariationReasonCategory,
+          reasonComment: '',
+          requestedByComment: '',
+          timeImpactDays: 0,
+        },
   )
   const [attempted, setAttempted] = useState(false)
   const isEdit = !!initial
   const descMissing = form.desc.trim() === ''
-  const codeMissing = !(form.ccId as string)
-
-  function reset() {
-    setForm(blank(codes[0]?.id))
-    setAttempted(false)
-  }
 
   function save() {
-    if (descMissing || codeMissing) {
+    if (descMissing) {
       setAttempted(true)
       return
     }
-    if (isEdit && initial) {
-      dispatch({ type: 'UPDATE_VARIATION', projectId, variationId: initial.id, patch: form })
-    } else {
-      const id = asId<VariationId>(newId('VO'))
-      dispatch({ type: 'ADD_VARIATION', projectId, variation: { id, ...form } })
+    const fields = {
+      ccId: form.ccId,
+      desc: form.desc,
+      amount: Number(form.amount) || 0,
+      status: form.status,
+      date: form.date,
+      requestedBy: form.requestedBy,
+      requestedByComment: form.requestedByComment,
+      reasonCategory: form.reasonCategory,
+      reasonComment: form.reasonComment,
+      timeImpactDays: Number(form.timeImpactDays) || 0,
     }
-    reset()
+    if (isEdit && initial) {
+      dispatch({ type: 'UPDATE_VARIATION', projectId, variationId: initial.id, patch: fields })
+    } else {
+      const id = asId<VariationId>(form.idText || `VO-${String(nextNum ?? 1).padStart(3, '0')}`)
+      dispatch({ type: 'ADD_VARIATION', projectId, variation: { id, ...fields } })
+    }
     onClose()
   }
 
   return (
     <Dialog
       open={open}
-      onClose={() => {
-        reset()
-        onClose()
-      }}
-      title={isEdit ? `Edit variation ${initial?.id}` : 'New variation'}
+      onClose={onClose}
+      title={isEdit ? 'Edit Variation' : 'New Variation'}
       widthClass="max-w-xl"
-      footer={
-        <>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              reset()
-              onClose()
-            }}
-          >
-            Cancel
-          </Button>
-          <Button onClick={save}>Save</Button>
-        </>
-      }
+      footer={<Button onClick={save}>Save Variation</Button>}
     >
-      <Field label="Description" required error={attempted && descMissing ? 'Required' : undefined}>
-        <Input
-          autoFocus
-          value={form.desc}
-          onChange={(e) => setForm({ ...form, desc: e.target.value })}
-          invalid={attempted && descMissing}
-        />
-      </Field>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Cost code" required error={attempted && codeMissing ? 'Required' : undefined}>
-          <select
-            value={form.ccId as string}
-            onChange={(e) => setForm({ ...form, ccId: e.target.value as CostCodeId })}
-            className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
+        <Field label="Variation ID">
+          <Input
+            className="font-mono"
+            value={form.idText}
+            onChange={(e) => setForm({ ...form, idText: e.target.value })}
+            disabled={isEdit}
+          />
+        </Field>
+        <Field label="Requested By">
+          <Select
+            value={form.requestedBy ?? 'Owner'}
+            onChange={(e) =>
+              setForm({ ...form, requestedBy: e.target.value as VariationRequestedBy })
+            }
           >
-            <option value="">— choose code —</option>
-            {codes.map((c) => (
-              <option key={c.id} value={c.id as string}>
-                {c.code} · {c.desc}
+            {REQUESTED_BY.map((r) => (
+              <option key={r} value={r}>
+                {r}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
-        <Field label="Amount ($)">
+        <Field label="Cost Code">
+          <Select
+            value={form.ccId as string}
+            onChange={(e) => setForm({ ...form, ccId: e.target.value as CostCodeId })}
+          >
+            {codes.map((c) => (
+              <option key={c.id} value={c.id as string}>
+                {c.code} — {c.desc}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Amount">
           <Input
             type="number"
             step="0.01"
@@ -126,7 +144,26 @@ export function VariationForm({ open, onClose, projectId, codes, initial }: Prop
           />
         </Field>
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <Field label="Description" required error={attempted && descMissing ? 'Required' : undefined}>
+        <Input
+          value={form.desc}
+          onChange={(e) => setForm({ ...form, desc: e.target.value })}
+          invalid={attempted && descMissing}
+        />
+      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Status">
+          <Select
+            value={form.status}
+            onChange={(e) => setForm({ ...form, status: e.target.value as VariationStatus })}
+          >
+            {STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </Select>
+        </Field>
         <Field label="Date">
           <Input
             type="date"
@@ -134,43 +171,46 @@ export function VariationForm({ open, onClose, projectId, codes, initial }: Prop
             onChange={(e) => setForm({ ...form, date: e.target.value })}
           />
         </Field>
-        <Field label="Status">
-          <select
-            value={form.status}
-            onChange={(e) => setForm({ ...form, status: e.target.value as VariationStatus })}
-            className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
+        <Field label="Reason Category">
+          <Select
+            value={form.reasonCategory}
+            onChange={(e) =>
+              setForm({ ...form, reasonCategory: e.target.value as VariationReasonCategory })
+            }
           >
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {s}
+            {REASONS.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
-        <Field label="Time impact (days)">
+        <Field label="Time Impact (days)">
           <Input
             type="number"
-            min={0}
             value={form.timeImpactDays}
             onChange={(e) => setForm({ ...form, timeImpactDays: Number(e.target.value) || 0 })}
           />
         </Field>
       </div>
-      <Field label="Reason category">
-        <select
-          value={form.reasonCategory}
-          onChange={(e) =>
-            setForm({ ...form, reasonCategory: e.target.value as VariationReasonCategory })
-          }
-          className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
-        >
-          {REASONS.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
-        </select>
-      </Field>
+      {form.reasonCategory === 'Other' && (
+        <Field label="Comment / Reason Detail">
+          <Input
+            value={form.reasonComment ?? ''}
+            onChange={(e) => setForm({ ...form, reasonComment: e.target.value })}
+            placeholder="Describe the reason for this variation"
+          />
+        </Field>
+      )}
+      {form.requestedBy === 'Other' && (
+        <Field label="Requested By — Comment">
+          <Input
+            value={form.requestedByComment ?? ''}
+            onChange={(e) => setForm({ ...form, requestedByComment: e.target.value })}
+            placeholder="Specify who requested this"
+          />
+        </Field>
+      )}
     </Dialog>
   )
 }

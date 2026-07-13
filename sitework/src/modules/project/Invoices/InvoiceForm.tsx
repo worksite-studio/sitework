@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Button, Dialog, Field, Input } from '@/components/ui'
+import { Button, Dialog, Field, Input, Select } from '@/components/ui'
 import { FilePicker } from '@/components/FilePicker'
-import { useDispatch } from '@/state/context'
+import { useAppState, useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import { checkSubstantiation } from '@/lib/substantiation'
 import { newId } from '@/lib/newId'
@@ -26,6 +26,8 @@ const STATUSES: InvoiceStatus[] = ['Pending', 'Approved', 'Paid', 'Disputed']
 const blank = (firstCodeId?: CostCodeId): Omit<Invoice, 'id'> => ({
   ccId: (firstCodeId ?? ('' as unknown as CostCodeId)) as CostCodeId,
   supplier: '',
+  subId: '',
+  docRef: '',
   amount: 0,
   status: 'Pending',
   date: new Date().toISOString().slice(0, 10),
@@ -41,6 +43,7 @@ const blank = (firstCodeId?: CostCodeId): Omit<Invoice, 'id'> => ({
  * ClaimForm.
  */
 export function InvoiceForm({ open, onClose, project, initial }: Props) {
+  const state = useAppState()
   const dispatch = useDispatch()
   const [form, setForm] = useState<Omit<Invoice, 'id'>>(() =>
     initial
@@ -86,7 +89,7 @@ export function InvoiceForm({ open, onClose, project, initial }: Props) {
         reset()
         onClose()
       }}
-      title={isEdit ? `Edit ${initial?.id}` : 'New invoice'}
+      title={isEdit ? 'Edit Invoice' : 'New Invoice'}
       widthClass="max-w-xl"
       footer={
         <>
@@ -103,6 +106,26 @@ export function InvoiceForm({ open, onClose, project, initial }: Props) {
         </>
       }
     >
+      <Field label="Subcontractor">
+        <Select
+          value={form.subId ?? ''}
+          onChange={(e) => {
+            const sub = state.subs.find((s) => (s.id as string) === e.target.value)
+            setForm({
+              ...form,
+              subId: e.target.value,
+              supplier: sub ? sub.name : form.supplier,
+            })
+          }}
+        >
+          <option value="">— Select subcontractor —</option>
+          {state.subs.map((s) => (
+            <option key={s.id as string} value={s.id as string}>
+              {s.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field
           label="Supplier / subcontractor"
@@ -110,17 +133,15 @@ export function InvoiceForm({ open, onClose, project, initial }: Props) {
           error={attempted && supplierMissing ? 'Required' : undefined}
         >
           <Input
-            autoFocus
             value={form.supplier}
             onChange={(e) => setForm({ ...form, supplier: e.target.value })}
             invalid={attempted && supplierMissing}
           />
         </Field>
         <Field label="Cost code" required error={attempted && codeMissing ? 'Required' : undefined}>
-          <select
+          <Select
             value={form.ccId as string}
             onChange={(e) => setForm({ ...form, ccId: e.target.value as CostCodeId })}
-            className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
           >
             <option value="">— choose code —</option>
             {project.codes.map((c) => (
@@ -128,11 +149,18 @@ export function InvoiceForm({ open, onClose, project, initial }: Props) {
                 {c.code} · {c.desc}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       </div>
+      <Field label="Document Reference">
+        <Input
+          value={form.docRef ?? ''}
+          onChange={(e) => setForm({ ...form, docRef: e.target.value })}
+          placeholder="e.g. INV-2041"
+        />
+      </Field>
       <div className="grid grid-cols-3 gap-3">
-        <Field label="Amount inc GST ($)">
+        <Field label="Amount (ex GST)">
           <Input
             type="number"
             step="0.01"
@@ -156,17 +184,16 @@ export function InvoiceForm({ open, onClose, project, initial }: Props) {
         </Field>
       </div>
       <Field label="Status">
-        <select
+        <Select
           value={form.status}
           onChange={(e) => setForm({ ...form, status: e.target.value as InvoiceStatus })}
-          className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
         >
           {STATUSES.map((s) => (
             <option key={s} value={s}>
               {s}
             </option>
           ))}
-        </select>
+        </Select>
       </Field>
 
       {project.contractType === 'cost-plus' && (

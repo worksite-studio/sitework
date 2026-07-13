@@ -60,7 +60,7 @@ export function ClientForm({ open, onClose, initial }: ClientFormProps) {
         reset()
         onClose()
       }}
-      title={isEdit ? `Edit ${initial?.name || 'client'}` : 'New client'}
+      title={isEdit ? 'Edit Client' : 'New Client'}
       footer={
         <>
           <Button
@@ -72,12 +72,13 @@ export function ClientForm({ open, onClose, initial }: ClientFormProps) {
           >
             Cancel
           </Button>
-          <Button onClick={save}>Save</Button>
+          <Button onClick={save}>Save Client</Button>
         </>
       }
     >
+      {/* Legacy m1 labels + full-width stacked layout (R7). */}
       <Field
-        label="Name"
+        label="Company / Client Name"
         required
         error={attempted && nameMissing ? 'Name is required' : undefined}
       >
@@ -91,24 +92,22 @@ export function ClientForm({ open, onClose, initial }: ClientFormProps) {
       <Field label="ABN">
         <Input value={form.abn} onChange={(e) => setForm({ ...form, abn: e.target.value })} />
       </Field>
-      <Field label="Contact name">
+      <Field label="Contact Name">
         <Input
           value={form.contact}
           onChange={(e) => setForm({ ...form, contact: e.target.value })}
         />
       </Field>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Phone">
-          <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-        </Field>
-        <Field label="Email">
-          <Input
-            type="email"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-          />
-        </Field>
-      </div>
+      <Field label="Phone">
+        <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+      </Field>
+      <Field label="Email">
+        <Input
+          type="email"
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+        />
+      </Field>
       <Field label="Address">
         <Input
           value={form.address}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Dialog, Field, Input } from '@/components/ui'
+import { Button, Dialog, Field, Input, Select } from '@/components/ui'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import { newId } from '@/lib/newId'
@@ -207,14 +207,13 @@ export function SubForm({ open, onClose, initial }: SubFormProps) {
           />
         </Field>
         <Field label="SWMS on file">
-          <select
+          <Select
             value={form.swms ? 'yes' : 'no'}
             onChange={(e) => setForm({ ...form, swms: e.target.value === 'yes' })}
-            className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
           >
             <option value="no">No</option>
             <option value="yes">Yes</option>
-          </select>
+          </Select>
         </Field>
       </div>
 
@@ -238,17 +237,16 @@ export function SubForm({ open, onClose, initial }: SubFormProps) {
                 className="grid grid-cols-[110px_140px_1fr_auto] gap-2 items-end p-2 rounded-md border border-sw-border bg-sw-bg"
               >
                 <Field label="Type">
-                  <select
+                  <Select
                     value={cert.type}
                     onChange={(e) => updateCert(idx, { type: e.target.value as CertificateType })}
-                    className="h-9 w-full rounded-md border border-sw-border px-2 text-sm bg-sw-surface"
                   >
                     {CERT_TYPES.map((t) => (
                       <option key={t} value={t}>
                         {t}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </Field>
                 <Field label="Expiry">
                   <Input

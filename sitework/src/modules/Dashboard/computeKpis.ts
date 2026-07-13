@@ -8,6 +8,8 @@ import type { RootState } from '@/types'
 
 export interface DashboardKpis {
   activeProjectsCount: number
+  /** Σ over LIVE projects of budget ÷ (1 − margin/100) — legacy `Y1` n. */
+  portfolioContractValue: number
   outstandingInvoicesTotal: number
   outstandingInvoicesCount: number
   openVariationsTotal: number
@@ -19,19 +21,33 @@ export interface DashboardKpis {
 
 const DAYS_30_MS = 30 * 24 * 60 * 60 * 1000
 
+/**
+ * Transliterated from legacy `Y1` (R0, PARITY gap 17): every money KPI scopes
+ * to LIVE projects only; outstanding invoices are Approved only (never
+ * Pending); portfolio contract value carries the margin markup; portfolio
+ * margin is derived from contract values, not averaged from targets.
+ */
 export function computeDashboardKpis(state: RootState, today: Date = new Date()): DashboardKpis {
   const active = state.projects.filter((p) => p.status === 'live')
 
-  // Outstanding invoices = approved-but-not-paid, across all projects.
+  // Legacy Y1: n = Σ active budget / (1 - margin/100)
+  let budgetTotal = 0
+  let portfolioContractValue = 0
+  for (const p of active) {
+    const budget = p.codes.reduce((s, c) => s + (c.budget || 0), 0)
+    budgetTotal += budget
+    const margin = p.margin ?? 15
+    portfolioContractValue += margin < 100 ? budget / (1 - margin / 100) : 0
+  }
+
+  // Legacy Y1: u = active projects' Approved invoices; c = active Pending variations.
   let outstandingInvoicesTotal = 0
   let outstandingInvoicesCount = 0
-  // Open variations = Pending, across all projects.
   let openVariationsTotal = 0
   let openVariationsCount = 0
-
-  for (const p of state.projects) {
+  for (const p of active) {
     for (const inv of p.invoices) {
-      if (inv.status === 'Approved' || inv.status === 'Pending') {
+      if (inv.status === 'Approved') {
         outstandingInvoicesTotal += inv.amount
         outstandingInvoicesCount += 1
       }
@@ -44,24 +60,11 @@ export function computeDashboardKpis(state: RootState, today: Date = new Date())
     }
   }
 
-  // Portfolio margin: weighted average of project.margin by active-project
-  // contract value (budget total). Falls back to a simple average if no
-  // budget is set anywhere.
-  let weightedSum = 0
-  let weightTotal = 0
-  for (const p of active) {
-    const budget = p.codes.reduce((s, c) => s + (c.budget || 0), 0)
-    if (budget > 0) {
-      weightedSum += p.margin * budget
-      weightTotal += budget
-    }
-  }
+  // Legacy Y1: g = round((n − Σ budgets) / n × 100)
   const portfolioMarginPct =
-    weightTotal > 0
-      ? weightedSum / weightTotal
-      : active.length > 0
-        ? active.reduce((s, p) => s + p.margin, 0) / active.length
-        : 0
+    portfolioContractValue > 0
+      ? Math.round(((portfolioContractValue - budgetTotal) / portfolioContractValue) * 100)
+      : 0
 
   // Expiring / expired cert counts — uses Phase 1.5-E subcontractor certs +
   // the always-present liabilityExp / wcExp date strings.
@@ -85,6 +88,7 @@ export function computeDashboardKpis(state: RootState, today: Date = new Date())
 
   return {
     activeProjectsCount: active.length,
+    portfolioContractValue,
     outstandingInvoicesTotal,
     outstandingInvoicesCount,
     openVariationsTotal,

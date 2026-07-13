@@ -66,7 +66,7 @@ export function CostCodeForm({ open, onClose, projectId, initial, nextCode }: Pr
         reset()
         onClose()
       }}
-      title={isEdit ? `Edit code ${initial?.code}` : 'New cost code'}
+      title={isEdit ? 'Edit Cost Code' : 'Add Cost Code'}
       footer={
         <>
           <Button

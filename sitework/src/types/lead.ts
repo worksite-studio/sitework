@@ -17,4 +17,6 @@ export interface Lead {
   followUp: string
   notes: string
   created: string
+  /** Set by CONVERT_LEAD_TO_PROJECT — shows the ✓ converted banner (legacy). */
+  convertedToProjectId?: string
 }

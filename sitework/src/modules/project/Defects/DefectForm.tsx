@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Dialog, Field, Input } from '@/components/ui'
+import { Button, Dialog, Field, Input, Select } from '@/components/ui'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import type { Defect, DefectId, DefectStatus, ProjectId } from '@/types'
@@ -12,7 +12,8 @@ interface Props {
   initial?: Defect
 }
 
-const STATUSES: DefectStatus[] = ['Open', 'Rectified', 'Disputed']
+// Legacy DefectForm options, verbatim.
+const STATUSES: DefectStatus[] = ['Open', 'In Progress', 'Rectified']
 
 const blank = (): Omit<Defect, 'id'> => ({
   item: '',
@@ -57,7 +58,7 @@ export function DefectForm({ open, onClose, projectId, initial }: Props) {
         reset()
         onClose()
       }}
-      title={isEdit ? `Edit defect ${initial?.id}` : 'New defect'}
+      title={isEdit ? 'Update Defect' : 'Log Defect'}
       footer={
         <>
           <Button
@@ -73,7 +74,7 @@ export function DefectForm({ open, onClose, projectId, initial }: Props) {
         </>
       }
     >
-      <Field label="Item" required error={attempted && itemMissing ? 'Required' : undefined}>
+      <Field label="Defect Item" required error={attempted && itemMissing ? 'Required' : undefined}>
         <Input
           autoFocus
           value={form.item}
@@ -99,14 +100,14 @@ export function DefectForm({ open, onClose, projectId, initial }: Props) {
         </Field>
       </div>
       <div className="grid grid-cols-3 gap-3">
-        <Field label="Logged">
+        <Field label="Date Logged">
           <Input
             type="date"
             value={form.dateLogged}
             onChange={(e) => setForm({ ...form, dateLogged: e.target.value })}
           />
         </Field>
-        <Field label="Rectified">
+        <Field label="Date Rectified">
           <Input
             type="date"
             value={form.dateRectified ?? ''}
@@ -114,17 +115,16 @@ export function DefectForm({ open, onClose, projectId, initial }: Props) {
           />
         </Field>
         <Field label="Status">
-          <select
+          <Select
             value={form.status}
             onChange={(e) => setForm({ ...form, status: e.target.value as DefectStatus })}
-            className="h-9 w-full rounded-md border border-sw-border px-3 text-sm bg-sw-surface"
           >
             {STATUSES.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       </div>
       <Field label="Notes">

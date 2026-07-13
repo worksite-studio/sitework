@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useAppState } from '@/state/context'
-import { Button, Card, EmptyState } from '@/components/ui'
+import { Button, EmptyState } from '@/components/ui'
 import { SupplierForm } from './SupplierForm'
 import type { Supplier } from '@/types'
 
@@ -23,9 +23,9 @@ export function SuppliersPage() {
   }, [materials])
 
   return (
-    <div className="space-y-4">
+    <div className="sw-page space-y-4">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Suppliers</h1>
+        <h1 className="text-[26px] font-bold tracking-[-0.02em] text-sw-ink">Suppliers</h1>
         <Button onClick={() => setCreating(true)}>+ New Supplier</Button>
       </header>
 
@@ -36,7 +36,7 @@ export function SuppliersPage() {
           action={<Button onClick={() => setCreating(true)}>+ New Supplier</Button>}
         />
       ) : (
-        <Card>
+        <div>
           <ul className="divide-y divide-sw-border">
             {suppliers.map((s) => {
               const count = materialsBySupplier.get(s.id as string) ?? 0
@@ -61,7 +61,7 @@ export function SuppliersPage() {
               )
             })}
           </ul>
-        </Card>
+        </div>
       )}
 
       <SupplierForm open={creating} onClose={() => setCreating(false)} />

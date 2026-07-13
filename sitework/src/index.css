@@ -1,18 +1,39 @@
 @import 'tailwindcss';
 
-/* Design tokens lifted from the legacy app's `d` (palette) and `v` (typography) objects.
-   Phase 4 keeps the values stable so visual parity holds during the side-by-side port. */
+/* Baseline palette — legacy `d`, verbatim (PARITY gap 10). The generic
+   sw-bg..sw-info names are kept as ALIASES onto baseline values so every
+   pre-parity classname renders baseline-correct; new code uses the
+   sw-ink.. names. Print output opts back into the old greys via the
+   .print-page override at the bottom of this file. */
 :root {
-  --sw-bg: #fafafa;
+  --sw-ink: #000000;
+  --sw-mid: #404040;
+  --sw-dim: #808080;
+  --sw-faint: #c0c0c0;
+  --sw-rule: #d0d0d0;
+  --sw-rule-l: #ebebeb;
+  --sw-pos: #059669;
+  --sw-neg: #ec4899;
+  --sw-violet: #7c3aed;
+  --sw-lilac: #8b5cf6;
+  --sw-xero: #00b0ca;
+  --sw-bg-subtle: #fafafa;
+  --sw-pos-bg: #f0f9f4;
+  --sw-neg-bg: #fef2f2;
+  --sw-warn-bg: #fffbeb;
+  --sw-accent-bg: #eef2ff;
+  --sw-lilac-bg: #f5f3ff;
+
+  --sw-bg: #ffffff;
   --sw-surface: #ffffff;
-  --sw-text: #1a1a1a;
-  --sw-muted: #6b7280;
-  --sw-border: #e5e7eb;
-  --sw-primary: #1a1a1a;
-  --sw-success: #10b981;
-  --sw-warning: #f59e0b;
-  --sw-danger: #ef4444;
-  --sw-info: #3b82f6;
+  --sw-text: var(--sw-ink);
+  --sw-muted: var(--sw-dim);
+  --sw-border: var(--sw-rule);
+  --sw-primary: var(--sw-ink);
+  --sw-success: var(--sw-pos);
+  --sw-warning: var(--sw-violet);
+  --sw-danger: var(--sw-neg);
+  --sw-info: var(--sw-ink);
 }
 
 @theme {
@@ -26,8 +47,72 @@
   --color-sw-warning: var(--sw-warning);
   --color-sw-danger: var(--sw-danger);
   --color-sw-info: var(--sw-info);
+  --color-sw-ink: var(--sw-ink);
+  --color-sw-mid: var(--sw-mid);
+  --color-sw-dim: var(--sw-dim);
+  --color-sw-faint: var(--sw-faint);
+  --color-sw-rule: var(--sw-rule);
+  --color-sw-rule-l: var(--sw-rule-l);
+  --color-sw-pos: var(--sw-pos);
+  --color-sw-neg: var(--sw-neg);
+  --color-sw-violet: var(--sw-violet);
+  --color-sw-lilac: var(--sw-lilac);
+  --color-sw-xero: var(--sw-xero);
+  --color-sw-bg-subtle: var(--sw-bg-subtle);
+  --color-sw-pos-bg: var(--sw-pos-bg);
+  --color-sw-neg-bg: var(--sw-neg-bg);
+  --color-sw-warn-bg: var(--sw-warn-bg);
+  --color-sw-accent-bg: var(--sw-accent-bg);
+  --color-sw-lilac-bg: var(--sw-lilac-bg);
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* Baseline chrome — 3px scrollbar, page padding, legacy table metrics. */
+::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+::-webkit-scrollbar-thumb {
+  background: #e0e0e0;
+  border-radius: 2px;
+}
+
+.sw-page {
+  padding: 40px 52px 80px;
+  background: #ffffff;
+}
+
+.sw-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.sw-table th {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--sw-dim);
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--sw-ink);
+  text-align: left;
+  white-space: nowrap;
+}
+.sw-table td {
+  font-size: 13px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--sw-rule);
+}
+
+/* Xero connection pulse — port of legacy `xpulse`. */
+@keyframes xpulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 
 html,
@@ -110,4 +195,17 @@ body,
   border-top: 1px solid #9ca3af;
   border-bottom: none;
   font-weight: 600;
+}
+
+/* Print isolation — PDFs keep the pre-parity greys so exported documents
+   are unchanged by the on-screen baseline restyle. */
+.print-page {
+  --sw-text: #1a1a1a;
+  --sw-muted: #6b7280;
+  --sw-border: #e5e7eb;
+  --sw-primary: #1a1a1a;
+  --sw-success: #10b981;
+  --sw-warning: #f59e0b;
+  --sw-danger: #ef4444;
+  --sw-info: #3b82f6;
 }

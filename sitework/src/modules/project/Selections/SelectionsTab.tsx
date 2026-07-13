@@ -1,176 +1,202 @@
 import { useState } from 'react'
-import { Button, Card, Dialog, EmptyState, Field, Input } from '@/components/ui'
+import { Button, Dialog, Field, Input, Select as UiSelect } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
-import { formatCurrency } from '@/lib/formatCurrency'
 import { useAppState, useDispatch } from '@/state/context'
 import { useProject } from '../useProject'
 import { asId } from '@/types'
-import type { ProjectId, Selection, SelectionId } from '@/types'
+import type { Selection, SelectionId } from '@/types'
 import { newId } from '@/lib/newId'
 
-interface FormProps {
-  open: boolean
-  onClose: () => void
-  projectId: ProjectId
+/**
+ * Client Selections — transliteration of legacy `N1` + `T1` (R7, PARITY
+ * gap-12 row): "N items · N awaiting decision" sub-line (awaiting = open),
+ * ruled list panels (uppercase category · bold item · status right, options
+ * line, green "Approved: X", faint "Note: X", "Approve selection" link on
+ * anything not approved), "+ Add Selection" (`T1`), and the Approve
+ * Selection option-picker dialog (APPROVE_SELECTION).
+ */
+export function SelectionsTab() {
+  const project = useProject()
+  const state = useAppState()
+  const [modal, setModal] = useState<'new' | { approve: Selection } | null>(null)
+  if (!project) return null
+
+  const selections: Selection[] = state.selections[project.id as string] ?? []
+  const awaiting = selections.filter((s) => s.status === 'open').length
+
+  return (
+    <div>
+      <header className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="mb-1 text-[26px] font-bold tracking-[-0.02em] text-sw-ink">
+            Client Selections
+          </h2>
+          <div className="text-[13px] text-sw-dim">
+            {selections.length} items · {awaiting} awaiting decision
+          </div>
+        </div>
+        <Button onClick={() => setModal('new')}>+ Add Selection</Button>
+      </header>
+
+      <div className="flex flex-col gap-2.5">
+        {selections.length === 0 ? (
+          <div className="p-10 text-center text-[13px] text-sw-faint">
+            No client selections yet.
+          </div>
+        ) : (
+          selections.map((sel) => (
+            <div key={sel.id as string} className="border-b border-sw-rule bg-white py-[18px]">
+              <div className="mb-2 flex items-start justify-between">
+                <div>
+                  <span className="mr-2.5 text-[9px] uppercase tracking-[0.08em] text-sw-dim">
+                    {sel.category}
+                  </span>
+                  <span className="text-[14px] font-bold text-sw-ink">{sel.item}</span>
+                </div>
+                <StatusBadge status={sel.status} />
+              </div>
+              <div
+                className="text-[12px] text-sw-dim"
+                style={{ marginBottom: sel.approvedOption ? 6 : 0 }}
+              >
+                {sel.options}
+              </div>
+              {sel.approvedOption && (
+                <div className="text-[12px] font-semibold" style={{ color: 'var(--sw-pos)' }}>
+                  Approved: {sel.approvedOption}
+                </div>
+              )}
+              {sel.notes && <div className="mt-1 text-[11px] text-sw-faint">Note: {sel.notes}</div>}
+              {sel.status !== 'approved' && (
+                <button
+                  type="button"
+                  onClick={() => setModal({ approve: sel })}
+                  className="mt-2 cursor-pointer bg-transparent p-0 text-[11px] font-medium text-sw-ink hover:underline"
+                >
+                  Approve selection
+                </button>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      {modal === 'new' && <SelectionForm onClose={() => setModal(null)} />}
+      {modal !== null && modal !== 'new' && (
+        <ApproveDialog selection={modal.approve} onClose={() => setModal(null)} />
+      )}
+    </div>
+  )
 }
 
-function SelectionForm({ open, onClose, projectId }: FormProps) {
+/** Legacy `T1` — item required; new selections start 'open'. (Legacy labels
+ *  the category field "Cost Code" with an "e.g. Kitchen" placeholder — kept
+ *  verbatim, quirk and all.) */
+function SelectionForm({ onClose }: { onClose: () => void }) {
+  const project = useProject()
   const dispatch = useDispatch()
-  const [form, setForm] = useState<Omit<Selection, 'id'>>({
-    category: '',
-    item: '',
-    options: '',
-    notes: '',
-    status: 'pending',
-    approvedOption: null,
-    amount: 0,
-  })
+  const [form, setForm] = useState({ category: '', item: '', options: '', notes: '' })
   const [attempted, setAttempted] = useState(false)
-  const itemMissing = form.item.trim() === ''
+  if (!project) return null
 
   function save() {
-    if (itemMissing) {
+    if (!project) return
+    if (!form.item.trim()) {
       setAttempted(true)
       return
     }
-    const id = asId<SelectionId>(newId('SEL'))
-    dispatch({ type: 'ADD_SELECTION', projectId, selection: { id, ...form } })
+    const selection: Selection = {
+      id: asId<SelectionId>(newId('SEL')),
+      ...form,
+      status: 'open',
+      approvedOption: null,
+      amount: 0,
+    }
+    dispatch({ type: 'ADD_SELECTION', projectId: project.id, selection })
     onClose()
   }
 
   return (
     <Dialog
-      open={open}
+      open
       onClose={onClose}
-      title="New client selection"
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={save}>Save</Button>
-        </>
-      }
+      title="Add Selection Item"
+      footer={<Button onClick={save}>Add Selection</Button>}
     >
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Category">
+        <Field label="Cost Code">
           <Input
             value={form.category}
             onChange={(e) => setForm({ ...form, category: e.target.value })}
             placeholder="e.g. Kitchen"
           />
         </Field>
-        <Field label="Item" required error={attempted && itemMissing ? 'Required' : undefined}>
+        <Field
+          label="Item"
+          required
+          error={attempted && !form.item.trim() ? 'Required' : undefined}
+        >
           <Input
             value={form.item}
             onChange={(e) => setForm({ ...form, item: e.target.value })}
-            invalid={attempted && itemMissing}
+            invalid={attempted && !form.item.trim()}
             placeholder="e.g. Benchtop"
           />
         </Field>
       </div>
-      <Field label="Options offered">
+      <Field label="Options">
         <Input
           value={form.options}
           onChange={(e) => setForm({ ...form, options: e.target.value })}
-          placeholder="Caesarstone Calacatta Nuvo / Engineered stone Bianco Drift"
+          placeholder="Option A / Option B / Option C"
         />
       </Field>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Allowance ($)">
-          <Input
-            type="number"
-            min={0}
-            value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: Number(e.target.value) || 0 })}
-          />
-        </Field>
-        <Field label="Notes">
-          <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-        </Field>
-      </div>
+      <Field label="Notes">
+        <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+      </Field>
     </Dialog>
   )
 }
 
-export function SelectionsTab() {
+/** Legacy N1 approve dialog — pick from the "/"-separated options. */
+function ApproveDialog({ selection, onClose }: { selection: Selection; onClose: () => void }) {
   const project = useProject()
-  const state = useAppState()
   const dispatch = useDispatch()
-  const [creating, setCreating] = useState(false)
-
+  const [approved, setApproved] = useState('')
   if (!project) return null
-  const selections = state.selections[project.id as string] ?? []
 
-  function approve(sel: Selection) {
+  function confirm() {
     if (!project) return
-    const choice = window.prompt(`Approve "${sel.item}" — which option?`, sel.options.split('/')[0])
-    if (!choice) return
     dispatch({
       type: 'APPROVE_SELECTION',
       projectId: project.id,
-      selectionId: sel.id,
-      approvedOption: choice.trim(),
+      selectionId: selection.id,
+      approvedOption: approved,
     })
+    onClose()
   }
 
   return (
-    <div className="space-y-4">
-      <header className="flex items-center justify-between gap-3 flex-wrap">
-        <h2 className="text-lg font-semibold">Client Selections</h2>
-        <Button onClick={() => setCreating(true)}>+ New Selection</Button>
-      </header>
-
-      {selections.length === 0 ? (
-        <EmptyState
-          title="No selections yet"
-          description="Track finishes / fixtures the client is choosing from."
-          action={<Button onClick={() => setCreating(true)}>+ New Selection</Button>}
-        />
-      ) : (
-        <Card>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-xs uppercase text-sw-muted text-left border-b border-sw-border">
-                <th className="px-3 py-2 font-medium">Category</th>
-                <th className="px-3 py-2 font-medium">Item</th>
-                <th className="px-3 py-2 font-medium">Options / Approved</th>
-                <th className="px-3 py-2 font-medium text-right">Amount</th>
-                <th className="px-3 py-2 font-medium">Status</th>
-                <th className="px-3 py-2 font-medium" aria-label="Actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {selections.map((s) => (
-                <tr key={s.id} className="border-b border-sw-border last:border-0">
-                  <td className="px-3 py-2 text-sw-muted">{s.category}</td>
-                  <td className="px-3 py-2">{s.item}</td>
-                  <td className="px-3 py-2 text-xs text-sw-muted">
-                    {s.approvedOption ? (
-                      <span className="text-sw-text">✓ {s.approvedOption}</span>
-                    ) : (
-                      s.options
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(s.amount)}</td>
-                  <td className="px-3 py-2">
-                    <StatusBadge status={s.status} />
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    {s.status === 'pending' && (
-                      <Button size="sm" variant="secondary" onClick={() => approve(s)}>
-                        Approve
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-      )}
-
-      <SelectionForm open={creating} onClose={() => setCreating(false)} projectId={project.id} />
-    </div>
+    <Dialog
+      open
+      onClose={onClose}
+      title="Approve Selection"
+      footer={<Button onClick={confirm}>Confirm Approval</Button>}
+    >
+      <div className="mb-4">
+        <div className="mb-1 text-[14px] font-bold text-sw-ink">{selection.item}</div>
+        <div className="text-[12px] text-sw-dim">{selection.options}</div>
+      </div>
+      <Field label="Approved option">
+        <UiSelect value={approved} onChange={(e) => setApproved(e.target.value)}>
+          <option value="">Select approved option...</option>
+          {selection.options.split('/').map((o) => (
+            <option key={o.trim()} value={o.trim()}>
+              {o.trim()}
+            </option>
+          ))}
+        </UiSelect>
+      </Field>
+    </Dialog>
   )
 }

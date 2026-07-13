@@ -5,6 +5,7 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   invalid?: boolean
 }
 
+/** Port of legacy `A` — underline input: no box, 1px ink bottom border (pink on error). */
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   { className, invalid, ...rest },
   ref,
@@ -13,9 +14,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     <input
       ref={ref}
       className={cn(
-        'h-9 w-full rounded-md border px-3 text-sm bg-sw-surface text-sw-text placeholder:text-sw-muted/70',
-        'focus:outline-none focus:ring-2 focus:ring-sw-primary/40 focus:border-sw-primary',
-        invalid ? 'border-sw-danger' : 'border-sw-border',
+        'w-full bg-transparent border-0 border-b px-0 py-[9px] text-[13px] text-sw-ink placeholder:text-sw-faint rounded-none focus:outline-none',
+        invalid ? 'border-sw-neg' : 'border-sw-ink',
         className,
       )}
       {...rest}

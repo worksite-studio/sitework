@@ -15,13 +15,13 @@ function renderForm(props: Partial<React.ComponentProps<typeof ClientForm>> = {}
 describe('ClientForm', () => {
   it('renders required Name field', () => {
     renderForm()
-    expect(screen.getByText(/^Name/)).toBeInTheDocument()
+    expect(screen.getByText(/^Company \/ Client Name/)).toBeInTheDocument()
   })
 
   it('blocks save when Name is empty and shows red-line error', async () => {
     const user = userEvent.setup()
     renderForm()
-    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await user.click(screen.getByRole('button', { name: 'Save Client' }))
     expect(screen.getByText('Name is required')).toBeInTheDocument()
   })
 
@@ -29,8 +29,8 @@ describe('ClientForm', () => {
     const user = userEvent.setup()
     let closed = false
     renderForm({ onClose: () => (closed = true) })
-    await user.type(screen.getByLabelText(/^Name/), 'Smith Family')
-    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await user.type(screen.getByLabelText(/^Company \/ Client Name/), 'Smith Family')
+    await user.click(screen.getByRole('button', { name: 'Save Client' }))
     expect(closed).toBe(true)
   })
 
