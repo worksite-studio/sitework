@@ -134,6 +134,12 @@ export type AddPurchaseAction = {
   projectId: ProjectId
   purchase: Purchase
 }
+export type UpdatePurchaseAction = {
+  type: 'UPDATE_PURCHASE'
+  projectId: ProjectId
+  purchaseId: PurchaseId
+  patch: Partial<Purchase>
+}
 export type ReceivePurchaseAction = {
   type: 'RECEIVE_PURCHASE'
   projectId: ProjectId
@@ -344,6 +350,7 @@ export type Action =
   | AddInvoiceAction
   | UpdateInvoiceAction
   | AddPurchaseAction
+  | UpdatePurchaseAction
   | ReceivePurchaseAction
   | AddClaimAction
   | UpdateClaimAction

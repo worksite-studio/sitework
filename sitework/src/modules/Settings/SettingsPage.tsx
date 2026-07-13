@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useAppState, useDispatch } from '@/state/context'
-import { Button } from '@/components/ui'
+import { Button, Select, useConfirm } from '@/components/ui'
 import { parseAmount } from '@/lib/money'
 import { exportStateFile, parseBackupFile } from '@/lib/backup'
 import { STATE_KEY, LEGACY_KEY } from '@/state/persistence'
@@ -46,6 +46,7 @@ export function SettingsPage() {
   const state = useAppState()
   const { settings } = state
   const dispatch = useDispatch()
+  const confirm = useConfirm()
   const restoreInputRef = useRef<HTMLInputElement>(null)
   const [restoreError, setRestoreError] = useState<string | null>(null)
   const [restoredAt, setRestoredAt] = useState<number | null>(null)
@@ -73,14 +74,15 @@ export function SettingsPage() {
     setSaved(true)
   }
 
-  function resetToDemo() {
-    // Legacy St1 confirm copy, verbatim.
-    if (
-      !window.confirm(
+  async function resetToDemo() {
+    const ok = await confirm({
+      title: 'Reset to demo data',
+      message:
         'Reset to demo data? All current projects, invoices, claims, variations etc. will be wiped and replaced with the original seed data. This cannot be undone.',
-      )
-    )
-      return
+      confirmLabel: 'Reset',
+      danger: true,
+    })
+    if (!ok) return
     localStorage.removeItem(STATE_KEY)
     localStorage.removeItem(LEGACY_KEY)
     window.location.reload()
@@ -95,9 +97,12 @@ export function SettingsPage() {
       setRestoreError("That file isn't a SITEWORK backup — nothing was changed.")
       return
     }
-    const ok = window.confirm(
-      'Restore from backup? This replaces ALL current data with the contents of the file.',
-    )
+    const ok = await confirm({
+      title: 'Restore from backup',
+      message: 'Restore from backup? This replaces ALL current data with the contents of the file.',
+      confirmLabel: 'Restore',
+      danger: true,
+    })
     if (!ok) return
     dispatch({ type: 'RESTORE_STATE', state: parsed })
     setRestoredAt(Date.now())
@@ -130,9 +135,9 @@ export function SettingsPage() {
       </Sec>
 
       <Sec label="Default Contract Type">
-        <select
+        <Select
+          box
           aria-label="Default Contract Type"
-          className={boxInput}
           value={form.defaultContractType}
           onChange={(e) =>
             set('defaultContractType', e.target.value as Settings['defaultContractType'])
@@ -140,7 +145,7 @@ export function SettingsPage() {
         >
           <option value="cost-plus">Cost Plus</option>
           <option value="fixed-price">Fixed Price</option>
-        </select>
+        </Select>
       </Sec>
 
       <Sec label="Default Margin (%)">
@@ -167,9 +172,9 @@ export function SettingsPage() {
       </Sec>
 
       <Sec label="Home State">
-        <select
+        <Select
+          box
           aria-label="Home State"
-          className={boxInput}
           value={form.homeState}
           onChange={(e) => set('homeState', e.target.value as AustralianState)}
         >
@@ -178,7 +183,7 @@ export function SettingsPage() {
               {s}
             </option>
           ))}
-        </select>
+        </Select>
       </Sec>
 
       <Sec label="ABN">

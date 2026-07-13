@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAppState, useDispatch } from '@/state/context'
-import { Button, EntityLink } from '@/components/ui'
+import { Button, EntityLink, useConfirm, useToast } from '@/components/ui'
 import { formatCurrency, formatCurrencyExact } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
 import { useProject } from '../useProject'
@@ -26,6 +26,8 @@ export function BoqTab() {
   const project = useProject()
   const state = useAppState()
   const dispatch = useDispatch()
+  const confirm = useConfirm()
+  const { toast } = useToast()
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [editing, setEditing] = useState<CostCode | null>(null)
   const [creating, setCreating] = useState(false)
@@ -61,11 +63,17 @@ export function BoqTab() {
     return 'var(--sw-neg)'
   }
 
-  function deleteCode(c: CostCode) {
+  async function deleteCode(c: CostCode) {
     if (!project) return
-    // Legacy w1 confirm copy, verbatim.
-    if (!window.confirm(`Delete cost code ${c.code}?`)) return
+    const ok = await confirm({
+      title: 'Delete cost code',
+      message: `Delete cost code ${c.code}? This can't be undone.`,
+      confirmLabel: 'Delete',
+      danger: true,
+    })
+    if (!ok) return
     dispatch({ type: 'DELETE_CODE', projectId: project.id, codeId: c.id })
+    toast(`Cost code ${c.code} deleted`, 'success')
   }
 
   return (

@@ -189,6 +189,17 @@ export function reducer(state: RootState, action: Action): RootState {
         purchases: pushByProject(state.purchases, action.projectId, action.purchase),
       }
 
+    case 'UPDATE_PURCHASE':
+      return {
+        ...state,
+        purchases: patchByProject(
+          state.purchases,
+          action.projectId,
+          (po) => po.id === action.purchaseId,
+          action.patch,
+        ),
+      }
+
     case 'RECEIVE_PURCHASE':
       return {
         ...state,

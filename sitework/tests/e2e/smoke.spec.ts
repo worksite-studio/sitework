@@ -434,3 +434,25 @@ test('linking layer — Dashboard Active Projects tile links to the projects lis
   await page.getByRole('link', { name: /Active Projects/ }).click()
   await expect(page).toHaveURL(/\/projects$/)
 })
+
+test('UX kit — PO row opens the edit dialog, save shows a toast (gap 4.5-D)', async ({ page }) => {
+  await page.goto('/projects/PRJ-001/purchases')
+  // Click the PO-number cell (no drill link) so the row-edit handler fires.
+  await page.getByRole('cell').filter({ hasText: /^PO-/ }).first().click()
+  await expect(page.getByRole('heading', { name: 'Edit Purchase Order' })).toBeVisible()
+  await page.getByRole('button', { name: 'Save Changes' }).click()
+  await expect(page.getByText('Purchase order updated')).toBeVisible()
+})
+
+test('UX kit — deleting a cost code goes through the confirm dialog (gap 4.5-D)', async ({
+  page,
+}) => {
+  await page.goto('/projects/PRJ-001/boq')
+  // Delete buttons carry the "Delete code" title.
+  await page.getByTitle('Delete code').first().click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('heading', { name: 'Delete cost code' })).toBeVisible()
+  // Cancel leaves everything in place.
+  await dialog.getByRole('button', { name: 'Cancel' }).click()
+  await expect(page.getByRole('heading', { name: 'Delete cost code' })).toHaveCount(0)
+})
