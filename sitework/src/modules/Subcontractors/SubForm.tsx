@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button, Dialog, Field, Input, Select } from '@/components/ui'
+import { parseAmount } from '@/lib/money'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import { newId } from '@/lib/newId'
@@ -180,7 +181,7 @@ export function SubForm({ open, onClose, initial }: SubFormProps) {
             max={5}
             value={form.rating}
             onChange={(e) =>
-              setForm({ ...form, rating: Math.max(0, Math.min(5, Number(e.target.value) || 0)) })
+              setForm({ ...form, rating: Math.max(0, Math.min(5, parseAmount(e.target.value))) })
             }
           />
         </Field>
@@ -196,7 +197,7 @@ export function SubForm({ open, onClose, initial }: SubFormProps) {
             type="number"
             min={0}
             value={form.liabilityAmt}
-            onChange={(e) => setForm({ ...form, liabilityAmt: Number(e.target.value) || 0 })}
+            onChange={(e) => setForm({ ...form, liabilityAmt: parseAmount(e.target.value) })}
           />
         </Field>
         <Field label="Workers Comp expiry">

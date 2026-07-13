@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button, Dialog, Field, Input, Select } from '@/components/ui'
 import { useAppState, useDispatch } from '@/state/context'
 import { formatCurrency } from '@/lib/formatCurrency'
+import { gstOf, incGst, parseAmount } from '@/lib/money'
 import { asId } from '@/types'
 import type { CostCodeId, Project, Purchase, PurchaseId } from '@/types'
 import { newId } from '@/lib/newId'
@@ -63,7 +64,7 @@ export function POForm({ open, onClose, project }: Props) {
       subId: form.subId || null,
       docRef: form.docRef,
       desc: form.desc,
-      amount: Number(form.amount) || 0,
+      amount: parseAmount(form.amount),
       status: 'pending',
       date: form.date,
       dueDate: '',
@@ -75,7 +76,7 @@ export function POForm({ open, onClose, project }: Props) {
     onClose()
   }
 
-  const amt = Number(form.amount) || 0
+  const amt = parseAmount(form.amount)
 
   return (
     <Dialog
@@ -150,7 +151,7 @@ export function POForm({ open, onClose, project }: Props) {
             type="number"
             step="0.01"
             value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: Number(e.target.value) || 0 })}
+            onChange={(e) => setForm({ ...form, amount: parseAmount(e.target.value) })}
           />
         </Field>
         <Field label="Date">
@@ -167,10 +168,10 @@ export function POForm({ open, onClose, project }: Props) {
             Ex GST: <strong className="font-mono text-sw-ink">{formatCurrency(amt)}</strong>
           </span>
           <span>
-            GST: <strong className="font-mono text-sw-ink">{formatCurrency(amt * 0.1)}</strong>
+            GST: <strong className="font-mono text-sw-ink">{formatCurrency(gstOf(amt))}</strong>
           </span>
           <span>
-            Total: <strong className="font-mono text-sw-ink">{formatCurrency(amt * 1.1)}</strong>
+            Total: <strong className="font-mono text-sw-ink">{formatCurrency(incGst(amt))}</strong>
           </span>
         </div>
       )}

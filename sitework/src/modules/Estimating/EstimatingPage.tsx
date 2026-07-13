@@ -4,6 +4,7 @@ import { useAppState, useDispatch } from '@/state/context'
 import { Button } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatDate } from '@/lib/formatDate'
+import { gstOf } from '@/lib/money'
 import { NewFromTemplateDialog } from './NewFromTemplateDialog'
 import { EstimateForm, EstCodeForm } from './EstimateForm'
 import type { BoqTemplate, Estimate, EstimateId } from '@/types'
@@ -59,7 +60,7 @@ export function EstimatingPage() {
   if (selected) {
     const cost = selected.codes.reduce((s, c) => s + (c.budget || 0), 0)
     const contract = sellPrice(selected)
-    const gst = contract * 0.1
+    const gst = gstOf(contract)
     return (
       <div className="sw-page">
         <button

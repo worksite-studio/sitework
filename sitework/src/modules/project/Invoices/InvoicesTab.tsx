@@ -4,6 +4,7 @@ import { Button, EmptyState } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
+import { gstOf, incGst } from '@/lib/money'
 import { useAppState } from '@/state/context'
 import { useProject } from '../useProject'
 import { InvoiceForm } from './InvoiceForm'
@@ -130,10 +131,10 @@ export function InvoicesTab() {
                         {formatCurrency(inv.amount)}
                       </td>
                       <td className="text-right font-mono text-sw-dim">
-                        {formatCurrency(inv.amount * 0.1)}
+                        {formatCurrency(gstOf(inv.amount))}
                       </td>
                       <td className="text-right font-mono font-semibold">
-                        {formatCurrency(inv.amount * 1.1)}
+                        {formatCurrency(incGst(inv.amount))}
                       </td>
                       {/* Legacy quirk: status renders under the Comments header. */}
                       <td>
@@ -184,7 +185,7 @@ export function InvoicesTab() {
                 {invoices.length} invoice{invoices.length !== 1 ? 's' : ''}
               </span>
               <span className="font-mono text-[13px] font-semibold">
-                Total inc GST: {formatCurrency(total * 1.1)}
+                Total inc GST: {formatCurrency(incGst(total))}
               </span>
             </div>
           )}

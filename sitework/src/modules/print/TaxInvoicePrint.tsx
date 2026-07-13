@@ -3,9 +3,8 @@ import { PrintLayout } from './PrintLayout'
 import { useAppState } from '@/state/context'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
+import { gstOf, incGst } from '@/lib/money'
 import type { InvoiceId, ProjectId } from '@/types'
-
-const GST_RATE = 0.1
 
 /**
  * Tax Invoice — print view for a single invoice with GST breakdown
@@ -28,9 +27,11 @@ export function TaxInvoicePrint() {
   }
 
   const code = project.codes.find((c) => c.id === invoice.ccId)
-  const incGst = invoice.amount || 0
-  const exGst = incGst / (1 + GST_RATE)
-  const gst = incGst - exGst
+  // invoice.amount is ex-GST (per the Invoice type contract and every table);
+  // derive GST and the inc-GST total from it via the central money helpers.
+  const exGst = invoice.amount || 0
+  const gst = gstOf(exGst)
+  const total = incGst(exGst)
 
   return (
     <PrintLayout title="Tax invoice" backTo={`/projects/${project.id}/invoices`}>
@@ -81,7 +82,7 @@ export function TaxInvoicePrint() {
               <td>{code ? `${code.code} · ${code.desc}` : '—'}</td>
               <td className="text-right tabular-nums">{formatCurrency(exGst)}</td>
               <td className="text-right tabular-nums">{formatCurrency(gst)}</td>
-              <td className="text-right tabular-nums font-medium">{formatCurrency(incGst)}</td>
+              <td className="text-right tabular-nums font-medium">{formatCurrency(total)}</td>
             </tr>
           </tbody>
           <tfoot>
@@ -89,7 +90,7 @@ export function TaxInvoicePrint() {
               <td colSpan={2}>Totals</td>
               <td className="text-right tabular-nums">{formatCurrency(exGst)}</td>
               <td className="text-right tabular-nums">{formatCurrency(gst)}</td>
-              <td className="text-right tabular-nums">{formatCurrency(incGst)}</td>
+              <td className="text-right tabular-nums">{formatCurrency(total)}</td>
             </tr>
           </tfoot>
         </table>
