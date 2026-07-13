@@ -17,8 +17,9 @@ test('splash gates entry, click enters, client-side nav does not re-trigger', as
   await expect(page.getByText('Tap anywhere to enter')).not.toBeVisible()
   await expect(page.getByRole('heading', { level: 2, name: /Project Health/i })).toBeVisible()
 
-  // Client-side navigation keeps the app entered
-  await page.getByRole('link', { name: 'Projects' }).click()
+  // Client-side navigation keeps the app entered. Exact match: the "Active
+  // Projects" dashboard tile is also a link (4.5-C) and otherwise collides.
+  await page.getByRole('link', { name: 'Projects', exact: true }).click()
   await expect(page).toHaveURL(/\/projects$/)
   await expect(page.getByText('Tap anywhere to enter')).not.toBeVisible()
 })

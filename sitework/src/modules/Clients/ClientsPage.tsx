@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from 'react'
 import { useAppState } from '@/state/context'
-import { Button } from '@/components/ui'
+import { Button, EntityLink } from '@/components/ui'
 import { ClientForm } from './ClientForm'
 import type { Client, ClientId } from '@/types'
 
@@ -61,7 +61,20 @@ export function ClientsPage() {
                       <td className="font-semibold">{client.name}</td>
                       <td className="text-sw-dim">{client.email}</td>
                       <td className="font-mono text-sw-dim">{client.abn || '—'}</td>
-                      <td className="text-right">{count}</td>
+                      <td className="text-right">
+                        {count > 0 ? (
+                          <EntityLink
+                            to={`/projects?client=${client.id}`}
+                            stopPropagation
+                            title="View this client's projects"
+                            className="text-sw-ink"
+                          >
+                            {count}
+                          </EntityLink>
+                        ) : (
+                          count
+                        )}
+                      </td>
                     </tr>
                     {isExpanded && (
                       <tr>

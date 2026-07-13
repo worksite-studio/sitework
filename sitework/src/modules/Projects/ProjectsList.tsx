@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAppState } from '@/state/context'
 import { StatusBadge } from '@/components/StatusBadge'
-import { Button } from '@/components/ui'
+import { Button, FilterBanner } from '@/components/ui'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { ProjectForm } from './ProjectForm'
 
@@ -26,10 +26,21 @@ export function ProjectsList() {
   const { projects, clients } = useAppState()
   const [creating, setCreating] = useState(false)
   const [filter, setFilter] = useState<Filter>('live')
+  const [searchParams, setSearchParams] = useSearchParams()
 
-  const shown = projects.filter((p) =>
-    filter === 'all' ? true : filter === 'live' ? p.status === 'live' : p.status === 'quoted',
-  )
+  // Drill-through filter (Phase 4.5-C): ?client from a Clients-page row. When
+  // present it overrides the Live/Quoted/All chip so every matching project is
+  // shown regardless of status. Render-time only — the filter lives in the URL.
+  const clientFilter = searchParams.get('client')
+  const clientFilterName = clientFilter
+    ? clients.find((c) => (c.id as string) === clientFilter)?.name
+    : null
+
+  const shown = clientFilter
+    ? projects.filter((p) => (p.clientId as string) === clientFilter)
+    : projects.filter((p) =>
+        filter === 'all' ? true : filter === 'live' ? p.status === 'live' : p.status === 'quoted',
+      )
 
   return (
     <div className="sw-page">
@@ -38,28 +49,40 @@ export function ProjectsList() {
         <Button onClick={() => setCreating(true)}>+ New Project</Button>
       </header>
 
-      <div className="mb-7 flex gap-1.5">
-        {(
-          [
-            ['live', 'Live'],
-            ['quoted', 'Quoted'],
-            ['all', 'All'],
-          ] as Array<[Filter, string]>
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setFilter(key)}
-            className={`border px-3.5 py-1.5 text-[12px] font-medium cursor-pointer rounded-[1px] ${
-              filter === key
-                ? 'bg-sw-ink text-white border-sw-ink'
-                : 'bg-white text-sw-ink border-sw-rule'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {clientFilter ? (
+        <FilterBanner
+          label="client"
+          value={clientFilterName ?? clientFilter}
+          onClear={() => {
+            const next = new URLSearchParams(searchParams)
+            next.delete('client')
+            setSearchParams(next, { replace: true })
+          }}
+        />
+      ) : (
+        <div className="mb-7 flex gap-1.5">
+          {(
+            [
+              ['live', 'Live'],
+              ['quoted', 'Quoted'],
+              ['all', 'All'],
+            ] as Array<[Filter, string]>
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setFilter(key)}
+              className={`border px-3.5 py-1.5 text-[12px] font-medium cursor-pointer rounded-[1px] ${
+                filter === key
+                  ? 'bg-sw-ink text-white border-sw-ink'
+                  : 'bg-white text-sw-ink border-sw-rule'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <ul>
         {shown.map((p) => {

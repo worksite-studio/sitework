@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Button, EmptyState } from '@/components/ui'
+import { useSearchParams } from 'react-router-dom'
+import { Button, EmptyState, EntityLink, FilterBanner } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
@@ -21,6 +22,7 @@ export function POsTab() {
   const state = useAppState()
   const dispatch = useDispatch()
   const [creating, setCreating] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
 
   if (!project) return null
 
@@ -29,6 +31,27 @@ export function POsTab() {
   const received = purchases
     .filter((p) => p.status === 'received')
     .reduce((s, p) => s + (p.amount || 0), 0)
+
+  // Drill-through filters (Phase 4.5-C): ?cc from a BOQ code, ?sup from a
+  // supplier cell. Render-time only — the filter lives in the URL.
+  const ccFilter = searchParams.get('cc')
+  const supFilter = searchParams.get('sup')
+  function clearParam(key: string) {
+    const next = new URLSearchParams(searchParams)
+    next.delete(key)
+    setSearchParams(next, { replace: true })
+  }
+  function paramSearch(key: string, val: string) {
+    const next = new URLSearchParams(searchParams)
+    next.set(key, val)
+    return { search: `?${next.toString()}` }
+  }
+  const ccFilterCode = ccFilter ? project.codes.find((c) => (c.id as string) === ccFilter) : null
+  let shown = purchases
+  if (ccFilter) shown = shown.filter((p) => (p.ccId as string) === ccFilter)
+  if (supFilter) shown = shown.filter((p) => supplierName(p) === supFilter)
+  // Footer total reflects the rows currently shown; equals `total` unfiltered.
+  const shownTotal = shown.reduce((s, p) => s + (p.amount || 0), 0)
 
   function supplierName(po: Purchase): string {
     const sub = po.subId ? state.subs.find((s) => (s.id as string) === po.subId) : null
@@ -76,63 +99,97 @@ export function POsTab() {
           }
         />
       ) : (
-        <div className="border-t border-sw-ink">
-          <table className="sw-table">
-            <thead>
-              <tr>
-                <th>PO #</th>
-                <th>Supplier / Subcontractor</th>
-                <th>Doc Ref</th>
-                <th>Description</th>
-                <th>Cost Code</th>
-                <th className="text-right">Amount (ex GST)</th>
-                <th className="text-right">GST</th>
-                <th className="text-right">Total inc GST</th>
-                <th>Date</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {purchases.map((po, idx) => (
-                <tr key={po.id} style={{ background: idx % 2 === 0 ? '#fff' : 'var(--sw-bg)' }}>
-                  <td className="font-mono text-sw-dim">{po.poNum || po.id}</td>
-                  <td className="font-medium">{supplierName(po)}</td>
-                  <td className="font-mono text-sw-dim">{po.docRef || '—'}</td>
-                  <td className="text-sw-dim">{po.desc || '—'}</td>
-                  <td className="text-sw-dim">{codeText(po)}</td>
-                  <td className="text-right font-mono font-semibold">
-                    {formatCurrency(po.amount)}
-                  </td>
-                  <td className="text-right font-mono text-sw-dim">
-                    {formatCurrency(gstOf(po.amount))}
-                  </td>
-                  <td className="text-right font-mono font-semibold">
-                    {formatCurrency(incGst(po.amount))}
-                  </td>
-                  <td className="text-sw-dim">{formatDate(po.date)}</td>
-                  <td className="whitespace-nowrap">
-                    <StatusBadge status={po.status} />
-                    {po.status !== 'received' && po.status !== 'cancelled' && (
-                      <button
-                        type="button"
-                        onClick={() => receivePO(po)}
-                        className="ml-2 cursor-pointer border border-sw-rule rounded-[1px] bg-transparent px-2 py-[3px] text-[10px] font-semibold uppercase tracking-[0.06em] text-sw-dim hover:text-sw-ink"
-                      >
-                        Receive
-                      </button>
-                    )}
-                  </td>
+        <div>
+          {ccFilter && (
+            <FilterBanner
+              label="cost code"
+              value={ccFilterCode ? `${ccFilterCode.code} ${ccFilterCode.desc}` : ccFilter}
+              onClear={() => clearParam('cc')}
+            />
+          )}
+          {supFilter && (
+            <FilterBanner label="supplier" value={supFilter} onClear={() => clearParam('sup')} />
+          )}
+          <div className="border-t border-sw-ink">
+            <table className="sw-table">
+              <thead>
+                <tr>
+                  <th>PO #</th>
+                  <th>Supplier / Subcontractor</th>
+                  <th>Doc Ref</th>
+                  <th>Description</th>
+                  <th>Cost Code</th>
+                  <th className="text-right">Amount (ex GST)</th>
+                  <th className="text-right">GST</th>
+                  <th className="text-right">Total inc GST</th>
+                  <th>Date</th>
+                  <th>Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="flex justify-between border-t border-sw-rule bg-sw-bg px-4 py-3">
-            <span className="text-[12px] text-sw-dim">
-              {purchases.length} PO{purchases.length !== 1 ? 's' : ''}
-            </span>
-            <span className="font-mono text-[13px] font-semibold">
-              Total inc GST: {formatCurrency(incGst(total))}
-            </span>
+              </thead>
+              <tbody>
+                {shown.map((po, idx) => (
+                  <tr key={po.id} style={{ background: idx % 2 === 0 ? '#fff' : 'var(--sw-bg)' }}>
+                    <td className="font-mono text-sw-dim">{po.poNum || po.id}</td>
+                    <td className="font-medium">
+                      <EntityLink
+                        to={paramSearch('sup', supplierName(po))}
+                        className="font-medium text-sw-ink"
+                      >
+                        {supplierName(po)}
+                      </EntityLink>
+                    </td>
+                    <td className="font-mono text-sw-dim">{po.docRef || '—'}</td>
+                    <td className="text-sw-dim">{po.desc || '—'}</td>
+                    <td className="text-sw-dim">
+                      {po.ccId ? (
+                        <EntityLink to="../boq" className="text-sw-dim">
+                          {codeText(po)}
+                        </EntityLink>
+                      ) : (
+                        codeText(po)
+                      )}
+                    </td>
+                    <td className="text-right font-mono font-semibold">
+                      {formatCurrency(po.amount)}
+                    </td>
+                    <td className="text-right font-mono text-sw-dim">
+                      {formatCurrency(gstOf(po.amount))}
+                    </td>
+                    <td className="text-right font-mono font-semibold">
+                      {formatCurrency(incGst(po.amount))}
+                    </td>
+                    <td className="text-sw-dim">{formatDate(po.date)}</td>
+                    <td className="whitespace-nowrap">
+                      <StatusBadge status={po.status} />
+                      {po.status !== 'received' && po.status !== 'cancelled' && (
+                        <button
+                          type="button"
+                          onClick={() => receivePO(po)}
+                          className="ml-2 cursor-pointer border border-sw-rule rounded-[1px] bg-transparent px-2 py-[3px] text-[10px] font-semibold uppercase tracking-[0.06em] text-sw-dim hover:text-sw-ink"
+                        >
+                          Receive
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {shown.length === 0 && (
+                  <tr>
+                    <td colSpan={10} className="p-10 text-center text-[13px] text-sw-faint">
+                      No purchase orders match this filter.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            <div className="flex justify-between border-t border-sw-rule bg-sw-bg px-4 py-3">
+              <span className="text-[12px] text-sw-dim">
+                {shown.length} PO{shown.length !== 1 ? 's' : ''}
+              </span>
+              <span className="font-mono text-[13px] font-semibold">
+                Total inc GST: {formatCurrency(incGst(shownTotal))}
+              </span>
+            </div>
           </div>
         </div>
       )}
