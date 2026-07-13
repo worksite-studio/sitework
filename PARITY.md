@@ -95,7 +95,7 @@ The port's reinterpreted screens are rebuilt from the legacy source under the tr
 | R5 | Leads kanban (`G1`) + Estimating (`H1`) + Clients (`L1`) / Subs (`V1`) tables incl. bare-text badge fix; convert-lead + promote-estimate flows transliterated to `Z1` | 15, 12 (3 rows) | ✅ 2026-07-10 |
 | R6 | Variation requestedBy (`v1` form + `B1` table) + PC/PS add/edit forms (`pcf`/`psf`) + Pcps anatomy | 4, 5, 12 (2 rows) | ✅ 2026-07-10 |
 | R7 | Remaining tab anatomy: Schedule / Diary / RFIs / Selections / Timesheets / Defects (incl. the `k1` Retention & FFC module) / Calendar / Open Book / client modal | 12 (rest) | ✅ 2026-07-11 |
-| R8 | Help & Education content (0-G) + full 26-pair sweep | 6 | ✅ 2026-07-11 — **all 18 gap rows closed**; final 26-pair sweep regenerated in `sitework/parity-shots/`; awaiting Jake's walkthrough sign-off, then the root URL swaps back to the Vite app and the branch stack merges |
+| R8 | Help & Education content (0-G) + full 26-pair sweep | 6 | ✅ 2026-07-11 — **all 18 gap rows closed**; final 26-pair sweep regenerated in `sitework/parity-shots/`; Jake's side-by-side walkthrough signed off 2026-07-13; stack merged to main with a merge commit (`9d37b0b`); deployed root now serves the Vite app, baseline stays at `/legacy`. **Phase 4.6 complete.** |
 
 R0 runs first because every screen reads the money layer — rebuilding screens on wrong maths would mean re-verifying them all later.
 
