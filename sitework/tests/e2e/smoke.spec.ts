@@ -29,7 +29,8 @@ test('dashboard renders stat blocks + Project Health + Budget & Margin', async (
 
 test('navigates to Projects list and into a project tab', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Projects' }).click()
+  // Exact: the "Active Projects" dashboard tile is also a link (4.5-C).
+  await page.getByRole('link', { name: 'Projects', exact: true }).click()
   await expect(page).toHaveURL(/\/projects$/)
   // Role-anchored: during the route swap the dashboard's Project Health
   // "Akademie" briefly coexists with the list row — bare getByText is
@@ -401,4 +402,35 @@ test('clients form blocks save when Name is empty', async ({ page }) => {
   await page.getByRole('button', { name: '+ New Client' }).first().click()
   await page.getByRole('button', { name: 'Save Client' }).click()
   await expect(page.getByText('Name is required')).toBeVisible()
+})
+
+test('linking layer — BOQ committed drills to cost-code-filtered invoices (gap 4.5-C)', async ({
+  page,
+}) => {
+  await page.goto('/projects/PRJ-001/boq')
+  // Each code header's committed figure is a drill link to its invoices.
+  await page.getByTitle('View invoices booked to this code').first().click()
+  await expect(page).toHaveURL(/\/projects\/PRJ-001\/invoices\?cc=/)
+  await expect(page.getByText(/Filtered by cost code/)).toBeVisible()
+  // Clearing the filter drops the param and the banner.
+  await page.getByRole('button', { name: /Clear/ }).click()
+  await expect(page).toHaveURL(/\/projects\/PRJ-001\/invoices$/)
+  await expect(page.getByText(/Filtered by cost code/)).toHaveCount(0)
+})
+
+test('linking layer — client row drills to client-filtered projects (gap 4.5-C)', async ({
+  page,
+}) => {
+  await page.goto('/clients')
+  await page.getByTitle("View this client's projects").first().click()
+  await expect(page).toHaveURL(/\/projects\?client=/)
+  await expect(page.getByText(/Filtered by client/)).toBeVisible()
+})
+
+test('linking layer — Dashboard Active Projects tile links to the projects list (gap 4.5-C)', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: /Active Projects/ }).click()
+  await expect(page).toHaveURL(/\/projects$/)
 })

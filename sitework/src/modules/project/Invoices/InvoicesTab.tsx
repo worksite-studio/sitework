@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Button, EmptyState } from '@/components/ui'
+import { Link, useSearchParams } from 'react-router-dom'
+import { Button, EmptyState, EntityLink, FilterBanner } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
@@ -31,17 +31,38 @@ export function InvoicesTab() {
   const [editing, setEditing] = useState<Invoice | null>(null)
   const [creating, setCreating] = useState(false)
   const [filter, setFilter] = useState<Filter>('All')
+  const [searchParams, setSearchParams] = useSearchParams()
 
   if (!project) return null
 
+  // Drill-through filters (Phase 4.5-C): ?cc from a BOQ code, ?sup from a
+  // supplier cell. Render-time only — the filter lives in the URL.
+  const ccFilter = searchParams.get('cc')
+  const supFilter = searchParams.get('sup')
+  function clearParam(key: string) {
+    const next = new URLSearchParams(searchParams)
+    next.delete(key)
+    setSearchParams(next, { replace: true })
+  }
+  function paramSearch(key: string, val: string) {
+    const next = new URLSearchParams(searchParams)
+    next.set(key, val)
+    return { search: `?${next.toString()}` }
+  }
+  const ccFilterCode = ccFilter ? project.codes.find((c) => (c.id as string) === ccFilter) : null
+
   const all = project.invoices
-  const invoices =
-    filter === 'All' ? all : all.filter((i) => i.status === (filter as InvoiceStatus))
+  let invoices = filter === 'All' ? all : all.filter((i) => i.status === (filter as InvoiceStatus))
+  if (ccFilter) invoices = invoices.filter((i) => (i.ccId as string) === ccFilter)
+  if (supFilter) invoices = invoices.filter((i) => supplierName(i) === supFilter)
   const paid = all.filter((i) => i.status === 'Paid').reduce((s, i) => s + (i.amount || 0), 0)
   const approved = all
     .filter((i) => i.status === 'Approved')
     .reduce((s, i) => s + (i.amount || 0), 0)
   const total = all.reduce((s, i) => s + (i.amount || 0), 0)
+  // Footer total reflects the rows currently shown (so a filtered view sums to
+  // what's on screen); equals `total` when nothing is filtered.
+  const shownTotal = invoices.reduce((s, i) => s + (i.amount || 0), 0)
 
   function supplierName(inv: Invoice): string {
     const sub = inv.subId ? state.subs.find((s) => (s.id as string) === inv.subId) : null
@@ -86,6 +107,17 @@ export function InvoicesTab() {
         ))}
       </div>
 
+      {ccFilter && (
+        <FilterBanner
+          label="cost code"
+          value={ccFilterCode ? `${ccFilterCode.code} ${ccFilterCode.desc}` : ccFilter}
+          onClear={() => clearParam('cc')}
+        />
+      )}
+      {supFilter && (
+        <FilterBanner label="supplier" value={supFilter} onClear={() => clearParam('sup')} />
+      )}
+
       {project.codes.length === 0 ? (
         <EmptyState
           title="No cost codes yet"
@@ -122,9 +154,25 @@ export function InvoicesTab() {
                       className="cursor-pointer"
                       style={{ background: idx % 2 === 0 ? '#fff' : 'var(--sw-bg)' }}
                     >
-                      <td className="font-semibold">{supplierName(inv)}</td>
+                      <td className="font-semibold">
+                        <EntityLink
+                          to={paramSearch('sup', supplierName(inv))}
+                          stopPropagation
+                          className="font-semibold text-sw-ink"
+                        >
+                          {supplierName(inv)}
+                        </EntityLink>
+                      </td>
                       <td className="font-mono text-sw-dim">{inv.docRef || '—'}</td>
-                      <td className="text-sw-dim">{codeText(inv)}</td>
+                      <td className="text-sw-dim">
+                        {inv.ccId ? (
+                          <EntityLink to="../boq" stopPropagation className="text-sw-dim">
+                            {codeText(inv)}
+                          </EntityLink>
+                        ) : (
+                          codeText(inv)
+                        )}
+                      </td>
                       <td className="text-sw-dim">{formatDate(inv.date)}</td>
                       <td className="text-sw-dim">{formatDate(inv.due)}</td>
                       <td className="text-right font-mono font-semibold">
@@ -185,7 +233,7 @@ export function InvoicesTab() {
                 {invoices.length} invoice{invoices.length !== 1 ? 's' : ''}
               </span>
               <span className="font-mono text-[13px] font-semibold">
-                Total inc GST: {formatCurrency(incGst(total))}
+                Total inc GST: {formatCurrency(incGst(shownTotal))}
               </span>
             </div>
           )}

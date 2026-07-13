@@ -155,6 +155,7 @@ export function DashboardPage() {
           label="Active Projects"
           value={active.length}
           sublabel={`$${(kpis.portfolioContractValue / 1e6).toFixed(1)}M contract value`}
+          to="/projects"
         />
         <StatBlock
           label="Outstanding Invoices"
@@ -177,6 +178,7 @@ export function DashboardPage() {
           value={subsNeedingAttention}
           sublabel="Subs needing attention"
           accent={subsNeedingAttention > 0 ? 'var(--sw-neg)' : undefined}
+          to="/subcontractors"
         />
       </div>
 

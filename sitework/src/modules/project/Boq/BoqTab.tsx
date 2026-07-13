@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAppState, useDispatch } from '@/state/context'
-import { Button } from '@/components/ui'
+import { Button, EntityLink } from '@/components/ui'
 import { formatCurrency, formatCurrencyExact } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
 import { useProject } from '../useProject'
@@ -102,12 +102,15 @@ export function BoqTab() {
               <span className="text-[10px] text-sw-faint">{open ? '−' : '+'}</span>
               <span className="w-[30px] font-mono text-[11px] text-sw-dim">{code.code}</span>
               <span className="flex-1 text-[13px] font-semibold text-sw-ink">{code.desc}</span>
-              <span
+              <EntityLink
+                to={`../invoices?cc=${code.id}`}
+                stopPropagation
+                title="View invoices booked to this code"
                 className="font-mono text-[13px] font-bold"
                 style={{ color: healthColor(code.budget || 0, live.committed) }}
               >
                 {formatCurrency(live.committed)}
-              </span>
+              </EntityLink>
               <span className="font-mono text-[12px] text-sw-dim">
                 / {formatCurrency(code.budget || 0)}
               </span>
