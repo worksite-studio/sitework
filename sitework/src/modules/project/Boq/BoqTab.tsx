@@ -33,6 +33,11 @@ export function BoqTab() {
   const [creating, setCreating] = useState(false)
   const [importing, setImporting] = useState(false)
   const [addingItemFor, setAddingItemFor] = useState<CostCodeId | null>(null)
+  // View controls (Phase 4.5-E): over-budget filter + spend sort. Sorting is a
+  // view only — manual order stays in state, so the reorder arrows hide while
+  // sorted and return when back to manual order.
+  const [overBudgetOnly, setOverBudgetOnly] = useState(false)
+  const [sortBySpend, setSortBySpend] = useState(false)
 
   const nextCode = useMemo(() => {
     if (!project) return '001'
@@ -76,6 +81,15 @@ export function BoqTab() {
     toast(`Cost code ${c.code} deleted`, 'success')
   }
 
+  // committed spend per code (legacy `Gc`), used for the over-budget filter and
+  // the spend sort.
+  const committedOf = (code: CostCode) =>
+    codeDocTotals(code.id as string, project.invoices, purchases).committed
+  let displayCodes = project.codes
+  if (overBudgetOnly) displayCodes = displayCodes.filter((c) => committedOf(c) > (c.budget || 0))
+  if (sortBySpend) displayCodes = [...displayCodes].sort((a, b) => committedOf(b) - committedOf(a))
+  const manualOrder = !sortBySpend && !overBudgetOnly
+
   return (
     <div>
       <header className="mb-6 flex items-center justify-between">
@@ -95,7 +109,45 @@ export function BoqTab() {
         </div>
       </header>
 
-      {project.codes.map((code) => {
+      {/* View controls (Phase 4.5-E): over-budget filter + spend sort. */}
+      {project.codes.length > 0 && (
+        <div className="mb-4 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setOverBudgetOnly((v) => !v)}
+            aria-pressed={overBudgetOnly}
+            className="cursor-pointer px-3 py-[5px] text-[12px]"
+            style={{
+              border: `1px solid ${overBudgetOnly ? 'var(--sw-neg)' : 'var(--sw-rule)'}`,
+              background: overBudgetOnly ? 'var(--sw-neg)' : 'transparent',
+              color: overBudgetOnly ? '#fff' : 'var(--sw-dim)',
+            }}
+          >
+            Over budget only
+          </button>
+          <button
+            type="button"
+            onClick={() => setSortBySpend((v) => !v)}
+            aria-pressed={sortBySpend}
+            className="cursor-pointer px-3 py-[5px] text-[12px]"
+            style={{
+              border: `1px solid ${sortBySpend ? 'var(--sw-ink)' : 'var(--sw-rule)'}`,
+              background: sortBySpend ? 'var(--sw-ink)' : 'transparent',
+              color: sortBySpend ? '#fff' : 'var(--sw-dim)',
+            }}
+          >
+            Sort by spend {sortBySpend ? '↓' : ''}
+          </button>
+        </div>
+      )}
+
+      {overBudgetOnly && displayCodes.length === 0 && (
+        <div className="border-y border-sw-rule py-10 text-center text-[13px] text-sw-faint">
+          No cost codes are over budget.
+        </div>
+      )}
+
+      {displayCodes.map((code) => {
         const items = project.lineItems[code.id as string] ?? []
         const open = expanded.has(code.id as string)
         const live = codeDocTotals(code.id as string, project.invoices, purchases)
@@ -123,26 +175,30 @@ export function BoqTab() {
                 / {formatCurrency(code.budget || 0)}
               </span>
               <span className="ml-2 flex gap-1" onClick={(e) => e.stopPropagation()}>
-                <button
-                  type="button"
-                  title="Move up"
-                  onClick={() =>
-                    dispatch({ type: 'MOVE_CODE_UP', projectId: project.id, codeId: code.id })
-                  }
-                  className="px-[3px] text-[11px] leading-none text-sw-faint hover:text-sw-ink"
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  title="Move down"
-                  onClick={() =>
-                    dispatch({ type: 'MOVE_CODE_DOWN', projectId: project.id, codeId: code.id })
-                  }
-                  className="px-[3px] text-[11px] leading-none text-sw-faint hover:text-sw-ink"
-                >
-                  ↓
-                </button>
+                {manualOrder && (
+                  <>
+                    <button
+                      type="button"
+                      title="Move up"
+                      onClick={() =>
+                        dispatch({ type: 'MOVE_CODE_UP', projectId: project.id, codeId: code.id })
+                      }
+                      className="px-[3px] text-[11px] leading-none text-sw-faint hover:text-sw-ink"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      title="Move down"
+                      onClick={() =>
+                        dispatch({ type: 'MOVE_CODE_DOWN', projectId: project.id, codeId: code.id })
+                      }
+                      className="px-[3px] text-[11px] leading-none text-sw-faint hover:text-sw-ink"
+                    >
+                      ↓
+                    </button>
+                  </>
+                )}
                 <button
                   type="button"
                   title="Edit code"
