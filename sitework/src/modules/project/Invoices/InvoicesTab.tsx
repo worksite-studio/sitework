@@ -5,6 +5,7 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
 import { gstOf, incGst } from '@/lib/money'
+import { useTableSort } from '@/lib/useTableSort'
 import { useAppState } from '@/state/context'
 import { useProject } from '../useProject'
 import { InvoiceForm } from './InvoiceForm'
@@ -12,6 +13,7 @@ import type { Invoice, InvoiceStatus } from '@/types'
 
 const FILTERS = ['All', 'Pending', 'Approved', 'Paid'] as const
 type Filter = (typeof FILTERS)[number]
+type InvoiceSortKey = 'supplier' | 'code' | 'date' | 'due' | 'amount' | 'status'
 
 /**
  * Invoices — transliteration of legacy `O1v2` (R2, PARITY gap 12): header
@@ -31,47 +33,79 @@ export function InvoicesTab() {
   const [editing, setEditing] = useState<Invoice | null>(null)
   const [creating, setCreating] = useState(false)
   const [filter, setFilter] = useState<Filter>('All')
+  const [search, setSearch] = useState('')
   const [searchParams, setSearchParams] = useSearchParams()
-
-  if (!project) return null
 
   // Drill-through filters (Phase 4.5-C): ?cc from a BOQ code, ?sup from a
   // supplier cell. Render-time only — the filter lives in the URL.
   const ccFilter = searchParams.get('cc')
   const supFilter = searchParams.get('sup')
-  function clearParam(key: string) {
+
+  const supplierName = (inv: Invoice): string => {
+    const sub = inv.subId ? state.subs.find((s) => (s.id as string) === inv.subId) : null
+    return sub?.name || inv.supplier || '—'
+  }
+  const codeText = (inv: Invoice): string => {
+    const cc = project?.codes.find((c) => c.id === inv.ccId)
+    return cc ? `${cc.code} ${cc.desc}` : '—'
+  }
+
+  const all = project?.invoices ?? []
+  let filtered = filter === 'All' ? all : all.filter((i) => i.status === (filter as InvoiceStatus))
+  if (ccFilter) filtered = filtered.filter((i) => (i.ccId as string) === ccFilter)
+  if (supFilter) filtered = filtered.filter((i) => supplierName(i) === supFilter)
+  const q = search.trim().toLowerCase()
+  if (q)
+    filtered = filtered.filter(
+      (i) =>
+        supplierName(i).toLowerCase().includes(q) ||
+        (i.docRef ?? '').toLowerCase().includes(q) ||
+        codeText(i).toLowerCase().includes(q),
+    )
+
+  // Sortable columns (Phase 4.5-E).
+  const { sorted, toggle, indicator, ariaSort } = useTableSort<Invoice, InvoiceSortKey>(filtered, {
+    supplier: supplierName,
+    code: codeText,
+    date: (i) => i.date,
+    due: (i) => i.due,
+    amount: (i) => i.amount || 0,
+    status: (i) => i.status,
+  })
+
+  if (!project) return null
+
+  const clearParam = (key: string) => {
     const next = new URLSearchParams(searchParams)
     next.delete(key)
     setSearchParams(next, { replace: true })
   }
-  function paramSearch(key: string, val: string) {
+  const paramSearch = (key: string, val: string) => {
     const next = new URLSearchParams(searchParams)
     next.set(key, val)
     return { search: `?${next.toString()}` }
   }
   const ccFilterCode = ccFilter ? project.codes.find((c) => (c.id as string) === ccFilter) : null
 
-  const all = project.invoices
-  let invoices = filter === 'All' ? all : all.filter((i) => i.status === (filter as InvoiceStatus))
-  if (ccFilter) invoices = invoices.filter((i) => (i.ccId as string) === ccFilter)
-  if (supFilter) invoices = invoices.filter((i) => supplierName(i) === supFilter)
+  const sortTh = (label: string, key: InvoiceSortKey, className = '') => (
+    <th
+      className={`cursor-pointer select-none hover:text-sw-ink ${className}`}
+      aria-sort={ariaSort(key)}
+      onClick={() => toggle(key)}
+    >
+      {label}
+      {indicator(key)}
+    </th>
+  )
+
   const paid = all.filter((i) => i.status === 'Paid').reduce((s, i) => s + (i.amount || 0), 0)
   const approved = all
     .filter((i) => i.status === 'Approved')
     .reduce((s, i) => s + (i.amount || 0), 0)
   const total = all.reduce((s, i) => s + (i.amount || 0), 0)
-  // Footer total reflects the rows currently shown (so a filtered view sums to
-  // what's on screen); equals `total` when nothing is filtered.
-  const shownTotal = invoices.reduce((s, i) => s + (i.amount || 0), 0)
-
-  function supplierName(inv: Invoice): string {
-    const sub = inv.subId ? state.subs.find((s) => (s.id as string) === inv.subId) : null
-    return sub?.name || inv.supplier || '—'
-  }
-  function codeText(inv: Invoice): string {
-    const cc = project?.codes.find((c) => c.id === inv.ccId)
-    return cc ? `${cc.code} ${cc.desc}` : '—'
-  }
+  // Footer total reflects the rows currently shown (search + filters), so it
+  // sums to what's on screen; equals `total` when nothing is filtered.
+  const shownTotal = filtered.reduce((s, i) => s + (i.amount || 0), 0)
 
   return (
     <div>
@@ -88,8 +122,8 @@ export function InvoicesTab() {
         </Button>
       </header>
 
-      {/* Legacy status filter chips: square, ink-filled when active. */}
-      <div className="mb-5 flex gap-2">
+      {/* Legacy status filter chips + supplier search (Phase 4.5-E). */}
+      <div className="mb-5 flex items-center gap-2">
         {FILTERS.map((f) => (
           <button
             key={f}
@@ -105,6 +139,14 @@ export function InvoicesTab() {
             {f}
           </button>
         ))}
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search supplier / ref / code…"
+          aria-label="Search invoices"
+          className="ml-auto w-[240px] border-b border-sw-rule bg-transparent px-1 py-[5px] text-[12px] text-sw-ink focus:border-sw-ink focus:outline-none"
+        />
       </div>
 
       {ccFilter && (
@@ -128,23 +170,23 @@ export function InvoicesTab() {
           <table className="sw-table">
             <thead>
               <tr>
-                <th>Supplier / Subcontractor</th>
+                {sortTh('Supplier / Subcontractor', 'supplier')}
                 <th>Doc Ref</th>
-                <th>Cost Code</th>
-                <th>Date</th>
-                <th>Due</th>
-                <th className="text-right">Amount (ex GST)</th>
+                {sortTh('Cost Code', 'code')}
+                {sortTh('Date', 'date')}
+                {sortTh('Due', 'due')}
+                {sortTh('Amount (ex GST)', 'amount', 'text-right')}
                 <th className="text-right">GST</th>
                 <th className="text-right">Total inc GST</th>
                 <th>Comments</th>
-                <th>Status</th>
+                {sortTh('Status', 'status')}
                 <th>Docs</th>
                 <th aria-label="Print" />
               </tr>
             </thead>
             <tbody>
-              {invoices.length > 0 ? (
-                invoices.map((inv, idx) => {
+              {sorted.length > 0 ? (
+                sorted.map((inv, idx) => {
                   const docCount = inv.supportingDocs?.length ?? 0
                   const needsDocs = project.contractType === 'cost-plus' && docCount === 0
                   return (
@@ -221,16 +263,18 @@ export function InvoicesTab() {
               ) : (
                 <tr>
                   <td colSpan={12} className="p-10 text-center text-[13px] text-sw-faint">
-                    No invoices yet.
+                    {q || filter !== 'All' || ccFilter || supFilter
+                      ? 'No invoices match this filter.'
+                      : 'No invoices yet.'}
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
-          {invoices.length > 0 && (
+          {filtered.length > 0 && (
             <div className="flex justify-between border-t border-sw-rule bg-sw-bg px-4 py-3">
               <span className="text-[12px] text-sw-dim">
-                {invoices.length} invoice{invoices.length !== 1 ? 's' : ''}
+                {filtered.length} invoice{filtered.length !== 1 ? 's' : ''}
               </span>
               <span className="font-mono text-[13px] font-semibold">
                 Total inc GST: {formatCurrency(incGst(shownTotal))}

@@ -456,3 +456,32 @@ test('UX kit — deleting a cost code goes through the confirm dialog (gap 4.5-D
   await dialog.getByRole('button', { name: 'Cancel' }).click()
   await expect(page.getByRole('heading', { name: 'Delete cost code' })).toHaveCount(0)
 })
+
+test('tables — invoice supplier search narrows the rows (gap 4.5-E)', async ({ page }) => {
+  await page.goto('/projects/PRJ-001/invoices')
+  await expect(page.getByRole('cell', { name: 'Certis Building Certifiers' })).toBeVisible()
+  await page.getByRole('searchbox', { name: 'Search invoices' }).fill('Byron')
+  await expect(page.getByRole('cell', { name: 'Byron Shire Council' })).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'Certis Building Certifiers' })).toHaveCount(0)
+})
+
+test('tables — clicking a column header sorts it (gap 4.5-E)', async ({ page }) => {
+  await page.goto('/projects/PRJ-001/invoices')
+  const amountHeader = page.getByRole('columnheader', { name: /Amount \(ex GST\)/ })
+  await expect(amountHeader).toHaveAttribute('aria-sort', 'none')
+  await amountHeader.click()
+  await expect(amountHeader).toHaveAttribute('aria-sort', 'ascending')
+  await amountHeader.click()
+  await expect(amountHeader).toHaveAttribute('aria-sort', 'descending')
+})
+
+test('tables — BOQ over-budget toggle filters the code list (gap 4.5-E)', async ({ page }) => {
+  await page.goto('/projects/PRJ-001/boq')
+  const allCodes = await page.getByText(/Consultant Fees, Site Establishment/).count()
+  expect(allCodes).toBeGreaterThan(0)
+  const toggle = page.getByRole('button', { name: 'Over budget only' })
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+  // The reorder arrows disappear while a non-manual view is active.
+  await expect(page.getByRole('button', { name: 'Move up' })).toHaveCount(0)
+})

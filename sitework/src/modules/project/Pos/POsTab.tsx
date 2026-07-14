@@ -5,10 +5,13 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
 import { gstOf, incGst } from '@/lib/money'
+import { useTableSort } from '@/lib/useTableSort'
 import { useAppState, useDispatch } from '@/state/context'
 import { useProject } from '../useProject'
 import { POForm } from './POForm'
 import type { Purchase } from '@/types'
+
+type POSortKey = 'poNum' | 'supplier' | 'code' | 'amount' | 'date' | 'status'
 
 /**
  * Purchase Orders — transliteration of legacy `M1v2` (R2, PARITY gap 12):
@@ -23,45 +26,78 @@ export function POsTab() {
   const dispatch = useDispatch()
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<Purchase | null>(null)
+  const [search, setSearch] = useState('')
   const [searchParams, setSearchParams] = useSearchParams()
-
-  if (!project) return null
-
-  const purchases: Purchase[] = state.purchases[project.id as string] ?? []
-  const total = purchases.reduce((s, p) => s + (p.amount || 0), 0)
-  const received = purchases
-    .filter((p) => p.status === 'received')
-    .reduce((s, p) => s + (p.amount || 0), 0)
 
   // Drill-through filters (Phase 4.5-C): ?cc from a BOQ code, ?sup from a
   // supplier cell. Render-time only — the filter lives in the URL.
   const ccFilter = searchParams.get('cc')
   const supFilter = searchParams.get('sup')
-  function clearParam(key: string) {
+
+  const supplierName = (po: Purchase): string => {
+    const sub = po.subId ? state.subs.find((s) => (s.id as string) === po.subId) : null
+    return sub?.name || po.supplier || '—'
+  }
+  const codeText = (po: Purchase): string => {
+    const cc = project?.codes.find((c) => c.id === po.ccId)
+    return cc ? `${cc.code} ${cc.desc}` : '—'
+  }
+
+  const purchases: Purchase[] = project ? (state.purchases[project.id as string] ?? []) : []
+  const total = purchases.reduce((s, p) => s + (p.amount || 0), 0)
+  const received = purchases
+    .filter((p) => p.status === 'received')
+    .reduce((s, p) => s + (p.amount || 0), 0)
+
+  let filtered = purchases
+  if (ccFilter) filtered = filtered.filter((p) => (p.ccId as string) === ccFilter)
+  if (supFilter) filtered = filtered.filter((p) => supplierName(p) === supFilter)
+  const q = search.trim().toLowerCase()
+  if (q)
+    filtered = filtered.filter(
+      (p) =>
+        supplierName(p).toLowerCase().includes(q) ||
+        (p.poNum ?? '').toLowerCase().includes(q) ||
+        (p.docRef ?? '').toLowerCase().includes(q) ||
+        codeText(p).toLowerCase().includes(q),
+    )
+
+  // Sortable columns (Phase 4.5-E).
+  const { sorted, toggle, indicator, ariaSort } = useTableSort<Purchase, POSortKey>(filtered, {
+    poNum: (p) => p.poNum || (p.id as string),
+    supplier: supplierName,
+    code: codeText,
+    amount: (p) => p.amount || 0,
+    date: (p) => p.date,
+    status: (p) => p.status,
+  })
+
+  if (!project) return null
+
+  const clearParam = (key: string) => {
     const next = new URLSearchParams(searchParams)
     next.delete(key)
     setSearchParams(next, { replace: true })
   }
-  function paramSearch(key: string, val: string) {
+  const paramSearch = (key: string, val: string) => {
     const next = new URLSearchParams(searchParams)
     next.set(key, val)
     return { search: `?${next.toString()}` }
   }
   const ccFilterCode = ccFilter ? project.codes.find((c) => (c.id as string) === ccFilter) : null
-  let shown = purchases
-  if (ccFilter) shown = shown.filter((p) => (p.ccId as string) === ccFilter)
-  if (supFilter) shown = shown.filter((p) => supplierName(p) === supFilter)
   // Footer total reflects the rows currently shown; equals `total` unfiltered.
-  const shownTotal = shown.reduce((s, p) => s + (p.amount || 0), 0)
+  const shownTotal = filtered.reduce((s, p) => s + (p.amount || 0), 0)
 
-  function supplierName(po: Purchase): string {
-    const sub = po.subId ? state.subs.find((s) => (s.id as string) === po.subId) : null
-    return sub?.name || po.supplier || '—'
-  }
-  function codeText(po: Purchase): string {
-    const cc = project?.codes.find((c) => c.id === po.ccId)
-    return cc ? `${cc.code} ${cc.desc}` : '—'
-  }
+  const sortTh = (label: string, key: POSortKey, className = '') => (
+    <th
+      className={`cursor-pointer select-none hover:text-sw-ink ${className}`}
+      aria-sort={ariaSort(key)}
+      onClick={() => toggle(key)}
+    >
+      {label}
+      {indicator(key)}
+    </th>
+  )
 
   function receivePO(po: Purchase) {
     if (!project) return
@@ -89,6 +125,19 @@ export function POsTab() {
         </Button>
       </header>
 
+      {purchases.length > 0 && (
+        <div className="mb-5 flex">
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search PO # / supplier / ref / code…"
+            aria-label="Search purchase orders"
+            className="ml-auto w-[260px] border-b border-sw-rule bg-transparent px-1 py-[5px] text-[12px] text-sw-ink focus:border-sw-ink focus:outline-none"
+          />
+        </div>
+      )}
+
       {purchases.length === 0 ? (
         <EmptyState
           title="No purchase orders yet"
@@ -115,20 +164,20 @@ export function POsTab() {
             <table className="sw-table">
               <thead>
                 <tr>
-                  <th>PO #</th>
-                  <th>Supplier / Subcontractor</th>
+                  {sortTh('PO #', 'poNum')}
+                  {sortTh('Supplier / Subcontractor', 'supplier')}
                   <th>Doc Ref</th>
                   <th>Description</th>
-                  <th>Cost Code</th>
-                  <th className="text-right">Amount (ex GST)</th>
+                  {sortTh('Cost Code', 'code')}
+                  {sortTh('Amount (ex GST)', 'amount', 'text-right')}
                   <th className="text-right">GST</th>
                   <th className="text-right">Total inc GST</th>
-                  <th>Date</th>
-                  <th>Status</th>
+                  {sortTh('Date', 'date')}
+                  {sortTh('Status', 'status')}
                 </tr>
               </thead>
               <tbody>
-                {shown.map((po, idx) => (
+                {sorted.map((po, idx) => (
                   <tr
                     key={po.id}
                     onClick={() => setEditing(po)}
@@ -183,7 +232,7 @@ export function POsTab() {
                     </td>
                   </tr>
                 ))}
-                {shown.length === 0 && (
+                {sorted.length === 0 && (
                   <tr>
                     <td colSpan={10} className="p-10 text-center text-[13px] text-sw-faint">
                       No purchase orders match this filter.
@@ -194,7 +243,7 @@ export function POsTab() {
             </table>
             <div className="flex justify-between border-t border-sw-rule bg-sw-bg px-4 py-3">
               <span className="text-[12px] text-sw-dim">
-                {shown.length} PO{shown.length !== 1 ? 's' : ''}
+                {filtered.length} PO{filtered.length !== 1 ? 's' : ''}
               </span>
               <span className="font-mono text-[13px] font-semibold">
                 Total inc GST: {formatCurrency(incGst(shownTotal))}
