@@ -22,6 +22,7 @@ export function POsTab() {
   const state = useAppState()
   const dispatch = useDispatch()
   const [creating, setCreating] = useState(false)
+  const [editing, setEditing] = useState<Purchase | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
 
   if (!project) return null
@@ -128,11 +129,17 @@ export function POsTab() {
               </thead>
               <tbody>
                 {shown.map((po, idx) => (
-                  <tr key={po.id} style={{ background: idx % 2 === 0 ? '#fff' : 'var(--sw-bg)' }}>
+                  <tr
+                    key={po.id}
+                    onClick={() => setEditing(po)}
+                    className="cursor-pointer"
+                    style={{ background: idx % 2 === 0 ? '#fff' : 'var(--sw-bg)' }}
+                  >
                     <td className="font-mono text-sw-dim">{po.poNum || po.id}</td>
                     <td className="font-medium">
                       <EntityLink
                         to={paramSearch('sup', supplierName(po))}
+                        stopPropagation
                         className="font-medium text-sw-ink"
                       >
                         {supplierName(po)}
@@ -142,7 +149,7 @@ export function POsTab() {
                     <td className="text-sw-dim">{po.desc || '—'}</td>
                     <td className="text-sw-dim">
                       {po.ccId ? (
-                        <EntityLink to="../boq" className="text-sw-dim">
+                        <EntityLink to="../boq" stopPropagation className="text-sw-dim">
                           {codeText(po)}
                         </EntityLink>
                       ) : (
@@ -164,7 +171,10 @@ export function POsTab() {
                       {po.status !== 'received' && po.status !== 'cancelled' && (
                         <button
                           type="button"
-                          onClick={() => receivePO(po)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            receivePO(po)
+                          }}
                           className="ml-2 cursor-pointer border border-sw-rule rounded-[1px] bg-transparent px-2 py-[3px] text-[10px] font-semibold uppercase tracking-[0.06em] text-sw-dim hover:text-sw-ink"
                         >
                           Receive
@@ -195,6 +205,9 @@ export function POsTab() {
       )}
 
       <POForm open={creating} onClose={() => setCreating(false)} project={project} />
+      {editing && (
+        <POForm open onClose={() => setEditing(null)} project={project} initial={editing} />
+      )}
     </div>
   )
 }

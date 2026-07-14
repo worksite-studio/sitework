@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import { StateProvider } from '@/state/StateProvider'
+import { ConfirmProvider, ToastProvider } from '@/components/ui'
 import { AppShell } from '@/components/AppShell'
 import { ErrorBoundary, RouteCrash } from '@/components/ErrorBoundary'
 import { Placeholder } from '@/components/Placeholder'
@@ -90,7 +91,11 @@ function App() {
   return (
     <ErrorBoundary>
       <StateProvider>
-        <RouterProvider router={router} />
+        <ToastProvider>
+          <ConfirmProvider>
+            <RouterProvider router={router} />
+          </ConfirmProvider>
+        </ToastProvider>
       </StateProvider>
     </ErrorBoundary>
   )

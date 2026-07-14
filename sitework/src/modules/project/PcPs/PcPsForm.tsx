@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Dialog, Field, Input, Select } from '@/components/ui'
+import { Button, Dialog, Field, Input, Select, useConfirm } from '@/components/ui'
 import { parseAmount } from '@/lib/money'
 import { useDispatch } from '@/state/context'
 import { newId } from '@/lib/newId'
@@ -33,6 +33,7 @@ const PS_LABELS: Record<string, string> = { InProgress: 'In Progress' }
  */
 export function PcPsForm({ open, onClose, projectId, kind, initial }: Props) {
   const dispatch = useDispatch()
+  const confirm = useConfirm()
   const [form, setForm] = useState(() => ({
     description: initial?.description ?? '',
     allowance: String(initial?.allowance ?? 0),
@@ -94,10 +95,15 @@ export function PcPsForm({ open, onClose, projectId, kind, initial }: Props) {
     onClose()
   }
 
-  function remove() {
+  async function remove() {
     if (!initial) return
-    // Legacy pcf/psf confirm copy, verbatim.
-    if (!window.confirm(`Delete this ${kind.toUpperCase()} item?`)) return
+    const ok = await confirm({
+      title: `Delete ${kind.toUpperCase()} item`,
+      message: `Delete this ${kind.toUpperCase()} item? This can't be undone.`,
+      confirmLabel: 'Delete',
+      danger: true,
+    })
+    if (!ok) return
     if (kind === 'pc') {
       dispatch({ type: 'DELETE_PC_ITEM', projectId, itemId: initial.id as PrimeCostItemId })
     } else {

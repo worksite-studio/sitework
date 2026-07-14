@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Dialog, Field, Input, Select } from '@/components/ui'
+import { Button, Dialog, Field, Input, Select, useToast } from '@/components/ui'
 import { useAppState, useDispatch } from '@/state/context'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { gstOf, incGst, parseAmount } from '@/lib/money'
@@ -11,6 +11,8 @@ interface Props {
   open: boolean
   onClose: () => void
   project: Project
+  /** When set, the form edits this PO instead of creating a new one. */
+  initial?: Purchase
 }
 
 /**
@@ -21,38 +23,64 @@ interface Props {
  * (the table's RECEIVE action moves it on). Auto-numbers `poNum` as
  * "PO-00N". Save requires a supplier or subcontractor.
  */
-export function POForm({ open, onClose, project }: Props) {
+export function POForm({ open, onClose, project, initial }: Props) {
   const state = useAppState()
   const dispatch = useDispatch()
-  const [form, setForm] = useState({
+  const { toast } = useToast()
+  const isEdit = !!initial
+  const blank = {
     subId: '',
     supplier: '',
     docRef: '',
     desc: '',
     ccId: (project.codes[0]?.id as string) ?? '',
-    amount: 0,
+    amount: 0 as number,
     date: new Date().toISOString().slice(0, 10),
-  })
+  }
+  const [form, setForm] = useState(
+    initial
+      ? {
+          subId: (initial.subId as string) ?? '',
+          supplier: initial.supplier ?? '',
+          docRef: initial.docRef ?? '',
+          desc: initial.desc ?? '',
+          ccId: initial.ccId as unknown as string,
+          amount: initial.amount ?? 0,
+          date: initial.date ?? new Date().toISOString().slice(0, 10),
+        }
+      : blank,
+  )
   const [attempted, setAttempted] = useState(false)
 
   const supplierMissing = form.supplier.trim() === '' && form.subId === ''
 
   function reset() {
-    setForm({
-      subId: '',
-      supplier: '',
-      docRef: '',
-      desc: '',
-      ccId: (project.codes[0]?.id as string) ?? '',
-      amount: 0,
-      date: new Date().toISOString().slice(0, 10),
-    })
+    setForm(blank)
     setAttempted(false)
   }
 
   function save() {
     if (supplierMissing) {
       setAttempted(true)
+      return
+    }
+    if (isEdit && initial) {
+      dispatch({
+        type: 'UPDATE_PURCHASE',
+        projectId: project.id,
+        purchaseId: initial.id,
+        patch: {
+          ccId: form.ccId as unknown as CostCodeId,
+          supplier: form.supplier,
+          subId: form.subId || null,
+          docRef: form.docRef,
+          desc: form.desc,
+          amount: parseAmount(form.amount),
+          date: form.date,
+        },
+      })
+      toast('Purchase order updated', 'success')
+      onClose()
       return
     }
     const poCount = (state.purchases[project.id as string] ?? []).length
@@ -72,6 +100,7 @@ export function POForm({ open, onClose, project }: Props) {
       notes: '',
     }
     dispatch({ type: 'ADD_PURCHASE', projectId: project.id, purchase })
+    toast('Purchase order created', 'success')
     reset()
     onClose()
   }
@@ -85,9 +114,9 @@ export function POForm({ open, onClose, project }: Props) {
         reset()
         onClose()
       }}
-      title="New Purchase Order"
+      title={isEdit ? 'Edit Purchase Order' : 'New Purchase Order'}
       widthClass="max-w-xl"
-      footer={<Button onClick={save}>Save Purchase Order</Button>}
+      footer={<Button onClick={save}>{isEdit ? 'Save Changes' : 'Save Purchase Order'}</Button>}
     >
       <Field label="Subcontractor">
         <Select
