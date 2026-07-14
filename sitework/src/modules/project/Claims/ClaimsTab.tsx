@@ -37,10 +37,9 @@ export function ClaimsTab() {
     [state.claims, project],
   )
   const ratePct = project ? retentionRatePct(state, project.id as string) : 5
+  const fin = useMemo(() => (project ? computeProjectFinancials(project) : null), [project])
 
-  if (!project) return null
-
-  const fin = computeProjectFinancials(project)
+  if (!project || !fin) return null
 
   // Positional fallback for legacy claims with missing claimNo (session 28).
   function displayNo(c: ProgressClaim): number {

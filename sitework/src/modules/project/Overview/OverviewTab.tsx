@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui'
 import { StatusBadge } from '@/components/StatusBadge'
@@ -25,10 +25,14 @@ export function OverviewTab() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
-  if (!project) return null
 
-  const purchases = state.purchases[project.id as string] ?? []
-  const fin = computeProjectFinancials(project, purchases)
+  const fin = useMemo(() => {
+    if (!project) return null
+    const purchases = state.purchases[project.id as string] ?? []
+    return computeProjectFinancials(project, purchases)
+  }, [project, state.purchases])
+  if (!project || !fin) return null
+
   const client = state.clients.find((c) => c.id === project.clientId)
   const marginTarget = project.margin ?? 15
 
