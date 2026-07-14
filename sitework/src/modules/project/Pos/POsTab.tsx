@@ -90,9 +90,16 @@ export function POsTab() {
 
   const sortTh = (label: string, key: POSortKey, className = '') => (
     <th
-      className={`cursor-pointer select-none hover:text-sw-ink ${className}`}
+      className={`cursor-pointer select-none hover:text-sw-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-sw-ink ${className}`}
       aria-sort={ariaSort(key)}
+      tabIndex={0}
       onClick={() => toggle(key)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          toggle(key)
+        }
+      }}
     >
       {label}
       {indicator(key)}

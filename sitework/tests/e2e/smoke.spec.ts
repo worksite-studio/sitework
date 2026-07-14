@@ -485,3 +485,13 @@ test('tables — BOQ over-budget toggle filters the code list (gap 4.5-E)', asyn
   // The reorder arrows disappear while a non-manual view is active.
   await expect(page.getByRole('button', { name: 'Move up' })).toHaveCount(0)
 })
+
+test('a11y — sortable headers are keyboard-operable (gap 4.5-F)', async ({ page }) => {
+  await page.goto('/projects/PRJ-001/invoices')
+  const amountHeader = page.getByRole('columnheader', { name: /Amount \(ex GST\)/ })
+  await amountHeader.focus()
+  await page.keyboard.press('Enter')
+  await expect(amountHeader).toHaveAttribute('aria-sort', 'ascending')
+  await page.keyboard.press('Enter')
+  await expect(amountHeader).toHaveAttribute('aria-sort', 'descending')
+})

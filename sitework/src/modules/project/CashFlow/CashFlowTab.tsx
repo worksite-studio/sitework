@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useAppState } from '@/state/context'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { useProject } from '../useProject'
@@ -25,10 +26,16 @@ import { computeProjectFinancials } from '../computeFinancials'
 export function CashFlowTab() {
   const project = useProject()
   const state = useAppState()
-  if (!project) return null
 
-  const purchases = state.purchases[project.id as string] ?? []
-  const fin = computeProjectFinancials(project, purchases)
+  const purchases = useMemo(
+    () => (project ? (state.purchases[project.id as string] ?? []) : []),
+    [project, state.purchases],
+  )
+  const fin = useMemo(
+    () => (project ? computeProjectFinancials(project, purchases) : null),
+    [project, purchases],
+  )
+  if (!project || !fin) return null
 
   // ── j1: historical outflows (fixed legacy window, s = 8..17) ──────────
   interface HistMonth {
