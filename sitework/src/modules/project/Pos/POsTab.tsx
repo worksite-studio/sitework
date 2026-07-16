@@ -171,6 +171,7 @@ export function POsTab() {
             <table className="sw-table">
               <thead>
                 <tr>
+                  {sortTh('Date', 'date')}
                   {sortTh('PO #', 'poNum')}
                   {sortTh('Supplier / Subcontractor', 'supplier')}
                   <th>Doc Ref</th>
@@ -179,7 +180,6 @@ export function POsTab() {
                   {sortTh('Amount (ex GST)', 'amount', 'text-right')}
                   <th className="text-right">GST</th>
                   <th className="text-right">Total inc GST</th>
-                  {sortTh('Date', 'date')}
                   {sortTh('Status', 'status')}
                 </tr>
               </thead>
@@ -191,6 +191,7 @@ export function POsTab() {
                     className="cursor-pointer"
                     style={{ background: idx % 2 === 0 ? '#fff' : 'var(--sw-bg)' }}
                   >
+                    <td className="text-sw-dim">{formatDate(po.date)}</td>
                     <td className="font-mono text-sw-dim">{po.poNum || po.id}</td>
                     <td className="font-medium">
                       <EntityLink
@@ -203,15 +204,7 @@ export function POsTab() {
                     </td>
                     <td className="font-mono text-sw-dim">{po.docRef || '—'}</td>
                     <td className="text-sw-dim">{po.desc || '—'}</td>
-                    <td className="text-sw-dim">
-                      {po.ccId ? (
-                        <EntityLink to="../boq" stopPropagation className="text-sw-dim">
-                          {codeText(po)}
-                        </EntityLink>
-                      ) : (
-                        codeText(po)
-                      )}
-                    </td>
+                    <td className="text-sw-dim">{codeText(po)}</td>
                     <td className="text-right font-mono font-semibold">
                       {formatCurrency(po.amount)}
                     </td>
@@ -221,7 +214,6 @@ export function POsTab() {
                     <td className="text-right font-mono font-semibold">
                       {formatCurrency(incGst(po.amount))}
                     </td>
-                    <td className="text-sw-dim">{formatDate(po.date)}</td>
                     <td className="whitespace-nowrap">
                       <StatusBadge status={po.status} />
                       {po.status !== 'received' && po.status !== 'cancelled' && (
