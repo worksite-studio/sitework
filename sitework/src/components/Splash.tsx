@@ -18,17 +18,9 @@ export function Splash({ onEnter }: { onEnter: () => void }) {
         type="button"
         onClick={onEnter}
         aria-label="Enter SITEWORK"
-        className="group flex cursor-pointer flex-col items-center bg-transparent p-4"
+        className="cursor-pointer bg-transparent p-4 text-[88px] font-bold leading-none tracking-[-0.03em] text-sw-ink transition-opacity hover:opacity-60"
       >
-        <span className="text-[88px] font-bold leading-none tracking-[-0.03em] text-sw-ink transition-opacity group-hover:opacity-60">
-          SITEWORK
-        </span>
-        <span
-          className="mt-[26px] text-[12px] font-medium uppercase tracking-[0.18em] transition-colors group-hover:text-sw-ink"
-          style={{ color: '#9CA3AF' }}
-        >
-          Enter
-        </span>
+        SITEWORK
       </button>
     </div>
   )
