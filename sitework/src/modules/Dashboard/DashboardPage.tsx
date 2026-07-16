@@ -178,7 +178,7 @@ export function DashboardPage() {
           value={subsNeedingAttention}
           sublabel="Subs needing attention"
           accent={subsNeedingAttention > 0 ? 'var(--sw-neg)' : undefined}
-          to="/subcontractors"
+          to="/subs"
         />
       </div>
 

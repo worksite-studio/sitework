@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { markEntered } from '@/components/splashGate'
 
 interface PrintLayoutProps {
   title: string
@@ -16,6 +17,13 @@ interface PrintLayoutProps {
  * the typographic resets in index.css.
  */
 export function PrintLayout({ title, backTo, autoPrint = true, children }: PrintLayoutProps) {
+  // Viewing a print page means you're already "in" the app — so returning
+  // (Back) shouldn't be gated by the splash, even if this print route was
+  // opened in a fresh tab (print lives outside AppShell).
+  useEffect(() => {
+    markEntered()
+  }, [])
+
   useEffect(() => {
     if (!autoPrint) return
     // Defer one frame so the page has a chance to render before the dialog

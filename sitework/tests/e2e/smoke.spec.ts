@@ -435,6 +435,15 @@ test('linking layer — Dashboard Active Projects tile links to the projects lis
   await expect(page).toHaveURL(/\/projects$/)
 })
 
+test('dashboard Compliance Alerts tile links to subcontractors, not a 404 (gap 4.7-A)', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: /Compliance Alerts/ }).click()
+  await expect(page).toHaveURL(/\/subs$/)
+  await expect(page.getByRole('heading', { name: 'Subcontractors' })).toBeVisible()
+})
+
 test('UX kit — PO row opens the edit dialog, save shows a toast (gap 4.5-D)', async ({ page }) => {
   await page.goto('/projects/PRJ-001/purchases')
   // Click the PO-number cell (no drill link) so the row-edit handler fires.
