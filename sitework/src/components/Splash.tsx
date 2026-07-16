@@ -1,29 +1,27 @@
 /**
- * Splash — verbatim port of legacy `Lp`: white screen with an 18px lilac
- * pixel-dot grid, the SITEWORK wordmark at 88px, and "Tap anywhere to enter".
- * Shows on every full page load (exact legacy `Ap` behaviour — React state,
- * no storage flag). Tests and screenshot tooling skip it via
- * sessionStorage['sw:skipSplash'].
+ * Splash — white screen with an 18px lilac pixel-dot grid and the SITEWORK
+ * wordmark. Only the wordmark is clickable (it's the single control that
+ * enters the app); the rest of the screen is inert. Shows on every full page
+ * load; tests and screenshot tooling skip it via sessionStorage['sw:skipSplash']
+ * (see `splashGate.ts`).
  */
 export function Splash({ onEnter }: { onEnter: () => void }) {
   return (
     <div
-      onClick={onEnter}
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center cursor-pointer select-none bg-white"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center select-none bg-white"
       style={{
         backgroundImage: 'radial-gradient(rgba(139,92,246,0.22) 1px, transparent 1px)',
         backgroundSize: '18px 18px',
       }}
     >
-      <div className="text-[88px] font-bold leading-none tracking-[-0.03em] text-sw-ink">
-        SITEWORK
-      </div>
-      <div
-        className="mt-[26px] text-[12px] font-medium uppercase tracking-[0.18em]"
-        style={{ color: '#9CA3AF' }}
+      <button
+        type="button"
+        onClick={onEnter}
+        aria-label="Enter SITEWORK"
+        className="cursor-pointer bg-transparent p-4 text-[88px] font-bold leading-none tracking-[-0.03em] text-sw-ink transition-opacity hover:opacity-60"
       >
-        Tap anywhere to enter
-      </div>
+        SITEWORK
+      </button>
     </div>
   )
 }

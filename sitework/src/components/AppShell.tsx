@@ -4,6 +4,7 @@ import { TOP_NAV } from '@/nav'
 import { useAppState, usePersistFailed } from '@/state/context'
 import { exportStateFile } from '@/lib/backup'
 import { Splash } from '@/components/Splash'
+import { hasEntered, markEntered } from '@/components/splashGate'
 
 /**
  * Application shell — faithful port of the legacy `Pc` chrome (PARITY gap 10):
@@ -11,23 +12,23 @@ import { Splash } from '@/components/Splash'
  * letterspaced nav (active = ink + 2px underline), pulsing Xero dot, and the
  * WS avatar → Settings. No sidebar — the baseline never had one.
  */
-function shouldSkipSplash(): boolean {
-  try {
-    return sessionStorage.getItem('sw:skipSplash') === '1'
-  } catch {
-    return false
-  }
-}
-
 export function AppShell() {
   const state = useAppState()
   const { settings } = state
   const persistFailed = usePersistFailed()
-  const [entered, setEntered] = useState(shouldSkipSplash)
+  const [entered, setEntered] = useState(hasEntered)
   const businessName =
     (typeof settings.businessName === 'string' && settings.businessName) || 'Worksite'
 
-  if (!entered) return <Splash onEnter={() => setEntered(true)} />
+  if (!entered)
+    return (
+      <Splash
+        onEnter={() => {
+          markEntered()
+          setEntered(true)
+        }}
+      />
+    )
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-sw-ink">
