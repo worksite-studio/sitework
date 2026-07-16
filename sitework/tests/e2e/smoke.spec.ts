@@ -504,3 +504,17 @@ test('a11y — sortable headers are keyboard-operable (gap 4.5-F)', async ({ pag
   await page.keyboard.press('Enter')
   await expect(amountHeader).toHaveAttribute('aria-sort', 'descending')
 })
+
+test('tables — Date/Due lead the columns and status sits in the Status column (gap 4.7-B)', async ({
+  page,
+}) => {
+  await page.goto('/projects/PRJ-001/invoices')
+  const headers = page.locator('thead th')
+  await expect(headers.nth(0)).toContainText('Date')
+  await expect(headers.nth(1)).toContainText('Due')
+  // The old Comments column (which the status badge used to hide under) is gone.
+  await expect(page.getByRole('columnheader', { name: 'Comments' })).toHaveCount(0)
+  // Status now renders in the last-but-two column of a row (its own Status column).
+  const firstRow = page.locator('tbody tr').first()
+  await expect(firstRow.getByText(/^(PAID|APPROVED|PENDING|DISPUTED)$/)).toBeVisible()
+})

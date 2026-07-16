@@ -177,15 +177,14 @@ export function InvoicesTab() {
           <table className="sw-table">
             <thead>
               <tr>
+                {sortTh('Date', 'date')}
+                {sortTh('Due', 'due')}
                 {sortTh('Supplier / Subcontractor', 'supplier')}
                 <th>Doc Ref</th>
                 {sortTh('Cost Code', 'code')}
-                {sortTh('Date', 'date')}
-                {sortTh('Due', 'due')}
                 {sortTh('Amount (ex GST)', 'amount', 'text-right')}
                 <th className="text-right">GST</th>
                 <th className="text-right">Total inc GST</th>
-                <th>Comments</th>
                 {sortTh('Status', 'status')}
                 <th>Docs</th>
                 <th aria-label="Print" />
@@ -203,6 +202,8 @@ export function InvoicesTab() {
                       className="cursor-pointer"
                       style={{ background: idx % 2 === 0 ? '#fff' : 'var(--sw-bg)' }}
                     >
+                      <td className="text-sw-dim">{formatDate(inv.date)}</td>
+                      <td className="text-sw-dim">{formatDate(inv.due)}</td>
                       <td className="font-semibold">
                         <EntityLink
                           to={paramSearch('sup', supplierName(inv))}
@@ -213,17 +214,7 @@ export function InvoicesTab() {
                         </EntityLink>
                       </td>
                       <td className="font-mono text-sw-dim">{inv.docRef || '—'}</td>
-                      <td className="text-sw-dim">
-                        {inv.ccId ? (
-                          <EntityLink to="../boq" stopPropagation className="text-sw-dim">
-                            {codeText(inv)}
-                          </EntityLink>
-                        ) : (
-                          codeText(inv)
-                        )}
-                      </td>
-                      <td className="text-sw-dim">{formatDate(inv.date)}</td>
-                      <td className="text-sw-dim">{formatDate(inv.due)}</td>
+                      <td className="text-sw-dim">{codeText(inv)}</td>
                       <td className="text-right font-mono font-semibold">
                         {formatCurrency(inv.amount)}
                       </td>
@@ -233,11 +224,9 @@ export function InvoicesTab() {
                       <td className="text-right font-mono font-semibold">
                         {formatCurrency(incGst(inv.amount))}
                       </td>
-                      {/* Legacy quirk: status renders under the Comments header. */}
                       <td>
                         <StatusBadge status={inv.status} />
                       </td>
-                      <td />
                       <td>
                         {project.contractType === 'fixed-price' ? (
                           <span className="text-xs text-sw-muted">—</span>
@@ -269,7 +258,7 @@ export function InvoicesTab() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={12} className="p-10 text-center text-[13px] text-sw-faint">
+                  <td colSpan={11} className="p-10 text-center text-[13px] text-sw-faint">
                     {q || filter !== 'All' || ccFilter || supFilter
                       ? 'No invoices match this filter.'
                       : 'No invoices yet.'}

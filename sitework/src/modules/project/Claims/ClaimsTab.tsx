@@ -96,10 +96,10 @@ export function ClaimsTab() {
           <table className="sw-table">
             <thead>
               <tr>
-                <th>#</th>
-                <th>Description</th>
                 <th>Claim Date</th>
                 <th>Due Date</th>
+                <th>#</th>
+                <th>Description</th>
                 <th className="text-right">Amount (ex GST)</th>
                 <th className="text-right">GST</th>
                 <th className="text-right">Total inc GST</th>
@@ -121,10 +121,10 @@ export function ClaimsTab() {
                     className="cursor-pointer"
                     style={{ background: idx % 2 === 0 ? '#fff' : 'var(--sw-bg)' }}
                   >
-                    <td className="font-mono text-sw-dim">#{displayNo(c)}</td>
-                    <td className="font-medium">{c.desc}</td>
                     <td className="text-sw-dim">{formatDate(c.date)}</td>
                     <td className="text-sw-dim">{formatDate(c.due)}</td>
+                    <td className="font-mono text-sw-dim">#{displayNo(c)}</td>
+                    <td className="font-medium">{c.desc}</td>
                     <td className="text-right font-mono font-semibold">
                       {formatCurrency(c.amount)}
                     </td>
