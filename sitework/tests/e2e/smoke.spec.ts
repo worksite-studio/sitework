@@ -505,6 +505,16 @@ test('a11y — sortable headers are keyboard-operable (gap 4.5-F)', async ({ pag
   await expect(amountHeader).toHaveAttribute('aria-sort', 'descending')
 })
 
+test('invoices — a note saved in the dialog embeds in the row (gap 4.7-C)', async ({ page }) => {
+  await page.goto('/projects/PRJ-005/invoices')
+  await page.getByRole('button', { name: '+ Invoice' }).first().click()
+  await page.getByLabel(/^Supplier \/ subcontractor\*$/).fill('Note Test Supplier')
+  await page.getByLabel('Notes').fill('Waiting on credit for damaged sheets')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText('Note Test Supplier')).toBeVisible()
+  await expect(page.getByText('Note: Waiting on credit for damaged sheets')).toBeVisible()
+})
+
 test('tables — Date/Due lead the columns and status sits in the Status column (gap 4.7-B)', async ({
   page,
 }) => {

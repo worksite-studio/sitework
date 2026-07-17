@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Dialog, Field, Input, Select } from '@/components/ui'
+import { Button, Dialog, Field, Input, Select, Textarea } from '@/components/ui'
 import { parseAmount } from '@/lib/money'
 import { FilePicker } from '@/components/FilePicker'
 import { useAppState, useDispatch } from '@/state/context'
@@ -34,6 +34,7 @@ const blank = (firstCodeId?: CostCodeId): Omit<Invoice, 'id'> => ({
   date: new Date().toISOString().slice(0, 10),
   due: '',
   xero: false,
+  notes: '',
   supportingDocs: [],
 })
 
@@ -195,6 +196,14 @@ export function InvoiceForm({ open, onClose, project, initial }: Props) {
             </option>
           ))}
         </Select>
+      </Field>
+      <Field label="Notes">
+        <Textarea
+          value={form.notes ?? ''}
+          onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          placeholder="Anything worth remembering about this invoice…"
+          rows={2}
+        />
       </Field>
 
       {project.contractType === 'cost-plus' && (
