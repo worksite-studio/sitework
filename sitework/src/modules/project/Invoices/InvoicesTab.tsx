@@ -60,6 +60,7 @@ export function InvoicesTab() {
       (i) =>
         supplierName(i).toLowerCase().includes(q) ||
         (i.docRef ?? '').toLowerCase().includes(q) ||
+        (i.notes ?? '').toLowerCase().includes(q) ||
         codeText(i).toLowerCase().includes(q),
     )
 
@@ -212,6 +213,14 @@ export function InvoicesTab() {
                         >
                           {supplierName(inv)}
                         </EntityLink>
+                        {inv.notes && (
+                          <div
+                            className="mt-0.5 max-w-[240px] truncate text-[11px] font-normal text-sw-faint"
+                            title={inv.notes}
+                          >
+                            Note: {inv.notes}
+                          </div>
+                        )}
                       </td>
                       <td className="font-mono text-sw-dim">{inv.docRef || '—'}</td>
                       <td className="text-sw-dim">{codeText(inv)}</td>

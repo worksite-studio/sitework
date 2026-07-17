@@ -27,6 +27,8 @@ export interface Invoice {
   due: string
   /** Pushed-to-Xero flag (Phase 6+ integration; currently mock). */
   xero: boolean
+  /** Free-text note (4.7-C) — shown truncated in the invoices table row. */
+  notes?: string
   /** Required for cost-plus projects (Phase 1.5-A). */
   supportingDocs?: FileAttachment[]
   // TODO: Phase 5 — add madeUnderSOPAct: boolean, sopActState: SopActState
