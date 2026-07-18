@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Button, Dialog, Field, Input, Select } from '@/components/ui'
 import { parseAmount } from '@/lib/money'
 import { useAppState, useDispatch } from '@/state/context'
@@ -13,8 +13,9 @@ interface Props {
   ccId: CostCodeId
 }
 
-// Legacy g1 unit options, verbatim.
-const UNITS = ['allow', 'm²', 'm', 'lm', 'hr', 'item', 'tonne']
+// Standard unit options (4.7-D): `m` removed (duplicated `lm`), `m³` added.
+const UNITS = ['allow', 'm²', 'm³', 'lm', 'hr', 'item', 'tonne']
+const CUSTOM_UNIT = '__custom__'
 
 /**
  * Line-item add dialog — transliteration of legacy `g1` (R1): Description
@@ -24,16 +25,36 @@ const UNITS = ['allow', 'm²', 'm', 'lm', 'hr', 'item', 'tonne']
 export function LineItemForm({ open, onClose, projectId, ccId }: Props) {
   const state = useAppState()
   const dispatch = useDispatch()
-  const [form, setForm] = useState({ desc: '', qty: 1, unit: 'allow', rate: 0, supId: '' })
+  const [form, setForm] = useState({
+    desc: '',
+    qty: 1,
+    unit: 'allow',
+    customUnit: '',
+    rate: 0,
+    supId: '',
+  })
   const [attempted, setAttempted] = useState(false)
 
+  // Custom units this project has used before, offered back in the dropdown.
+  const usedUnits = useMemo(() => {
+    const project = state.projects.find((p) => (p.id as string) === (projectId as string))
+    const all = Object.values(project?.lineItems ?? {})
+      .flat()
+      .map((li) => li.unit)
+      .filter((u): u is string => !!u && !UNITS.includes(u))
+    return [...new Set(all)]
+  }, [state.projects, projectId])
+
+  const usingCustom = form.unit === CUSTOM_UNIT
+  const customMissing = usingCustom && !form.customUnit.trim()
+
   function reset() {
-    setForm({ desc: '', qty: 1, unit: 'allow', rate: 0, supId: '' })
+    setForm({ desc: '', qty: 1, unit: 'allow', customUnit: '', rate: 0, supId: '' })
     setAttempted(false)
   }
 
   function save() {
-    if (!form.desc.trim()) {
+    if (!form.desc.trim() || customMissing) {
       setAttempted(true)
       return
     }
@@ -41,7 +62,7 @@ export function LineItemForm({ open, onClose, projectId, ccId }: Props) {
       id: asId<LineItemId>(newId('LI')),
       desc: form.desc,
       qty: parseAmount(form.qty, 1),
-      unit: form.unit,
+      unit: usingCustom ? form.customUnit.trim() : form.unit,
       rate: parseAmount(form.rate),
       matId: null,
       supId: form.supId ? asId<SupplierId>(form.supId) : null,
@@ -88,6 +109,12 @@ export function LineItemForm({ open, onClose, projectId, ccId }: Props) {
                 {u}
               </option>
             ))}
+            {usedUnits.map((u) => (
+              <option key={u} value={u}>
+                {u}
+              </option>
+            ))}
+            <option value={CUSTOM_UNIT}>+ New unit…</option>
           </Select>
         </Field>
         <Field label="Rate">
@@ -99,6 +126,21 @@ export function LineItemForm({ open, onClose, projectId, ccId }: Props) {
           />
         </Field>
       </div>
+      {usingCustom && (
+        <Field
+          label="New unit"
+          required
+          error={attempted && customMissing ? 'Required' : undefined}
+        >
+          <Input
+            autoFocus
+            value={form.customUnit}
+            onChange={(e) => setForm({ ...form, customUnit: e.target.value })}
+            invalid={attempted && customMissing}
+            placeholder="e.g. kg, day, no."
+          />
+        </Field>
+      )}
       <Field label="Supplier">
         <Select value={form.supId} onChange={(e) => setForm({ ...form, supId: e.target.value })}>
           <option value="">None</option>

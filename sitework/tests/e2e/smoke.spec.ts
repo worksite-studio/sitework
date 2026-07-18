@@ -83,6 +83,20 @@ test('project BOQ tab renders codes table and supports add', async ({ page }) =>
   await expect(page.getByLabel(/^Code\*$/)).not.toHaveValue('')
 })
 
+test('BOQ line-item units: m removed, m³ added, custom unit reveals a field (gap 4.7-D)', async ({
+  page,
+}) => {
+  await page.goto('/projects/PRJ-001/boq')
+  // Expand the first code, then open its Add Line Item dialog.
+  await page.getByText('Preliminary Costs, Consultant Fees, Site Establishment').click()
+  await page.getByRole('button', { name: '+ Add Line Item' }).first().click()
+  const unit = page.getByLabel('Unit')
+  await expect(unit.locator('option', { hasText: 'm³' })).toHaveCount(1)
+  await expect(unit.locator('option', { hasText: /^m$/ })).toHaveCount(0)
+  await unit.selectOption('__custom__')
+  await expect(page.getByLabel('New unit')).toBeVisible()
+})
+
 test('project PC & PS tab — Pcps anatomy + pcf add form (gap 5)', async ({ page }) => {
   await page.goto('/projects/PRJ-001/pcps')
   await expect(page.getByRole('heading', { name: 'PC & PS' })).toBeVisible()
