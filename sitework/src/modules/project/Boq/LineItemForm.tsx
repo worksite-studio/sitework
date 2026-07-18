@@ -11,6 +11,8 @@ interface Props {
   onClose: () => void
   projectId: ProjectId
   ccId: CostCodeId
+  /** When set, edit this line item instead of adding a new one. */
+  initial?: LineItem
 }
 
 // Standard unit options (4.7-D): `m` removed (duplicated `lm`), `m³` added.
@@ -22,17 +24,22 @@ const CUSTOM_UNIT = '__custom__'
  * (required), Qty (default 1), Unit select, Rate, Supplier select ("None" +
  * catalogue), "Save Line Item".
  */
-export function LineItemForm({ open, onClose, projectId, ccId }: Props) {
+export function LineItemForm({ open, onClose, projectId, ccId, initial }: Props) {
   const state = useAppState()
   const dispatch = useDispatch()
-  const [form, setForm] = useState({
-    desc: '',
-    qty: 1,
-    unit: 'allow',
-    customUnit: '',
-    rate: 0,
-    supId: '',
-  })
+  const isEdit = !!initial
+  const [form, setForm] = useState(() =>
+    initial
+      ? {
+          desc: initial.desc,
+          qty: initial.qty,
+          unit: initial.unit,
+          customUnit: '',
+          rate: initial.rate,
+          supId: (initial.supId as string) ?? '',
+        }
+      : { desc: '', qty: 1, unit: 'allow', customUnit: '', rate: 0, supId: '' },
+  )
   const [attempted, setAttempted] = useState(false)
 
   // Custom units this project has used before, offered back in the dropdown.
@@ -58,16 +65,19 @@ export function LineItemForm({ open, onClose, projectId, ccId }: Props) {
       setAttempted(true)
       return
     }
-    const lineItem: LineItem = {
-      id: asId<LineItemId>(newId('LI')),
+    const fields = {
       desc: form.desc,
       qty: parseAmount(form.qty, 1),
       unit: usingCustom ? form.customUnit.trim() : form.unit,
       rate: parseAmount(form.rate),
-      matId: null,
       supId: form.supId ? asId<SupplierId>(form.supId) : null,
     }
-    dispatch({ type: 'ADD_LINE_ITEM', projectId, ccId, lineItem })
+    if (isEdit && initial) {
+      dispatch({ type: 'UPDATE_LINE_ITEM', projectId, ccId, lineItemId: initial.id, patch: fields })
+    } else {
+      const lineItem: LineItem = { id: asId<LineItemId>(newId('LI')), matId: null, ...fields }
+      dispatch({ type: 'ADD_LINE_ITEM', projectId, ccId, lineItem })
+    }
     reset()
     onClose()
   }
@@ -79,8 +89,8 @@ export function LineItemForm({ open, onClose, projectId, ccId }: Props) {
         reset()
         onClose()
       }}
-      title="Add Line Item"
-      footer={<Button onClick={save}>Save Line Item</Button>}
+      title={isEdit ? 'Edit Line Item' : 'Add Line Item'}
+      footer={<Button onClick={save}>{isEdit ? 'Save Changes' : 'Save Line Item'}</Button>}
     >
       <Field
         label="Description"

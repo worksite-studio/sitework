@@ -97,6 +97,29 @@ test('BOQ line-item units: m removed, m³ added, custom unit reveals a field (ga
   await expect(page.getByLabel('New unit')).toBeVisible()
 })
 
+test('BOQ budget rolls up from line items; adding one updates it (gap 4.7-E)', async ({ page }) => {
+  await page.goto('/projects/PRJ-001/boq')
+  // Migrated/reconciled budget of code 001 = its line-item sum.
+  const codeRow = page.getByText('Preliminary Costs, Consultant Fees, Site Establishment')
+  await expect(page.getByText('/ $7,460')).toBeVisible()
+  await codeRow.click() // expand
+  await page.getByRole('button', { name: '+ Add Line Item' }).first().click()
+  await page.getByLabel(/^Description/).fill('Extra survey')
+  await page.getByLabel('Qty').fill('2')
+  await page.getByLabel('Rate').fill('500')
+  await page.getByRole('button', { name: 'Save Line Item' }).click()
+  await expect(page.getByText('Extra survey')).toBeVisible()
+  // Budget rolled up by 2 × 500 = 1,000 → $8,460.
+  await expect(page.getByText('/ $8,460')).toBeVisible()
+})
+
+test('BOQ cost-code form has no budget field (gap 4.7-E)', async ({ page }) => {
+  await page.goto('/projects/PRJ-001/boq')
+  await page.getByRole('button', { name: '+ Cost Code' }).first().click()
+  await expect(page.getByRole('heading', { name: 'Add Cost Code' })).toBeVisible()
+  await expect(page.getByLabel(/Budget/)).toHaveCount(0)
+})
+
 test('project PC & PS tab — Pcps anatomy + pcf add form (gap 5)', async ({ page }) => {
   await page.goto('/projects/PRJ-001/pcps')
   await expect(page.getByRole('heading', { name: 'PC & PS' })).toBeVisible()

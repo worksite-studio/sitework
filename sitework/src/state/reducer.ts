@@ -62,6 +62,28 @@ function updateProject(
   }
 }
 
+/** A cost code's budget is the sum of its line items (4.7-E) — qty × rate. */
+function lineItemsBudget(items: { qty: number; rate: number }[]): number {
+  return Math.round(items.reduce((s, li) => s + (li.qty || 0) * (li.rate || 0), 0))
+}
+
+/**
+ * Set a code's line items and keep its `budget` in sync (= the line-item sum).
+ * Budget is derived, never typed — see 4.7-E.
+ */
+function setLineItems(
+  p: RootState['projects'][number],
+  ccKey: string,
+  items: RootState['projects'][number]['lineItems'][string],
+): RootState['projects'][number] {
+  const budget = lineItemsBudget(items)
+  return {
+    ...p,
+    lineItems: { ...p.lineItems, [ccKey]: items },
+    codes: p.codes.map((c) => ((c.id as string) === ccKey ? { ...c, budget } : c)),
+  }
+}
+
 // ─── Reducer ──────────────────────────────────────────────────────────────
 
 export function reducer(state: RootState, action: Action): RootState {
@@ -150,10 +172,29 @@ export function reducer(state: RootState, action: Action): RootState {
       return updateProject(state, action.projectId, (p) => {
         const ccKey = action.ccId as string
         const existing = p.lineItems[ccKey] ?? []
-        return {
-          ...p,
-          lineItems: { ...p.lineItems, [ccKey]: [...existing, action.lineItem] },
-        }
+        return setLineItems(p, ccKey, [...existing, action.lineItem])
+      })
+
+    case 'UPDATE_LINE_ITEM':
+      return updateProject(state, action.projectId, (p) => {
+        const ccKey = action.ccId as string
+        const existing = p.lineItems[ccKey] ?? []
+        return setLineItems(
+          p,
+          ccKey,
+          updateWhere(existing, (li) => li.id === action.lineItemId, action.patch),
+        )
+      })
+
+    case 'DELETE_LINE_ITEM':
+      return updateProject(state, action.projectId, (p) => {
+        const ccKey = action.ccId as string
+        const existing = p.lineItems[ccKey] ?? []
+        return setLineItems(
+          p,
+          ccKey,
+          existing.filter((li) => li.id !== action.lineItemId),
+        )
       })
 
     // ─── Variations ───────────────────────────────────────────────────────

@@ -9,7 +9,7 @@ import { codeDocTotals } from '../computeFinancials'
 import { CostCodeForm } from './CostCodeForm'
 import { BoqTemplateImportDialog } from './BoqTemplateImportDialog'
 import { LineItemForm } from './LineItemForm'
-import type { CostCode, CostCodeId } from '@/types'
+import type { CostCode, CostCodeId, LineItem } from '@/types'
 
 /**
  * BOQ & Budget — transliteration of legacy `w1` (R1, PARITY gap 16): the
@@ -33,6 +33,7 @@ export function BoqTab() {
   const [creating, setCreating] = useState(false)
   const [importing, setImporting] = useState(false)
   const [addingItemFor, setAddingItemFor] = useState<CostCodeId | null>(null)
+  const [editingItem, setEditingItem] = useState<{ ccId: CostCodeId; item: LineItem } | null>(null)
   // View controls (Phase 4.5-E): over-budget filter + spend sort. Sorting is a
   // view only — manual order stays in state, so the reorder arrows hide while
   // sorted and return when back to manual order.
@@ -79,6 +80,19 @@ export function BoqTab() {
     if (!ok) return
     dispatch({ type: 'DELETE_CODE', projectId: project.id, codeId: c.id })
     toast(`Cost code ${c.code} deleted`, 'success')
+  }
+
+  async function deleteLineItem(ccId: CostCodeId, item: LineItem) {
+    if (!project) return
+    const ok = await confirm({
+      title: 'Delete line item',
+      message: `Delete "${item.desc}"? The code's budget will update.`,
+      confirmLabel: 'Delete',
+      danger: true,
+    })
+    if (!ok) return
+    dispatch({ type: 'DELETE_LINE_ITEM', projectId: project.id, ccId, lineItemId: item.id })
+    toast('Line item deleted', 'success')
   }
 
   // committed spend per code (legacy `Gc`), used for the over-budget filter and
@@ -229,6 +243,7 @@ export function BoqTab() {
                       <th>Unit</th>
                       <th className="text-right">Rate</th>
                       <th className="text-right">Amount</th>
+                      <th aria-label="Actions" />
                     </tr>
                   </thead>
                   <tbody>
@@ -241,11 +256,29 @@ export function BoqTab() {
                         <td className="text-right font-mono font-semibold">
                           {formatCurrency(li.qty * li.rate)}
                         </td>
+                        <td className="whitespace-nowrap text-right">
+                          <button
+                            type="button"
+                            title="Edit line item"
+                            onClick={() => setEditingItem({ ccId: code.id, item: li })}
+                            className="px-1 text-[10px] text-sw-dim hover:text-sw-ink"
+                          >
+                            ✎
+                          </button>
+                          <button
+                            type="button"
+                            title="Delete line item"
+                            onClick={() => deleteLineItem(code.id, li)}
+                            className="px-1 text-[11px] text-sw-danger"
+                          >
+                            ×
+                          </button>
+                        </td>
                       </tr>
                     ))}
                     {items.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="px-4 py-2.5 text-[12px] text-sw-faint">
+                        <td colSpan={6} className="px-4 py-2.5 text-[12px] text-sw-faint">
                           No line items. Add one below.
                         </td>
                       </tr>
@@ -325,6 +358,15 @@ export function BoqTab() {
           onClose={() => setAddingItemFor(null)}
           projectId={project.id}
           ccId={addingItemFor}
+        />
+      )}
+      {editingItem && (
+        <LineItemForm
+          open
+          onClose={() => setEditingItem(null)}
+          projectId={project.id}
+          ccId={editingItem.ccId}
+          initial={editingItem.item}
         />
       )}
     </div>
