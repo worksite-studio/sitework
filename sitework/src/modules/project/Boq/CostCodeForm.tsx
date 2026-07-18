@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Button, Dialog, Field, Input } from '@/components/ui'
-import { parseAmount } from '@/lib/money'
 import { useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import type { CostCode, CostCodeId, ProjectId } from '@/types'
@@ -25,9 +24,9 @@ const blank = (nextCode = ''): Omit<CostCode, 'id'> => ({
 })
 
 /**
- * Cost code add/edit dialog. Port of legacy `p1`. Auto-numbered Code field
- * for new rows (Session 28 / Phase 1.5-B fix that surfaced the real BOQ
- * dropdown bug); Desc + Budget required to save.
+ * Cost code add/edit dialog. Auto-numbered Code field for new rows; Code + Desc
+ * required. No budget field (4.7-E) — a code's budget is the sum of its line
+ * items, set by adding line items on the BOQ tab, never typed here.
  */
 export function CostCodeForm({ open, onClose, projectId, initial, nextCode }: Props) {
   const dispatch = useDispatch()
@@ -106,15 +105,9 @@ export function CostCodeForm({ open, onClose, projectId, initial, nextCode }: Pr
           />
         </Field>
       </div>
-      <Field label="Budget ($)">
-        <Input
-          type="number"
-          min={0}
-          step="0.01"
-          value={form.budget}
-          onChange={(e) => setForm({ ...form, budget: parseAmount(e.target.value) })}
-        />
-      </Field>
+      <p className="text-[12px] text-sw-dim">
+        The budget is the total of this code's line items — add them on the BOQ tab after saving.
+      </p>
     </Dialog>
   )
 }

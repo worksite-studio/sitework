@@ -27,6 +27,7 @@ import type {
   Lead,
   LeadId,
   LineItem,
+  LineItemId,
   Material,
   MaterialId,
   Milestone,
@@ -101,6 +102,19 @@ export type AddLineItemAction = {
   projectId: ProjectId
   ccId: CostCodeId
   lineItem: LineItem
+}
+export type UpdateLineItemAction = {
+  type: 'UPDATE_LINE_ITEM'
+  projectId: ProjectId
+  ccId: CostCodeId
+  lineItemId: LineItemId
+  patch: Partial<LineItem>
+}
+export type DeleteLineItemAction = {
+  type: 'DELETE_LINE_ITEM'
+  projectId: ProjectId
+  ccId: CostCodeId
+  lineItemId: LineItemId
 }
 
 // ─── Variations ──────────────────────────────────────────────────────────
@@ -345,6 +359,8 @@ export type Action =
   | MoveCodeDownAction
   | ImportTemplateIntoBoqAction
   | AddLineItemAction
+  | UpdateLineItemAction
+  | DeleteLineItemAction
   | AddVariationAction
   | UpdateVariationAction
   | AddInvoiceAction
