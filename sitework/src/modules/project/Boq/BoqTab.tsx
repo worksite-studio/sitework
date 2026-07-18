@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAppState, useDispatch } from '@/state/context'
 import { Button, EntityLink, useConfirm, useToast } from '@/components/ui'
 import { formatCurrency, formatCurrencyExact } from '@/lib/formatCurrency'
+import { gstOf, incGst } from '@/lib/money'
 import { formatDate } from '@/lib/formatDate'
 import { useProject } from '../useProject'
 import { codeDocTotals } from '../computeFinancials'
@@ -104,6 +105,14 @@ export function BoqTab() {
   if (sortBySpend) displayCodes = [...displayCodes].sort((a, b) => committedOf(b) - committedOf(a))
   const manualOrder = !sortBySpend && !overBudgetOnly
 
+  // BOQ totals (4.7-F): line items are the COST; margin is markup on sell
+  // (contract = cost ÷ (1 − margin%)), GST on top. Makes explicit that the
+  // BOQ figures exclude margin and GST.
+  const costSubtotal = project.codes.reduce((s, c) => s + (c.budget || 0), 0)
+  const marginPct = project.margin ?? 15
+  const contractExGst = marginPct < 100 ? costSubtotal / (1 - marginPct / 100) : costSubtotal
+  const marginAmount = contractExGst - costSubtotal
+
   return (
     <div>
       <header className="mb-6 flex items-center justify-between">
@@ -122,6 +131,37 @@ export function BoqTab() {
           <Button onClick={() => setCreating(true)}>+ Cost Code</Button>
         </div>
       </header>
+
+      {/* BOQ totals summary (4.7-F): cost → margin → contract → GST → total. */}
+      {project.codes.length > 0 && (
+        <div className="mb-5 flex justify-end">
+          <div className="w-[300px] border border-sw-rule rounded-[2px] p-4">
+            <div className="mb-2.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-sw-dim">
+              BOQ Summary
+            </div>
+            <div className="flex justify-between py-1 text-[13px]">
+              <span className="text-sw-dim">Cost subtotal</span>
+              <span className="font-mono">{formatCurrency(costSubtotal)}</span>
+            </div>
+            <div className="flex justify-between py-1 text-[13px]">
+              <span className="text-sw-dim">Margin ({marginPct}%)</span>
+              <span className="font-mono text-sw-pos">+{formatCurrency(marginAmount)}</span>
+            </div>
+            <div className="flex justify-between border-t border-sw-rule-l py-1 pt-1.5 text-[13px]">
+              <span className="text-sw-dim">Contract (ex GST)</span>
+              <span className="font-mono font-semibold">{formatCurrency(contractExGst)}</span>
+            </div>
+            <div className="flex justify-between py-1 text-[13px]">
+              <span className="text-sw-dim">GST (10%)</span>
+              <span className="font-mono">+{formatCurrency(gstOf(contractExGst))}</span>
+            </div>
+            <div className="flex justify-between border-t border-sw-ink py-1 pt-1.5 text-[13px]">
+              <span className="font-semibold">Total (inc GST)</span>
+              <span className="font-mono font-bold">{formatCurrency(incGst(contractExGst))}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* View controls (Phase 4.5-E): over-budget filter + spend sort. */}
       {project.codes.length > 0 && (
