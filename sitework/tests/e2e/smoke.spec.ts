@@ -257,6 +257,27 @@ test('print routes — BOQ + Retention render outside the AppShell', async ({ pa
   await expect(page.getByText('Balance to release')).toBeVisible()
 })
 
+test('BOQ export — margin toggle reveals Margin/Sell + colour-codes actual (gap 4.7-G)', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.print = () => {}
+  })
+  await page.goto('/print/boq/PRJ-001')
+
+  // Margin & Sell columns are hidden by default (cost-only export).
+  await expect(page.getByRole('columnheader', { name: /^Sell$/ })).toHaveCount(0)
+  await expect(page.getByRole('columnheader', { name: /^Margin/ })).toHaveCount(0)
+
+  // Toggling the option reveals both derived columns.
+  await page.getByRole('checkbox', { name: /Show margin/ }).check()
+  await expect(page.getByRole('columnheader', { name: /^Margin/ })).toBeVisible()
+  await expect(page.getByRole('columnheader', { name: /^Sell$/ })).toBeVisible()
+
+  // Actual cells are colour-coded against their adjusted budget.
+  await expect(page.locator('td.text-sw-pos, td.text-sw-neg').first()).toBeVisible()
+})
+
 test('print routes — Tax Invoice + Progress Claim render with content', async ({ page }) => {
   await page.addInitScript(() => {
     window.print = () => {}
