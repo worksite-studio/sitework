@@ -9,22 +9,40 @@ test.beforeEach(async ({ page }) => {
   })
 })
 
-test('dashboard renders stat blocks + Project Health + Budget & Margin', async ({ page }) => {
+test('dashboard renders stat blocks + unified Projects register (gap 4.7-H)', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByText(/^Good morning/)).toBeVisible()
   await expect(page.getByText('Active Projects', { exact: true })).toBeVisible()
   await expect(page.getByText('Outstanding Invoices', { exact: true })).toBeVisible()
   await expect(page.getByText('Portfolio Margin', { exact: true })).toBeVisible()
   await expect(page.getByText('Compliance Alerts', { exact: true })).toBeVisible()
-  await expect(page.getByRole('heading', { level: 2, name: /Project Health/i })).toBeVisible()
-  await expect(page.getByRole('heading', { level: 2, name: /Budget & Margin/i })).toBeVisible()
+  // Hybrid rebuild: one attention-sorted register replaces the old
+  // Project-Health / Budget-&-Margin columns.
+  await expect(page.getByRole('heading', { level: 2, name: /^Projects$/ })).toBeVisible()
 
-  // Click a Project Health row navigates to the project overview
+  // Clicking a register row navigates to the project overview. Scope to the
+  // register region so the Alerts panel's project links don't collide.
   await page
+    .getByRole('region', { name: 'Project register' })
     .getByRole('link', { name: /Akademie/ })
     .first()
     .click()
   await expect(page).toHaveURL(/\/projects\/PRJ-001\/overview$/)
+})
+
+test('dashboard KPI tiles + alert rows click through (gap 4.7-H)', async ({ page }) => {
+  await page.goto('/')
+  // Money KPI tiles drill through to the portfolio.
+  await page.getByRole('link', { name: /Outstanding Invoices/ }).click()
+  await expect(page).toHaveURL(/\/projects$/)
+
+  // Alert rows link to their source tab (subs / project RFIs / project VOs).
+  await page.goto('/')
+  const alerts = page.getByRole('region', { name: 'Alerts and compliance' })
+  const firstAlert = alerts.getByRole('link').first()
+  await expect(firstAlert).toBeVisible()
+  await firstAlert.click()
+  await expect(page).toHaveURL(/\/(subs|projects\/PRJ-\d+\/(rfis|variations))/)
 })
 
 test('navigates to Projects list and into a project tab', async ({ page }) => {
