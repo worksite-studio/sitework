@@ -16,11 +16,11 @@ test('splash gates entry, wordmark enters, client-side nav does not re-trigger',
 }) => {
   await page.goto('/')
   await expect(page.getByRole('button', { name: enter })).toBeVisible()
-  await expect(page.getByRole('heading', { level: 2, name: /Project Health/i })).not.toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: /^Projects$/ })).not.toBeVisible()
 
   await page.getByRole('button', { name: enter }).click()
   await expect(page.getByRole('button', { name: enter })).not.toBeVisible()
-  await expect(page.getByRole('heading', { level: 2, name: /Project Health/i })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: /^Projects$/ })).toBeVisible()
 
   // Client-side navigation keeps the app entered. Exact match: the "Active
   // Projects" dashboard tile is also a link (4.5-C) and otherwise collides.

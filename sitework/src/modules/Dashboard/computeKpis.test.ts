@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeDashboardKpis, computePipelineCounts } from './computeKpis'
+import { computeDashboardKpis, computePipelineCounts, computeProjectRegister } from './computeKpis'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { seed } from '@/state/seed'
 
@@ -67,6 +67,70 @@ describe('computeDashboardKpis (against seed)', () => {
     expect(kpis.outstandingInvoicesTotal).toBe(0)
     expect(kpis.openVariationsTotal).toBe(0)
     expect(kpis.portfolioMarginPct).toBe(0)
+  })
+})
+
+describe('computeProjectRegister (4.7-H)', () => {
+  it('includes only live projects', () => {
+    const rows = computeProjectRegister(seed)
+    const liveCount = seed.projects.filter((p) => p.status === 'live').length
+    expect(rows).toHaveLength(liveCount)
+    expect(rows.every((r) => r.status === 'live')).toBe(true)
+  })
+
+  it('derives budget/committed/spend and the health band per row', () => {
+    const rows = computeProjectRegister(seed)
+    for (const r of rows) {
+      const p = seed.projects.find((pp) => pp.id === r.id)!
+      const budget = p.codes.reduce((s, c) => s + (c.budget || 0), 0)
+      const committed = p.codes.reduce((s, c) => s + (c.committed || 0), 0)
+      expect(r.budget).toBe(budget)
+      expect(r.committed).toBe(committed)
+      expect(r.spentPct).toBe(budget > 0 ? Math.round((committed / budget) * 100) : 0)
+      const expected =
+        budget === 0
+          ? 'none'
+          : committed <= budget
+            ? 'on'
+            : committed <= budget * 1.1
+              ? 'risk'
+              : 'over'
+      expect(r.health).toBe(expected)
+    }
+  })
+
+  it('sorts by attention score (most-pressing first), then spend, then name', () => {
+    const rows = computeProjectRegister(seed)
+    for (let i = 1; i < rows.length; i++) {
+      const a = rows[i - 1]!
+      const b = rows[i]!
+      const ordered =
+        a.score > b.score ||
+        (a.score === b.score && a.spentPct > b.spentPct) ||
+        (a.score === b.score && a.spentPct === b.spentPct && a.name.localeCompare(b.name) <= 0)
+      expect(ordered).toBe(true)
+    }
+  })
+
+  it('flags a claim as due when an unpaid claim is overdue relative to today', () => {
+    const live = seed.projects.find((p) => p.status === 'live')!
+    const claims = seed.claims[live.id as string] ?? []
+    const anyUnpaid = claims.some((c) => c.status !== 'Paid' && !!c.due)
+    // With a far-future "today", every unpaid dated claim is overdue → due.
+    const rows = computeProjectRegister(seed, new Date('2099-01-01'))
+    const row = rows.find((r) => r.id === live.id)!
+    expect(row.flags.claimDue).toBe(anyUnpaid)
+  })
+
+  it('marks overBudget only when committed exceeds budget', () => {
+    const rows = computeProjectRegister(seed)
+    for (const r of rows) {
+      expect(r.flags.overBudget).toBe(r.health === 'over')
+    }
+  })
+
+  it('returns an empty register when there are no projects', () => {
+    expect(computeProjectRegister({ ...seed, projects: [] })).toEqual([])
   })
 })
 
