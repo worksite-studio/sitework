@@ -120,6 +120,16 @@ test('BOQ cost-code form has no budget field (gap 4.7-E)', async ({ page }) => {
   await expect(page.getByLabel(/Budget/)).toHaveCount(0)
 })
 
+test('BOQ totals summary shows cost → margin → GST → total (gap 4.7-F)', async ({ page }) => {
+  await page.goto('/projects/PRJ-001/boq')
+  await expect(page.getByText('BOQ Summary')).toBeVisible()
+  await expect(page.getByText('Cost subtotal')).toBeVisible()
+  await expect(page.getByText(/Margin \(\d+%\)/)).toBeVisible()
+  await expect(page.getByText('Contract (ex GST)')).toBeVisible()
+  await expect(page.getByText('GST (10%)')).toBeVisible()
+  await expect(page.getByText('Total (inc GST)')).toBeVisible()
+})
+
 test('project PC & PS tab — Pcps anatomy + pcf add form (gap 5)', async ({ page }) => {
   await page.goto('/projects/PRJ-001/pcps')
   await expect(page.getByRole('heading', { name: 'PC & PS' })).toBeVisible()
