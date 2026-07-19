@@ -159,6 +159,9 @@ body,
   margin: 24px auto;
   font-size: 12px;
   line-height: 1.45;
+  /* Keep coloured cells (BOQ export red/green/lilac) when printing to PDF. */
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .print-page h1 {
