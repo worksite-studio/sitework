@@ -199,6 +199,15 @@ test('project Invoices tab — cost-plus substantiation gate blocks save', async
   await expect(page.getByText(/supporting document/i).first()).toBeVisible()
 })
 
+test('project Invoices — Budget Match column flags the cost code health (gap 4.7-K)', async ({
+  page,
+}) => {
+  await page.goto('/projects/PRJ-001/invoices')
+  await expect(page.getByRole('columnheader', { name: 'Budget Match' })).toBeVisible()
+  // Seed PRJ-001 has over-budget codes, so at least one row reads "Over".
+  await expect(page.getByRole('cell', { name: 'Over', exact: true }).first()).toBeVisible()
+})
+
 test('project Invoices tab — fixed-price doesn’t gate on docs', async ({ page }) => {
   // PRJ-005 is fixed-price in seed
   await page.goto('/projects/PRJ-005/invoices')

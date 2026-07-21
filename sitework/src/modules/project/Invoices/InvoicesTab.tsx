@@ -8,6 +8,7 @@ import { gstOf, incGst } from '@/lib/money'
 import { useTableSort } from '@/lib/useTableSort'
 import { useAppState } from '@/state/context'
 import { useProject } from '../useProject'
+import { codeDocTotals } from '../computeFinancials'
 import { InvoiceForm } from './InvoiceForm'
 import type { Invoice, InvoiceStatus } from '@/types'
 
@@ -48,6 +49,19 @@ export function InvoicesTab() {
   const codeText = (inv: Invoice): string => {
     const cc = project?.codes.find((c) => c.id === inv.ccId)
     return cc ? `${cc.code} ${cc.desc}` : '—'
+  }
+  const purchases = project ? (state.purchases[project.id as string] ?? []) : []
+  // Cost-code budget match (4.7-K): does the invoice's cost code sit within its
+  // budget once all committed spend is counted? Reuses the BOQ `Ma` health
+  // bands (committed vs budget) so the Invoices register flags spend booked to
+  // over-budget codes. Same for every invoice on a code — it's a code signal.
+  const codeMatch = (inv: Invoice): { label: string; color: string } | null => {
+    const cc = project?.codes.find((c) => c.id === inv.ccId)
+    if (!cc || !cc.budget) return null
+    const committed = codeDocTotals(cc.id as string, project?.invoices ?? [], purchases).committed
+    if (committed <= cc.budget) return { label: 'On budget', color: 'var(--sw-pos)' }
+    if (committed <= cc.budget * 1.1) return { label: 'At risk', color: 'var(--sw-violet)' }
+    return { label: 'Over', color: 'var(--sw-neg)' }
   }
 
   const all = project?.invoices ?? []
@@ -183,6 +197,7 @@ export function InvoicesTab() {
                 {sortTh('Supplier / Subcontractor', 'supplier')}
                 <th>Doc Ref</th>
                 {sortTh('Cost Code', 'code')}
+                <th>Budget Match</th>
                 {sortTh('Amount (ex GST)', 'amount', 'text-right')}
                 <th className="text-right">GST</th>
                 <th className="text-right">Total inc GST</th>
@@ -224,6 +239,16 @@ export function InvoicesTab() {
                       </td>
                       <td className="font-mono text-sw-dim">{inv.docRef || '—'}</td>
                       <td className="text-sw-dim">{codeText(inv)}</td>
+                      <td className="text-[12px] font-medium">
+                        {(() => {
+                          const m = codeMatch(inv)
+                          return m ? (
+                            <span style={{ color: m.color }}>{m.label}</span>
+                          ) : (
+                            <span className="text-sw-faint">—</span>
+                          )
+                        })()}
+                      </td>
                       <td className="text-right font-mono font-semibold">
                         {formatCurrency(inv.amount)}
                       </td>
@@ -267,7 +292,7 @@ export function InvoicesTab() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={11} className="p-10 text-center text-[13px] text-sw-faint">
+                  <td colSpan={12} className="p-10 text-center text-[13px] text-sw-faint">
                     {q || filter !== 'All' || ccFilter || supFilter
                       ? 'No invoices match this filter.'
                       : 'No invoices yet.'}
