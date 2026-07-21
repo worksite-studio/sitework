@@ -85,6 +85,24 @@ describe('claim retention maths — legacy Cl1 (gap 18: rate is a PERCENT)', () 
     expect(retentionRatePct(seed, 'NO-SUCH-PROJECT')).toBe(5)
   })
 
+  it('returns 0 when retention is disabled for the project (4.7-I optional retention)', () => {
+    const off = {
+      ...seed,
+      retention: {
+        ...seed.retention,
+        'PRJ-001': { ...(seed.retention['PRJ-001'] ?? { rate: 5 }), enabled: false },
+      },
+    }
+    expect(retentionRatePct(off, 'PRJ-001')).toBe(0)
+  })
+
+  it('keeps the rate when enabled is true or unset (back-compat)', () => {
+    // unset → applied (existing projects keep withholding)
+    expect(retentionRatePct(seed, 'PRJ-001')).toBe(seed.retention['PRJ-001']?.rate ?? 5)
+    const on = { ...seed, retention: { ...seed.retention, 'PRJ-001': { rate: 7, enabled: true } } }
+    expect(retentionRatePct(on, 'PRJ-001')).toBe(7)
+  })
+
   it('claim #1 ($45,000): retention $2,250, net certified $47,025 — the :8766 row', () => {
     const claim1 = (seed.claims['PRJ-001'] ?? [])[0]!
     const pct = retentionRatePct(seed, 'PRJ-001')

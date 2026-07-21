@@ -237,6 +237,25 @@ test('project Claims — a duplicate claim number is blocked (gap 4.7-I)', async
   await expect(page.getByRole('heading', { name: /^New claim PRJ-001-C1$/ })).toBeVisible()
 })
 
+test('retention is optional — turning it off zeroes claim retention (gap 4.7-I)', async ({
+  page,
+}) => {
+  await page.goto('/projects/PRJ-001/defects')
+  await expect(page.getByRole('heading', { name: 'Retention & FFC' })).toBeVisible()
+  const toggle = page.getByRole('checkbox', { name: 'Apply retention' })
+  await expect(toggle).toBeChecked()
+  // Rate is editable while retention applies.
+  await expect(page.getByLabel('Retention rate')).toBeVisible()
+  await toggle.uncheck()
+  await expect(page.getByText('Off', { exact: true })).toBeVisible()
+
+  // Client-side nav to Claims (the beforeEach clears localStorage on every full
+  // load, so a goto would wipe the toggle — keep the in-memory state instead).
+  await page.getByRole('link', { name: 'Progress Claims' }).click()
+  await expect(page).toHaveURL(/\/claims$/)
+  await expect(page.getByRole('row', { name: /PRJ-001-C1/ }).getByText('—')).toBeVisible()
+})
+
 test('project Defects + Schedule + Diary + RFIs + Selections + Timesheets tabs render', async ({
   page,
 }) => {

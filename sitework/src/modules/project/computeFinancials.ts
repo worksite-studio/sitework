@@ -148,9 +148,16 @@ export function outstandingInvoiceTotal(project: Project): number {
 // at every use: `cl.amount * (ret?.rate ?? 5) / 100`. The pre-R0 port read it
 // as a fraction, producing the ×100 retention bug (PARITY gap 18).
 
-/** Retention rate as a percent (legacy unit). Default 5 — legacy `ret?.rate || 5`. */
+/**
+ * Retention rate as a percent (legacy unit). Default 5 — legacy `ret?.rate || 5`.
+ * Returns 0 when retention is disabled for the project (4.7-I slice 2 — optional
+ * retention), so every claim consumer certifies the full amount without a
+ * per-site check.
+ */
 export function retentionRatePct(state: RootState, projectId: string): number {
-  return state.retention[projectId]?.rate ?? 5
+  const ret = state.retention[projectId]
+  if (ret?.enabled === false) return 0
+  return ret?.rate ?? 5
 }
 
 /**

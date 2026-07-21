@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useAppState, useDispatch } from '@/state/context'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
@@ -137,7 +137,11 @@ function RetentionPanel({ retention }: { retention: Retention | undefined }) {
   }
 
   const today = new Date()
-  const maxRetention = (retention.contractValue ?? 0) * (retention.rate / 100)
+  // 4.7-I slice 2: retention is optional. `enabled === false` → no retention;
+  // the summary and all claim maths use the effective (0) rate.
+  const enabled = retention.enabled !== false
+  const effRate = enabled ? retention.rate : 0
+  const maxRetention = (retention.contractValue ?? 0) * (effRate / 100)
   const held = retention.held ?? 0
   const released = retention.released ?? 0
   const netHeld = held - released
@@ -187,16 +191,58 @@ function RetentionPanel({ retention }: { retention: Retention | undefined }) {
       <div className="grid grid-cols-2 gap-[60px]">
         {/* Retention Summary */}
         <div className="border-t border-sw-ink bg-white py-5">
-          <div className="mb-5 text-[13px] font-bold text-sw-ink">Retention Summary</div>
+          <div className="mb-4 flex items-center justify-between">
+            <span className="text-[13px] font-bold text-sw-ink">Retention Summary</span>
+            {/* Optional retention (4.7-I): toggle + editable rate. */}
+            <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-sw-dim select-none">
+              <input
+                type="checkbox"
+                checked={enabled}
+                onChange={(e) =>
+                  dispatch({
+                    type: 'UPDATE_RETENTION',
+                    projectId: project.id,
+                    patch: { enabled: e.target.checked },
+                  })
+                }
+              />
+              Apply retention
+            </label>
+          </div>
           {(
             [
               { l: 'Contract Value', v: formatCurrency(retention.contractValue ?? 0) },
-              { l: 'Retention Rate', v: `${retention.rate}%` },
+              {
+                l: 'Retention Rate',
+                v: enabled ? (
+                  <span className="inline-flex items-center gap-1">
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="0.5"
+                      value={retention.rate}
+                      onChange={(e) =>
+                        dispatch({
+                          type: 'UPDATE_RETENTION',
+                          projectId: project.id,
+                          patch: { rate: Number(e.target.value) || 0 },
+                        })
+                      }
+                      aria-label="Retention rate"
+                      className="w-14 border border-sw-rule px-1.5 py-0.5 text-right font-mono text-[13px]"
+                    />
+                    %
+                  </span>
+                ) : (
+                  'Off'
+                ),
+              },
               { l: 'Maximum Retention', v: formatCurrency(maxRetention) },
               { l: 'Currently Held', v: formatCurrency(held), c: 'var(--sw-violet)', b: true },
               { l: 'Released to Date', v: formatCurrency(released), c: 'var(--sw-pos)' },
               { l: 'Net Balance Held', v: formatCurrency(netHeld), b: true },
-            ] as Array<{ l: string; v: string; c?: string; b?: boolean }>
+            ] as Array<{ l: string; v: ReactNode; c?: string; b?: boolean }>
           ).map(({ l, v, c, b }) => (
             <div key={l} className="flex justify-between border-b border-sw-rule-l py-[9px]">
               <span className="text-[12px] text-sw-dim">{l}</span>

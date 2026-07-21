@@ -138,7 +138,9 @@ export function ClaimsTab() {
                       {formatCurrency(claimTotalIncGst(c.amount || 0))}
                     </td>
                     <td className="text-right font-mono text-sw-dim">
-                      −{formatCurrency(claimRetention(c.amount || 0, ratePct))}
+                      {ratePct > 0
+                        ? `−${formatCurrency(claimRetention(c.amount || 0, ratePct))}`
+                        : '—'}
                     </td>
                     <td className="text-right font-mono font-semibold">
                       {formatCurrency(claimNetCertified(c.amount || 0, ratePct))}
