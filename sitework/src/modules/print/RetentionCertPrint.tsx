@@ -3,6 +3,7 @@ import { PrintLayout } from './PrintLayout'
 import { useAppState } from '@/state/context'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
+import { retentionRatePct } from '@/modules/project/computeFinancials'
 import type { ProjectId } from '@/types'
 
 /**
@@ -24,11 +25,13 @@ export function RetentionCertPrint() {
   }
 
   const claims = state.claims[project.id as string] ?? []
-  // Rate is a PERCENT (legacy unit — PARITY gap 18); divide by 100 at use.
+  // Rate is a PERCENT (legacy unit — PARITY gap 18); 0 when retention is
+  // disabled for the project (4.7-I optional retention).
   const retention = state.retention[project.id as string] ?? { rate: 5, held: 0, released: 0 }
+  const ratePct = retentionRatePct(state, project.id as string)
   const client = state.clients.find((c) => c.id === project.clientId)
   const totalCertified = claims.reduce((s, c) => s + (c.amount || 0), 0)
-  const totalRetained = (totalCertified * (retention.rate ?? 5)) / 100
+  const totalRetained = (totalCertified * ratePct) / 100
   const heldTotal = retention.held ?? totalRetained
   const releasedTotal = retention.released ?? 0
   const balance = heldTotal - releasedTotal
@@ -79,7 +82,7 @@ export function RetentionCertPrint() {
                 <td>{formatDate(c.date)}</td>
                 <td className="text-right tabular-nums">{formatCurrency(c.amount)}</td>
                 <td className="text-right tabular-nums">
-                  −{formatCurrency(((c.amount || 0) * (retention.rate ?? 5)) / 100)}
+                  −{formatCurrency(((c.amount || 0) * ratePct) / 100)}
                 </td>
               </tr>
             ))}
@@ -100,7 +103,7 @@ export function RetentionCertPrint() {
           <tbody>
             <tr>
               <td>Retention rate</td>
-              <td className="text-right tabular-nums">{(retention.rate ?? 5).toFixed(1)}%</td>
+              <td className="text-right tabular-nums">{ratePct.toFixed(1)}%</td>
             </tr>
             <tr>
               <td>Retention held</td>

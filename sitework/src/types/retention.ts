@@ -15,6 +15,13 @@ export interface Retention {
    * fraction, inflating retention ×100.)
    */
   rate: number
+  /**
+   * Whether retention applies to this project's claims (4.7-I slice 2 —
+   * retention is optional, not compulsory). `undefined`/`true` = applied
+   * (back-compat: existing projects keep withholding); `false` = no retention,
+   * so `retentionRatePct()` returns 0 and claims certify the full amount.
+   */
+  enabled?: boolean
   held?: number
   released?: number
   /** Adjusted contract value snapshot the retention was set against (legacy k1). */

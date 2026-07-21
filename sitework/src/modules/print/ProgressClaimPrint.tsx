@@ -3,7 +3,11 @@ import { PrintLayout } from './PrintLayout'
 import { useAppState } from '@/state/context'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
-import { claimRef, computeProjectFinancials } from '@/modules/project/computeFinancials'
+import {
+  claimRef,
+  computeProjectFinancials,
+  retentionRatePct as retentionRateFor,
+} from '@/modules/project/computeFinancials'
 import type { ProgressClaimId, ProjectId } from '@/types'
 
 /**
@@ -22,8 +26,9 @@ export function ProgressClaimPrint() {
     ? (state.claims[project.id as string] ?? []).find((c) => c.id === (claimId as ProgressClaimId))
     : null
   const client = project ? state.clients.find((c) => c.id === project.clientId) : null
-  // Rate is a PERCENT (legacy unit — PARITY gap 18); divide by 100 at use.
-  const retentionRatePct = project ? (state.retention[project.id as string]?.rate ?? 5) : 5
+  // Rate is a PERCENT (legacy unit — PARITY gap 18); 0 when retention is
+  // disabled for the project (4.7-I optional retention).
+  const retentionRatePct = project ? retentionRateFor(state, project.id as string) : 5
 
   if (!project || !claim) {
     return (
