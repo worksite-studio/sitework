@@ -6,6 +6,7 @@ import { gstOf, incGst, parseAmount } from '@/lib/money'
 import { asId } from '@/types'
 import type { CostCodeId, Project, Purchase, PurchaseId } from '@/types'
 import { newId } from '@/lib/newId'
+import { CostCodeSelect } from '../CostCodeSelect'
 
 interface Props {
   open: boolean
@@ -154,21 +155,12 @@ export function POForm({ open, onClose, project, initial }: Props) {
           />
         </Field>
         <Field label="Cost Code">
-          <Select
+          <CostCodeSelect
+            projectId={project.id}
+            codes={project.codes}
             value={form.ccId}
-            onChange={(e) => setForm({ ...form, ccId: e.target.value })}
-            disabled={project.codes.length === 0}
-          >
-            {project.codes.length === 0 ? (
-              <option value="">— No cost codes — add one in BOQ tab first —</option>
-            ) : (
-              project.codes.map((c) => (
-                <option key={c.id} value={c.id as string}>
-                  {c.code} {c.desc}
-                </option>
-              ))
-            )}
-          </Select>
+            onChange={(cc) => setForm({ ...form, ccId: cc })}
+          />
         </Field>
       </div>
       <Field label="Description">

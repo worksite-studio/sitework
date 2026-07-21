@@ -6,6 +6,7 @@ import { useAppState, useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import { checkSubstantiation } from '@/lib/substantiation'
 import { newId } from '@/lib/newId'
+import { CostCodeSelect } from '../CostCodeSelect'
 import type {
   CostCodeId,
   FileAttachment,
@@ -59,13 +60,24 @@ export function InvoiceForm({ open, onClose, project, initial }: Props) {
   const codeMissing = !(form.ccId as string)
   const subCheck = checkSubstantiation(project, form.supportingDocs)
 
+  // Allocation guard (4.7-L): an invoice can only be booked to a code that has
+  // a financial basis — a budget (line items) or a non-rejected variation
+  // against it. A freshly inline-added code (budget $0, no VO) is blocked with
+  // guidance until it earns a budget on the BOQ or a variation is raised.
+  const selectedCode = project.codes.find((c) => c.id === form.ccId)
+  const codeHasBasis =
+    !!selectedCode &&
+    ((selectedCode.budget || 0) > 0 ||
+      project.variations.some((v) => v.ccId === selectedCode.id && v.status !== 'Rejected'))
+  const codeNoBasis = !codeMissing && !codeHasBasis
+
   function reset() {
     setForm(blank(project.codes[0]?.id))
     setAttempted(false)
   }
 
   function save() {
-    if (supplierMissing || codeMissing || subCheck.blocked) {
+    if (supplierMissing || codeMissing || codeNoBasis || subCheck.blocked) {
       setAttempted(true)
       return
     }
@@ -140,18 +152,24 @@ export function InvoiceForm({ open, onClose, project, initial }: Props) {
             invalid={attempted && supplierMissing}
           />
         </Field>
-        <Field label="Cost code" required error={attempted && codeMissing ? 'Required' : undefined}>
-          <Select
+        <Field
+          label="Cost code"
+          required
+          error={
+            attempted && codeMissing
+              ? 'Required'
+              : attempted && codeNoBasis
+                ? `${selectedCode?.code} has no budget or variation — add line items on the BOQ or raise a variation first`
+                : undefined
+          }
+        >
+          <CostCodeSelect
+            projectId={project.id}
+            codes={project.codes}
             value={form.ccId as string}
-            onChange={(e) => setForm({ ...form, ccId: e.target.value as CostCodeId })}
-          >
-            <option value="">— choose code —</option>
-            {project.codes.map((c) => (
-              <option key={c.id} value={c.id as string}>
-                {c.code} · {c.desc}
-              </option>
-            ))}
-          </Select>
+            onChange={(cc) => setForm({ ...form, ccId: cc as CostCodeId })}
+            invalid={attempted && (codeMissing || codeNoBasis)}
+          />
         </Field>
       </div>
       <Field label="Document Reference">

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button, Dialog, Field, Input, Select } from '@/components/ui'
 import { parseAmount } from '@/lib/money'
 import { useDispatch } from '@/state/context'
+import { CostCodeSelect } from '../CostCodeSelect'
 import { asId } from '@/types'
 import type {
   CostCodeId,
@@ -125,16 +126,12 @@ export function VariationForm({ open, onClose, projectId, codes, initial, nextNu
           </Select>
         </Field>
         <Field label="Cost Code">
-          <Select
+          <CostCodeSelect
+            projectId={projectId}
+            codes={codes}
             value={form.ccId as string}
-            onChange={(e) => setForm({ ...form, ccId: e.target.value as CostCodeId })}
-          >
-            {codes.map((c) => (
-              <option key={c.id} value={c.id as string}>
-                {c.code} — {c.desc}
-              </option>
-            ))}
-          </Select>
+            onChange={(cc) => setForm({ ...form, ccId: cc as CostCodeId })}
+          />
         </Field>
         <Field label="Amount">
           <Input
