@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   claimGst,
   claimNetCertified,
+  claimRef,
   claimRetention,
   claimTotalIncGst,
   computeProjectFinancials,
@@ -96,6 +97,11 @@ describe('claim retention maths — legacy Cl1 (gap 18: rate is a PERCENT)', () 
   it('net certified = amount × (1 − rate/100) × 1.1 — GST applies to the retained net', () => {
     expect(claimNetCertified(1000, 5)).toBeCloseTo(1045, 6)
     expect(claimNetCertified(1000, 0)).toBeCloseTo(1100, 6)
+  })
+
+  it('claimRef composes a project-scoped reference (4.7-I)', () => {
+    expect(claimRef('PRJ-001', 1)).toBe('PRJ-001-C1')
+    expect(claimRef('PRJ-042', 12)).toBe('PRJ-042-C12')
   })
 })
 

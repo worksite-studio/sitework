@@ -9,6 +9,7 @@ import { useProject } from '../useProject'
 import {
   claimGst,
   claimNetCertified,
+  claimRef,
   claimRetention,
   claimTotalIncGst,
   computeProjectFinancials,
@@ -98,7 +99,7 @@ export function ClaimsTab() {
               <tr>
                 <th>Claim Date</th>
                 <th>Due Date</th>
-                <th>#</th>
+                <th>Ref</th>
                 <th>Description</th>
                 <th className="text-right">Amount (ex GST)</th>
                 <th className="text-right">GST</th>
@@ -123,7 +124,9 @@ export function ClaimsTab() {
                   >
                     <td className="text-sw-dim">{formatDate(c.date)}</td>
                     <td className="text-sw-dim">{formatDate(c.due)}</td>
-                    <td className="font-mono text-sw-dim">#{displayNo(c)}</td>
+                    <td className="whitespace-nowrap font-mono text-sw-dim">
+                      {claimRef(project.id as string, displayNo(c))}
+                    </td>
                     <td className="font-medium">{c.desc}</td>
                     <td className="text-right font-mono font-semibold">
                       {formatCurrency(c.amount)}

@@ -3,6 +3,7 @@ import { PrintLayout } from './PrintLayout'
 import { useAppState } from '@/state/context'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { formatDate } from '@/lib/formatDate'
+import { claimRef, computeProjectFinancials } from '@/modules/project/computeFinancials'
 import type { ProgressClaimId, ProjectId } from '@/types'
 
 /**
@@ -36,11 +37,20 @@ export function ProgressClaimPrint() {
   const retention = (gross * retentionRatePct) / 100
   const netCertified = gross - retention
 
+  // Claim statement (4.7-I): where this claim sits against the contract.
+  // "Claimed" mirrors the on-screen Cl1 header — Σ claim amounts (ex GST)
+  // against the ex-GST contract value. Previous = claims numbered before this.
+  const fin = computeProjectFinancials(project)
+  const allClaims = state.claims[project.id as string] ?? []
+  const previouslyClaimed = allClaims
+    .filter((c) => (c.claimNo || 0) < (claim.claimNo || 0))
+    .reduce((s, c) => s + (c.amount || 0), 0)
+  const claimedToDate = previouslyClaimed + gross
+  const remainingToBill = fin.contractValue - claimedToDate
+  const ref = claimRef(project.id as string, claim.claimNo)
+
   return (
-    <PrintLayout
-      title={`Progress Claim #${claim.claimNo}`}
-      backTo={`/projects/${project.id}/claims`}
-    >
+    <PrintLayout title={`Progress Claim ${ref}`} backTo={`/projects/${project.id}/claims`}>
       <header className="flex items-start justify-between gap-6 mb-5">
         <div>
           <h1>{(state.settings.businessName as string) || 'Worksite Studio'}</h1>
@@ -51,7 +61,8 @@ export function ProgressClaimPrint() {
         </div>
         <div className="text-right">
           <div className="text-xs uppercase tracking-wide text-sw-muted">Progress claim</div>
-          <div className="text-lg font-semibold">#{claim.claimNo}</div>
+          <div className="text-lg font-semibold tabular-nums">{ref}</div>
+          <div className="text-xs text-sw-muted">Claim #{claim.claimNo}</div>
           <div className="text-xs text-sw-muted">Date: {formatDate(claim.date)}</div>
           <div className="text-xs text-sw-muted">Due: {formatDate(claim.due)}</div>
         </div>
@@ -104,6 +115,38 @@ export function ProgressClaimPrint() {
               <td className="text-right tabular-nums">{formatCurrency(netCertified)}</td>
             </tr>
           </tfoot>
+        </table>
+      </section>
+
+      <section className="mb-5">
+        <h2>Claim summary</h2>
+        <table>
+          <tbody>
+            <tr>
+              <td>Contract value (ex GST)</td>
+              <td className="text-right tabular-nums">{formatCurrency(fin.contractValue)}</td>
+            </tr>
+            <tr>
+              <td>Previously claimed</td>
+              <td className="text-right tabular-nums">{formatCurrency(previouslyClaimed)}</td>
+            </tr>
+            <tr>
+              <td>This claim ({ref})</td>
+              <td className="text-right tabular-nums">{formatCurrency(gross)}</td>
+            </tr>
+            <tr>
+              <td className="font-medium">Claimed to date</td>
+              <td className="text-right tabular-nums font-medium">
+                {formatCurrency(claimedToDate)}
+              </td>
+            </tr>
+            <tr>
+              <td className="font-medium">Remaining to bill</td>
+              <td className="text-right tabular-nums font-medium">
+                {formatCurrency(remainingToBill)}
+              </td>
+            </tr>
+          </tbody>
         </table>
       </section>
 

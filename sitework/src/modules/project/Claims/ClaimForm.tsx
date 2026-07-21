@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Button, Dialog, Field, Input, Select } from '@/components/ui'
 import { parseAmount } from '@/lib/money'
 import { FilePicker } from '@/components/FilePicker'
-import { useDispatch } from '@/state/context'
+import { claimRef } from '../computeFinancials'
+import { useAppState, useDispatch } from '@/state/context'
 import { asId } from '@/types'
 import { checkSubstantiation } from '@/lib/substantiation'
 import { newId } from '@/lib/newId'
@@ -60,6 +61,7 @@ const blank = (nextNo = 1): Omit<ProgressClaim, 'id'> => ({
  */
 export function ClaimForm({ open, onClose, project, initial, nextNo = 1 }: Props) {
   const dispatch = useDispatch()
+  const state = useAppState()
   const [form, setForm] = useState<Omit<ProgressClaim, 'id'>>(() =>
     initial
       ? {
@@ -75,6 +77,12 @@ export function ClaimForm({ open, onClose, project, initial, nextNo = 1 }: Props
 
   const descMissing = form.desc.trim() === ''
   const subCheck = checkSubstantiation(project, form.supportingDocs)
+  // Claim numbers are unique WITHIN a project (4.7-I): block a number already
+  // used by another claim on this project.
+  const projectClaims = state.claims[project.id as string] ?? []
+  const numberTaken = projectClaims.some(
+    (c) => c.id !== initial?.id && (c.claimNo || 0) === form.claimNo,
+  )
 
   function reset() {
     setForm(blank(nextNo))
@@ -82,7 +90,7 @@ export function ClaimForm({ open, onClose, project, initial, nextNo = 1 }: Props
   }
 
   function save() {
-    if (descMissing || subCheck.blocked) {
+    if (descMissing || subCheck.blocked || numberTaken) {
       setAttempted(true)
       return
     }
@@ -108,7 +116,11 @@ export function ClaimForm({ open, onClose, project, initial, nextNo = 1 }: Props
         reset()
         onClose()
       }}
-      title={isEdit ? `Edit claim #${form.claimNo}` : `New claim #${form.claimNo}`}
+      title={
+        isEdit
+          ? `Edit claim ${claimRef(project.id as string, form.claimNo)}`
+          : `New claim ${claimRef(project.id as string, form.claimNo)}`
+      }
       widthClass="max-w-xl"
       footer={
         <>
@@ -126,11 +138,15 @@ export function ClaimForm({ open, onClose, project, initial, nextNo = 1 }: Props
       }
     >
       <div className="grid grid-cols-[120px_1fr] gap-3">
-        <Field label="Claim no.">
+        <Field
+          label="Claim no."
+          error={attempted && numberTaken ? `#${form.claimNo} already exists` : undefined}
+        >
           <Input
             type="number"
             min={1}
             value={form.claimNo}
+            invalid={attempted && numberTaken}
             onChange={(e) => setForm({ ...form, claimNo: parseAmount(e.target.value, 1) })}
           />
         </Field>

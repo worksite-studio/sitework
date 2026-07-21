@@ -153,6 +153,16 @@ export function retentionRatePct(state: RootState, projectId: string): number {
   return state.retention[projectId]?.rate ?? 5
 }
 
+/**
+ * Project-scoped claim reference (4.7-I). Every project has a Claim #1, so a
+ * bare number is ambiguous across projects; this composes the project id with
+ * the claim number, e.g. `PRJ-001-C1`. Used on the claims list, the claim
+ * dialog title, and the printed claim.
+ */
+export function claimRef(projectId: string, claimNo: number): string {
+  return `${projectId}-C${claimNo}`
+}
+
 /** GST on a claim amount — legacy `Cl1`: amount × 0.1 (via central `gstOf`). */
 export function claimGst(amount: number): number {
   return gstOf(amount)
