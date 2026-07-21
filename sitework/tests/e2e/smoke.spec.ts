@@ -216,11 +216,25 @@ test('project POs tab renders + Receive button on sent POs', async ({ page }) =>
 test('project Claims tab — claim numbering + substantiation gate', async ({ page }) => {
   await page.goto('/projects/PRJ-001/claims')
   await expect(page.getByRole('heading', { name: 'Progress Claims' })).toBeVisible()
+  // Rows carry a project-scoped reference (gap 4.7-I).
+  await expect(page.getByRole('cell', { name: /^PRJ-001-C\d+$/ }).first()).toBeVisible()
   await page.getByRole('button', { name: '+ New Claim' }).first().click()
-  // Dialog title shows the next claimNo (auto-fill)
-  await expect(page.getByRole('heading', { name: /^New claim #\d+$/ })).toBeVisible()
+  // Dialog title shows the next claim's project-scoped ref (auto-fill).
+  await expect(page.getByRole('heading', { name: /^New claim PRJ-001-C\d+$/ })).toBeVisible()
   // Substantiation field visible on cost-plus
   await expect(page.getByText('Supporting documents').first()).toBeVisible()
+})
+
+test('project Claims — a duplicate claim number is blocked (gap 4.7-I)', async ({ page }) => {
+  await page.goto('/projects/PRJ-001/claims')
+  await page.getByRole('button', { name: '+ New Claim' }).first().click()
+  // Seed PRJ-001 already has claims #1–7 — reuse #1.
+  await page.getByLabel('Claim no.').fill('1')
+  await page.getByLabel(/^Description/).fill('Duplicate number test')
+  await page.getByRole('button', { name: 'Save' }).click()
+  // Blocked with an inline error; the dialog stays open.
+  await expect(page.getByText('#1 already exists')).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^New claim PRJ-001-C1$/ })).toBeVisible()
 })
 
 test('project Defects + Schedule + Diary + RFIs + Selections + Timesheets tabs render', async ({
