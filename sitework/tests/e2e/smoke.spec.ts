@@ -208,6 +208,29 @@ test('project Invoices — Budget Match column flags the cost code health (gap 4
   await expect(page.getByRole('cell', { name: 'Over', exact: true }).first()).toBeVisible()
 })
 
+test('invoices — inline-add a cost code, then allocation guard blocks it (gap 4.7-L)', async ({
+  page,
+}) => {
+  // PRJ-005 is fixed-price → no substantiation gate to interfere.
+  await page.goto('/projects/PRJ-005/invoices')
+  await page.getByRole('button', { name: '+ Invoice' }).first().click()
+  await expect(page.getByRole('heading', { name: 'New Invoice' })).toBeVisible()
+
+  // Inline "add new cost code" straight from the dropdown.
+  await page.getByLabel(/Cost code/).selectOption('__add__')
+  const desc = page.getByLabel('New cost code description')
+  await expect(desc).toBeVisible()
+  await desc.fill('Temporary Fencing')
+  await page.getByRole('button', { name: 'Add code' }).click()
+  // The new code exists in (and is selected on) the dropdown.
+  await expect(page.getByLabel(/Cost code/)).toContainText('Temporary Fencing')
+
+  // It has $0 budget and no variation → the invoice can't be allocated to it.
+  await page.getByLabel(/^Supplier \/ subcontractor/).fill('Fence Co')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText(/has no budget or variation/)).toBeVisible()
+})
+
 test('project Invoices tab — fixed-price doesn’t gate on docs', async ({ page }) => {
   // PRJ-005 is fixed-price in seed
   await page.goto('/projects/PRJ-005/invoices')
