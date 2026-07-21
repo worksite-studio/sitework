@@ -70,21 +70,24 @@ test('deep-link into a project tab works', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Progress Claims' })).toBeVisible()
 })
 
-test('project Overview tab renders D1 stats + BOQ table + Contract vs Cost panel', async ({
+test('project Overview is a health cockpit — finance strip + section cards (gap 4.7-M)', async ({
   page,
 }) => {
   await page.goto('/projects/PRJ-001/overview')
-  // D1 stat row (legacy-only stats)
-  await expect(page.getByText('True Overrun')).toBeVisible()
-  await expect(page.getByText('Original Budget', { exact: true })).toBeVisible()
-  // D1 analytic BOQ table (zero-placeholder codes filtered out)
-  await expect(
-    page.getByText('Preliminary Costs, Consultant Fees, Site Establishment'),
-  ).toBeVisible()
-  await expect(page.getByText('Surveying — Set-Out, TBM, Pins')).not.toBeVisible()
-  // D1v2 panel + Duplicate Project button
-  await expect(page.getByRole('heading', { name: /Contract vs Cost/ })).toBeVisible()
+  // Curated finance strip
+  await expect(page.getByText('Adjusted Contract', { exact: true })).toBeVisible()
+  await expect(page.getByText('Cost to Date', { exact: true })).toBeVisible()
+  await expect(page.getByText('True Overrun', { exact: true })).toBeVisible()
+  // The BOQ dump is gone — that lives on the BOQ tab now.
+  await expect(page.getByRole('heading', { name: /Contract vs Cost/ })).toHaveCount(0)
+  // Section cards link to their tabs; still has Duplicate Project.
+  const cards = page.getByRole('region', { name: 'Project sections' })
+  await expect(cards.getByText('RFIs', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Duplicate Project' })).toBeVisible()
+
+  // Clicking the Progress Claims card navigates to that tab.
+  await cards.getByRole('link', { name: /Progress Claims/ }).click()
+  await expect(page).toHaveURL(/\/projects\/PRJ-001\/claims$/)
 })
 
 test('project BOQ tab renders codes table and supports add', async ({ page }) => {
