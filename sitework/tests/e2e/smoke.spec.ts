@@ -318,6 +318,24 @@ test('Schedule is a Program of Works Gantt — phases, bars, lookahead (gap 4.7-
   await expect(page.getByLabel(/Cost code/)).toBeVisible()
 })
 
+test('Program of Works runs the scheduling engine — critical path + predecessors (gap 4.7-P)', async ({
+  page,
+}) => {
+  await page.goto('/projects/PRJ-001/schedule')
+  // The engine reports the critical path in the sub-line.
+  await expect(page.getByText(/on critical path/)).toBeVisible()
+  // Seeded FS chain is critical; the SS-parallel drainage task carries float.
+  await expect(page.getByText('critical').first()).toBeVisible()
+  await expect(page.getByText(/\d+d float/).first()).toBeVisible()
+
+  // The task dialog exposes duration + a typed predecessors editor.
+  await page.getByRole('button', { name: '+ Task' }).click()
+  await expect(page.getByLabel('Duration (days)')).toBeVisible()
+  await expect(page.getByText('Predecessors', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '+ Add predecessor' }).click()
+  await expect(page.getByLabel('Predecessor 1 type')).toBeVisible()
+})
+
 test('project Defects + Schedule + Diary + RFIs + Selections + Timesheets tabs render', async ({
   page,
 }) => {

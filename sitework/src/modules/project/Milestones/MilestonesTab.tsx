@@ -1,24 +1,27 @@
 import { useMemo, useState } from 'react'
 import { Button, Dialog, Field, Input, Select, useConfirm, useToast } from '@/components/ui'
 import { formatDate } from '@/lib/formatDate'
+import { addWorkingDays, computeSchedule, durationWorkingDays } from '@/lib/schedule'
 import { useAppState, useDispatch } from '@/state/context'
 import { useProject } from '../useProject'
 import { CostCodeSelect } from '../CostCodeSelect'
 import { asId } from '@/types'
 import type {
   CostCodeId,
+  DependencyType,
   Milestone,
   MilestoneId,
   MilestoneStatus,
   ScheduleTask,
   ScheduleTaskId,
+  TaskDependency,
 } from '@/types'
 import { newId } from '@/lib/newId'
 
 const DAY_MS = 86_400_000
 const LOOKAHEAD_DAYS = 42
+const DEP_TYPES: DependencyType[] = ['FS', 'SS', 'FF', 'SF']
 
-/** Parse an ISO yyyy-mm-dd as local midnight (avoids UTC drift). */
 function parseISO(s: string): Date {
   return new Date(`${s}T00:00:00`)
 }
@@ -32,16 +35,17 @@ function statusColor(status: MilestoneStatus): string {
 }
 
 /**
- * Program of Works — the cost-code Gantt (Phase 4.7-O, bucket C, Direction A).
+ * Program of Works — the cost-code Gantt with a critical-path engine
+ * (Phase 4.7-O rows; 4.7-P scheduling engine).
  *
- * Rows are BOQ cost codes placed on a timeline via `ScheduleTask` records, so
- * the programme is deliberate: a code appears once it's been given dates.
- * Tasks group into phase bands; milestones ride above as diamonds; a today
- * marker tracks the current date when it falls inside the window. The
- * "lookahead" toggle is the second view (next six weeks).
+ * Rows are BOQ cost codes placed on a timeline via `ScheduleTask` records. The
+ * pure engine (`@/lib/schedule`) resolves typed dependencies (FS/SS/FF/SF +
+ * lag) over a working-day calendar, so a task's bar is positioned by its
+ * COMPUTED dates — shift a predecessor and its successors cascade. Critical-
+ * path tasks (zero float) are ringed; each row shows its slack. A dependency
+ * cycle is caught and surfaced rather than mis-drawn.
  *
- * Ships dependency-free — `ScheduleTask.deps` is reserved for the later
- * critical-path pass.
+ * Dependency arrows + the editable split-grid land in the next tier (4.7-Q).
  */
 export function MilestonesTab() {
   const project = useProject()
@@ -63,7 +67,12 @@ export function MilestonesTab() {
     [state.milestones, pid],
   )
 
-  // ── Window ────────────────────────────────────────────────────────────
+  // Run the scheduling engine — computed dates drive the chart.
+  const sched = useMemo(() => computeSchedule(tasks), [tasks])
+  const startOf = (t: ScheduleTask) => sched.tasks.get(t.id as string)?.start ?? t.start
+  const endOf = (t: ScheduleTask) => sched.tasks.get(t.id as string)?.end ?? t.end
+
+  // ── Window (uses computed dates) ────────────────────────────────────────
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const win = useMemo(() => {
@@ -71,12 +80,14 @@ export function MilestonesTab() {
       return { start: today.getTime(), end: today.getTime() + LOOKAHEAD_DAYS * DAY_MS }
     }
     const stamps: number[] = []
-    for (const t of tasks) stamps.push(parseISO(t.start).getTime(), parseISO(t.end).getTime())
+    for (const t of tasks) {
+      stamps.push(parseISO(startOf(t)).getTime(), parseISO(endOf(t)).getTime())
+    }
     for (const m of milestones) stamps.push(parseISO(m.date).getTime())
     if (stamps.length === 0) return null
     return { start: Math.min(...stamps) - 3 * DAY_MS, end: Math.max(...stamps) + 3 * DAY_MS }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, milestones, view])
+  }, [tasks, milestones, view, sched])
 
   if (!project) return null
 
@@ -84,10 +95,10 @@ export function MilestonesTab() {
   const pct = (ms: number) => ((ms - (win?.start ?? 0)) / span) * 100
   const clamp = (n: number) => Math.max(0, Math.min(100, n))
 
-  // Tasks/milestones visible in the current window.
   const shownTasks = win
     ? tasks.filter(
-        (t) => parseISO(t.end).getTime() >= win.start && parseISO(t.start).getTime() <= win.end,
+        (t) =>
+          parseISO(endOf(t)).getTime() >= win.start && parseISO(startOf(t)).getTime() <= win.end,
       )
     : []
   const shownMilestones = win
@@ -97,14 +108,12 @@ export function MilestonesTab() {
       })
     : []
 
-  // Phase bands, in first-appearance order.
   const phases: string[] = []
   for (const t of shownTasks) {
     const p = t.phase?.trim() || 'Unphased'
     if (!phases.includes(p)) phases.push(p)
   }
 
-  // Month ticks across the window.
   const ticks: Array<{ left: number; label: string }> = []
   if (win) {
     const cur = new Date(win.start)
@@ -123,6 +132,7 @@ export function MilestonesTab() {
 
   const todayInWindow = !!win && today.getTime() >= win.start && today.getTime() <= win.end
   const complete = tasks.filter((t) => t.status === 'complete').length
+  const criticalCount = [...sched.tasks.values()].filter((s) => s.critical).length
 
   async function deleteTask(t: ScheduleTask) {
     if (!project) return
@@ -146,7 +156,8 @@ export function MilestonesTab() {
           </h2>
           <div className="text-[13px] text-sw-dim">
             {tasks.length} task{tasks.length !== 1 ? 's' : ''} · {complete} complete ·{' '}
-            {milestones.length} milestone{milestones.length !== 1 ? 's' : ''}
+            {criticalCount} on critical path · {milestones.length} milestone
+            {milestones.length !== 1 ? 's' : ''}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -176,6 +187,14 @@ export function MilestonesTab() {
           </Button>
         </div>
       </header>
+
+      {sched.cycle.length > 0 && (
+        <div className="mb-4 rounded-[1px] border border-sw-neg bg-sw-neg-bg px-4 py-2.5 text-[12px] text-sw-neg">
+          A dependency loop was found between {sched.cycle.length} tasks — the programme can't be
+          scheduled until it's broken. Bars fall back to their saved dates and the critical path is
+          paused.
+        </div>
+      )}
 
       {!win || shownTasks.length + shownMilestones.length === 0 ? (
         <div className="border-y border-sw-rule py-14 text-center text-[13px] text-sw-faint">
@@ -244,11 +263,14 @@ export function MilestonesTab() {
                 .filter((t) => (t.phase?.trim() || 'Unphased') === phase)
                 .map((t) => {
                   const code = project.codes.find((c) => c.id === t.ccId)
-                  const s = parseISO(t.start).getTime()
-                  const e = parseISO(t.end).getTime()
+                  const st = sched.tasks.get(t.id as string)
+                  const s = parseISO(startOf(t)).getTime()
+                  const e = parseISO(endOf(t)).getTime()
                   const left = clamp(pct(s))
                   const width = Math.max(clamp(pct(e)) - left, 0.8)
-                  const days = Math.max(Math.round((e - s) / DAY_MS) + 1, 1)
+                  const dur = st?.duration ?? durationWorkingDays(t)
+                  const critical = st?.critical ?? false
+                  const float = st?.totalFloat ?? 0
                   return (
                     <div
                       key={t.id as string}
@@ -266,7 +288,13 @@ export function MilestonesTab() {
                           <span className="font-mono text-[10px] text-sw-faint">
                             {code ? code.code : '—'}
                           </span>
-                          <span className="text-[10px] text-sw-faint">{days}d</span>
+                          <span className="text-[10px] text-sw-faint">{dur}d</span>
+                          <span
+                            className="text-[10px]"
+                            style={{ color: critical ? 'var(--sw-neg)' : 'var(--sw-faint)' }}
+                          >
+                            {critical ? 'critical' : `${float}d float`}
+                          </span>
                           <button
                             type="button"
                             onClick={() => deleteTask(t)}
@@ -279,12 +307,13 @@ export function MilestonesTab() {
                       </div>
                       <div className="relative h-9 flex-1">
                         <div
-                          title={`${formatDate(t.start)} → ${formatDate(t.end)}`}
+                          title={`${formatDate(startOf(t))} → ${formatDate(endOf(t))}${critical ? ' · critical path' : ` · ${float}d float`}`}
                           className="absolute top-1/2 h-[10px] -translate-y-1/2 rounded-[1px]"
                           style={{
                             left: `${left}%`,
                             width: `${width}%`,
                             background: statusColor(t.status),
+                            boxShadow: critical ? '0 0 0 1.5px var(--sw-neg)' : undefined,
                           }}
                         />
                       </div>
@@ -331,13 +360,15 @@ export function MilestonesTab() {
         ))}
         <span className="flex items-center gap-1.5">
           <span
+            className="inline-block h-[8px] w-[14px] rounded-[1px]"
+            style={{ boxShadow: 'inset 0 0 0 1.5px var(--sw-neg)' }}
+          />
+          Critical path
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span
             className="inline-block"
-            style={{
-              width: 8,
-              height: 8,
-              background: 'var(--sw-dim)',
-              transform: 'rotate(45deg)',
-            }}
+            style={{ width: 8, height: 8, background: 'var(--sw-dim)', transform: 'rotate(45deg)' }}
           />
           Milestone
         </span>
@@ -355,18 +386,23 @@ export function MilestonesTab() {
   )
 }
 
-/** Add/edit a programme task — places a cost code on the timeline. */
+/** Add/edit a programme task — cost code, duration, status, and predecessors. */
 function TaskForm({ onClose, initial }: { onClose: () => void; initial?: ScheduleTask }) {
   const project = useProject()
+  const state = useAppState()
   const dispatch = useDispatch()
   const today = new Date().toISOString().slice(0, 10)
+  const allTasks = project ? (state.scheduleTasks[project.id as string] ?? []) : []
+  const others = allTasks.filter((t) => t.id !== initial?.id)
+
   const [form, setForm] = useState(() => ({
     ccId: (initial?.ccId ?? project?.codes[0]?.id ?? '') as string,
     name: initial?.name ?? '',
     start: initial?.start ?? today,
-    end: initial?.end ?? today,
+    durationDays: initial ? durationWorkingDays(initial) : 5,
     status: initial?.status ?? ('upcoming' as MilestoneStatus),
     phase: initial?.phase ?? '',
+    deps: (initial?.deps ?? []) as TaskDependency[],
     notes: initial?.notes ?? '',
   }))
   const [attempted, setAttempted] = useState(false)
@@ -374,24 +410,42 @@ function TaskForm({ onClose, initial }: { onClose: () => void; initial?: Schedul
   if (!project) return null
 
   const codeMissing = !form.ccId
-  const datesBad = !!form.start && !!form.end && form.end < form.start
+  const durBad = !form.durationDays || form.durationDays < 1
   const selectedCode = project.codes.find((c) => (c.id as string) === form.ccId)
+
+  const taskName = (id: string) => others.find((t) => (t.id as string) === id)?.name ?? id
+  const addDep = () => {
+    const firstFree = others.find(
+      (t) => !form.deps.some((d) => (d.id as string) === (t.id as string)),
+    )
+    if (!firstFree) return
+    setForm({
+      ...form,
+      deps: [...form.deps, { id: firstFree.id, type: 'FS', lag: 0 }],
+    })
+  }
+  const patchDep = (i: number, patch: Partial<TaskDependency>) =>
+    setForm({ ...form, deps: form.deps.map((d, idx) => (idx === i ? { ...d, ...patch } : d)) })
+  const removeDep = (i: number) =>
+    setForm({ ...form, deps: form.deps.filter((_, idx) => idx !== i) })
 
   function save() {
     if (!project) return
-    if (codeMissing || datesBad) {
+    if (codeMissing || durBad) {
       setAttempted(true)
       return
     }
-    // Blank name falls back to the cost code's description.
     const name = form.name.trim() || selectedCode?.desc || 'Task'
+    const end = addWorkingDays(form.start, form.durationDays - 1)
     const payload = {
       ccId: form.ccId as CostCodeId,
       name,
       start: form.start,
-      end: form.end,
+      end,
+      durationDays: form.durationDays,
       status: form.status,
       phase: form.phase.trim() || undefined,
+      deps: form.deps.length ? form.deps : undefined,
       notes: form.notes.trim() || undefined,
     }
     if (isEdit && initial) {
@@ -416,6 +470,7 @@ function TaskForm({ onClose, initial }: { onClose: () => void; initial?: Schedul
       open
       onClose={onClose}
       title={isEdit ? 'Edit Task' : 'Add Task'}
+      widthClass="max-w-lg"
       footer={<Button onClick={save}>Save Task</Button>}
     >
       <Field label="Cost code" required error={attempted && codeMissing ? 'Required' : undefined}>
@@ -434,24 +489,25 @@ function TaskForm({ onClose, initial }: { onClose: () => void; initial?: Schedul
           placeholder={selectedCode?.desc ?? 'e.g. Framing — carpentry'}
         />
       </Field>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Start">
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="Start" hint="Earliest — predecessors may push it.">
           <Input
             type="date"
             value={form.start}
             onChange={(e) => setForm({ ...form, start: e.target.value })}
           />
         </Field>
-        <Field label="Finish" error={attempted && datesBad ? 'Finish is before start' : undefined}>
+        <Field label="Duration (days)" error={attempted && durBad ? 'Min 1' : undefined}>
           <Input
-            type="date"
-            value={form.end}
-            onChange={(e) => setForm({ ...form, end: e.target.value })}
-            invalid={attempted && datesBad}
+            type="number"
+            min={1}
+            value={form.durationDays}
+            onChange={(e) =>
+              setForm({ ...form, durationDays: Math.round(Number(e.target.value) || 0) })
+            }
+            invalid={attempted && durBad}
           />
         </Field>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
         <Field label="Status">
           <Select
             value={form.status}
@@ -463,14 +519,85 @@ function TaskForm({ onClose, initial }: { onClose: () => void; initial?: Schedul
             <option value="delayed">Delayed</option>
           </Select>
         </Field>
-        <Field label="Phase" hint="Groups rows, e.g. Lockup.">
-          <Input
-            value={form.phase}
-            onChange={(e) => setForm({ ...form, phase: e.target.value })}
-            placeholder="e.g. Frame"
-          />
-        </Field>
       </div>
+      <Field label="Phase" hint="Groups rows, e.g. Lockup.">
+        <Input
+          value={form.phase}
+          onChange={(e) => setForm({ ...form, phase: e.target.value })}
+          placeholder="e.g. Frame"
+        />
+      </Field>
+
+      {/* Predecessors */}
+      <div className="mt-1">
+        <div className="mb-1.5 flex items-center justify-between">
+          <span className="text-[11px] font-medium text-sw-muted">Predecessors</span>
+          <button
+            type="button"
+            onClick={addDep}
+            disabled={others.length === 0 || form.deps.length >= others.length}
+            className="cursor-pointer text-[11px] font-medium text-sw-violet hover:underline disabled:cursor-default disabled:text-sw-faint disabled:no-underline"
+          >
+            + Add predecessor
+          </button>
+        </div>
+        {others.length === 0 ? (
+          <p className="text-[11px] text-sw-faint">Add more tasks to link predecessors.</p>
+        ) : form.deps.length === 0 ? (
+          <p className="text-[11px] text-sw-faint">
+            No predecessors — this task starts on its own date.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {form.deps.map((d, i) => (
+              <div key={i} className="grid grid-cols-[1fr_64px_64px_24px] items-center gap-2">
+                <Select
+                  aria-label={`Predecessor ${i + 1} task`}
+                  value={d.id as string}
+                  onChange={(e) => patchDep(i, { id: asId<ScheduleTaskId>(e.target.value) })}
+                >
+                  {others.map((t) => (
+                    <option key={t.id as string} value={t.id as string}>
+                      {taskName(t.id as string)}
+                    </option>
+                  ))}
+                </Select>
+                <Select
+                  aria-label={`Predecessor ${i + 1} type`}
+                  value={d.type}
+                  onChange={(e) => patchDep(i, { type: e.target.value as DependencyType })}
+                >
+                  {DEP_TYPES.map((tp) => (
+                    <option key={tp} value={tp}>
+                      {tp}
+                    </option>
+                  ))}
+                </Select>
+                <Input
+                  type="number"
+                  aria-label={`Predecessor ${i + 1} lag`}
+                  value={d.lag}
+                  onChange={(e) => patchDep(i, { lag: Math.round(Number(e.target.value) || 0) })}
+                  title="Lead/lag in working days"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeDep(i)}
+                  aria-label={`Remove predecessor ${i + 1}`}
+                  className="text-[13px] text-sw-danger"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            <p className="text-[10px] text-sw-faint">
+              Type: FS finish→start · SS start→start · FF finish→finish · SF start→finish. Lag is in
+              working days (negative = lead).
+            </p>
+          </div>
+        )}
+      </div>
+
       <Field label="Notes">
         <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
       </Field>
