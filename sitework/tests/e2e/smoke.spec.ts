@@ -314,11 +314,40 @@ test('project Calendar tab aggregates milestones + sub expiries', async ({ page 
   await expect(page.getByText('DA Approval')).toBeVisible()
 })
 
-test('project Open Book tab renders read-only summary', async ({ page }) => {
+test('project Open Book renders the full cost-transparency report (gap 4.7-N)', async ({
+  page,
+}) => {
   await page.goto('/projects/PRJ-001/openbook')
   await expect(page.getByText('OPEN-BOOK REPORT', { exact: true })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Contract & Cost Summary' })).toBeVisible()
   await expect(page.getByRole('button', { name: /Print/ })).toBeVisible()
+
+  // Every designed section is present.
+  for (const section of [
+    'Contract & Cost Summary',
+    'Cost Breakdown by Code',
+    'Variations Register',
+    'Progress Claims',
+    'Prime Cost & Provisional Sum Reconciliation',
+    'Retention & Defects Liability',
+  ]) {
+    await expect(page.getByRole('heading', { name: section })).toBeVisible()
+  }
+
+  // The audit trail: invoices listed inline under their cost code.
+  const breakdown = page
+    .locator('section')
+    .filter({ has: page.getByRole('heading', { name: 'Cost Breakdown by Code' }) })
+  await expect(breakdown.getByText('Certis Building Certifiers').first()).toBeVisible()
+
+  // PC & PS reconciliation carries the R0 margin-on-excess maths.
+  const pcps = page
+    .locator('section')
+    .filter({ has: page.getByRole('heading', { name: /Prime Cost & Provisional/ }) })
+  await expect(pcps.getByRole('cell', { name: 'PC · Tapware allowance' })).toBeVisible()
+  await expect(pcps.getByRole('cell', { name: '+$1,800' })).toBeVisible()
+
+  // Retention section carries the DLP window.
+  await expect(page.getByText('End of DLP', { exact: true })).toBeVisible()
 })
 
 test('project Cash Flow tab renders monthly forecast', async ({ page }) => {
