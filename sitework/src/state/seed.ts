@@ -2056,6 +2056,7 @@ const RAW = {
         end: '2025-09-20',
         status: 'complete',
         phase: 'Site & Sub-structure',
+        deps: [{ id: 'ST-001', type: 'FS', lag: 0 }],
       },
       {
         id: 'ST-003',
@@ -2065,6 +2066,7 @@ const RAW = {
         end: '2025-09-25',
         status: 'complete',
         phase: 'Site & Sub-structure',
+        deps: [{ id: 'ST-002', type: 'SS', lag: 2 }],
       },
       {
         id: 'ST-004',
@@ -2074,6 +2076,7 @@ const RAW = {
         end: '2025-09-30',
         status: 'complete',
         phase: 'Frame',
+        deps: [{ id: 'ST-002', type: 'FS', lag: 0 }],
       },
       {
         id: 'ST-005',
@@ -2083,6 +2086,7 @@ const RAW = {
         end: '2025-10-15',
         status: 'complete',
         phase: 'Frame',
+        deps: [{ id: 'ST-004', type: 'FS', lag: 0 }],
       },
       {
         id: 'ST-006',
@@ -2092,6 +2096,7 @@ const RAW = {
         end: '2025-10-30',
         status: 'complete',
         phase: 'Lockup',
+        deps: [{ id: 'ST-005', type: 'FS', lag: 0 }],
       },
       {
         id: 'ST-007',
@@ -2101,6 +2106,7 @@ const RAW = {
         end: '2025-11-10',
         status: 'complete',
         phase: 'Lockup',
+        deps: [{ id: 'ST-006', type: 'FS', lag: 0 }],
       },
       {
         id: 'ST-008',
@@ -2110,6 +2116,7 @@ const RAW = {
         end: '2025-12-05',
         status: 'in-progress',
         phase: 'Fix & Services',
+        deps: [{ id: 'ST-007', type: 'FS', lag: 0 }],
       },
     ],
   },

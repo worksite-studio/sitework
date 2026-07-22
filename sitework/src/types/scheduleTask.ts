@@ -2,6 +2,23 @@ import type { CostCodeId, ScheduleTaskId } from './ids'
 import type { MilestoneStatus } from './enums'
 
 /**
+ * Precedence relationship between two tasks (4.7-P scheduling engine):
+ *  - FS finish-to-start  — successor starts after predecessor finishes (default)
+ *  - SS start-to-start    — successor starts after predecessor starts
+ *  - FF finish-to-finish  — successor finishes after predecessor finishes
+ *  - SF start-to-finish   — successor finishes after predecessor starts (rare)
+ */
+export type DependencyType = 'FS' | 'SS' | 'FF' | 'SF'
+
+/** A predecessor link with lead/lag, measured in WORKING days (may be negative for a lead). */
+export interface TaskDependency {
+  /** The predecessor task. */
+  id: ScheduleTaskId
+  type: DependencyType
+  lag: number
+}
+
+/**
  * Programme-of-works task — per-project-keyed: `state.scheduleTasks[projectId]`.
  *
  * Phase 4.7-O. The Gantt's rows are BOQ cost codes placed on a timeline, but
@@ -22,14 +39,22 @@ export interface ScheduleTask {
   ccId: CostCodeId
   /** Defaults to the cost code's description when left blank. */
   name: string
-  /** ISO date (yyyy-mm-dd) the task starts. */
+  /**
+   * ISO date (yyyy-mm-dd) the task starts. Acts as a "start no earlier than"
+   * anchor — the scheduling engine (4.7-P) may push a dependent task later, and
+   * the Gantt renders the engine's computed dates.
+   */
   start: string
-  /** ISO date (yyyy-mm-dd) the task ends — inclusive. */
+  /** ISO date (yyyy-mm-dd) the task ends — inclusive. Snapshot of the last save;
+   *  the engine derives the displayed end from `durationDays` + predecessors. */
   end: string
+  /** Duration in WORKING days. Optional for back-compat — derived from
+   *  start/end when absent (4.7-P). */
+  durationDays?: number
   status: MilestoneStatus
   /** Optional grouping band, e.g. "Site & Sub-structure", "Lockup". */
   phase?: string
   notes?: string
-  /** Reserved — predecessor task ids for the later critical-path pass. */
-  deps?: ScheduleTaskId[]
+  /** Predecessor links (4.7-P) — typed, with lead/lag in working days. */
+  deps?: TaskDependency[]
 }
