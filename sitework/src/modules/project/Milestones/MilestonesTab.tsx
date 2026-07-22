@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Dialog, Field, Input, Select, useConfirm, useToast } from '@/components/ui'
 import { formatDate } from '@/lib/formatDate'
 import { addWorkingDays, computeSchedule, durationWorkingDays } from '@/lib/schedule'
@@ -21,6 +21,9 @@ import { newId } from '@/lib/newId'
 const DAY_MS = 86_400_000
 const LOOKAHEAD_DAYS = 42
 const DEP_TYPES: DependencyType[] = ['FS', 'SS', 'FF', 'SF']
+const LABEL_W = 240
+const PHASE_ROW_H = 28
+const TASK_ROW_H = 44
 
 function parseISO(s: string): Date {
   return new Date(`${s}T00:00:00`)
@@ -71,6 +74,19 @@ export function MilestonesTab() {
   const sched = useMemo(() => computeSchedule(tasks), [tasks])
   const startOf = (t: ScheduleTask) => sched.tasks.get(t.id as string)?.start ?? t.start
   const endOf = (t: ScheduleTask) => sched.tasks.get(t.id as string)?.end ?? t.end
+
+  // Measured chart width — the dependency-arrow overlay needs pixel coords.
+  const rowsRef = useRef<HTMLDivElement>(null)
+  const [chartW, setChartW] = useState(0)
+  useEffect(() => {
+    const el = rowsRef.current
+    if (!el) return
+    const update = () => setChartW(el.clientWidth)
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  })
 
   // ── Window (uses computed dates) ────────────────────────────────────────
   const today = new Date()
@@ -145,6 +161,75 @@ export function MilestonesTab() {
     if (!ok) return
     dispatch({ type: 'DELETE_SCHEDULE_TASK', projectId: project.id, taskId: t.id })
     toast('Task removed from programme', 'success')
+  }
+
+  // Flatten phase bands + task rows into a deterministic-height list so the
+  // dependency-arrow overlay can find each bar's centre (4.7-Q1).
+  type FlatRow =
+    | { kind: 'phase'; key: string; label: string }
+    | { kind: 'task'; key: string; task: ScheduleTask }
+  const flatRows: FlatRow[] = []
+  const taskPos = new Map<
+    string,
+    { centerY: number; startPct: number; endPct: number; critical: boolean }
+  >()
+  let rowsHeight = 0
+  for (const phase of phases) {
+    flatRows.push({ kind: 'phase', key: `p:${phase}`, label: phase })
+    rowsHeight += PHASE_ROW_H
+    for (const t of shownTasks.filter((t) => (t.phase?.trim() || 'Unphased') === phase)) {
+      taskPos.set(t.id as string, {
+        centerY: rowsHeight + TASK_ROW_H / 2,
+        startPct: clamp(pct(parseISO(startOf(t)).getTime())),
+        endPct: clamp(pct(parseISO(endOf(t)).getTime())),
+        critical: sched.tasks.get(t.id as string)?.critical ?? false,
+      })
+      flatRows.push({ kind: 'task', key: t.id as string, task: t })
+      rowsHeight += TASK_ROW_H
+    }
+  }
+
+  // Dependency connectors — orthogonal elbows from the predecessor edge implied
+  // by the link type to the successor edge.
+  const timelineW = Math.max(chartW - LABEL_W, 0)
+  const xOf = (p: number) => LABEL_W + (p / 100) * timelineW
+  const arrows: Array<{ key: string; d: string; critical: boolean }> = []
+  if (chartW > 0) {
+    for (const succ of shownTasks) {
+      const sp = taskPos.get(succ.id as string)
+      if (!sp) continue
+      for (const d of succ.deps ?? []) {
+        const pp = taskPos.get(d.id as string)
+        if (!pp) continue
+        let sPct: number
+        let tPct: number
+        switch (d.type) {
+          case 'SS':
+            sPct = pp.startPct
+            tPct = sp.startPct
+            break
+          case 'FF':
+            sPct = pp.endPct
+            tPct = sp.endPct
+            break
+          case 'SF':
+            sPct = pp.startPct
+            tPct = sp.endPct
+            break
+          default:
+            sPct = pp.endPct
+            tPct = sp.startPct
+        }
+        const x1 = xOf(sPct)
+        const x2 = xOf(tPct)
+        const outX = x1 + (x2 >= x1 ? 8 : -8)
+        arrows.push({
+          key: `${d.id}->${succ.id as string}`,
+          d: `M ${x1} ${pp.centerY} H ${outX} V ${sp.centerY} H ${x2}`,
+          critical: pp.critical && sp.critical,
+        })
+      }
+    }
   }
 
   return (
@@ -250,78 +335,131 @@ export function MilestonesTab() {
             </div>
           )}
 
-          {/* Phase bands + task bars */}
-          {phases.map((phase) => (
-            <div key={phase}>
-              <div className="flex bg-sw-bg">
-                <div className="w-[240px] shrink-0 py-1.5 pr-4 text-[9px] font-bold uppercase tracking-[0.1em] text-sw-dim">
-                  {phase}
-                </div>
-                <div className="flex-1" />
-              </div>
-              {shownTasks
-                .filter((t) => (t.phase?.trim() || 'Unphased') === phase)
-                .map((t) => {
-                  const code = project.codes.find((c) => c.id === t.ccId)
-                  const st = sched.tasks.get(t.id as string)
-                  const s = parseISO(startOf(t)).getTime()
-                  const e = parseISO(endOf(t)).getTime()
-                  const left = clamp(pct(s))
-                  const width = Math.max(clamp(pct(e)) - left, 0.8)
-                  const dur = st?.duration ?? durationWorkingDays(t)
-                  const critical = st?.critical ?? false
-                  const float = st?.totalFloat ?? 0
-                  return (
+          {/* Flattened phase bands + task bars, with the dependency-arrow overlay */}
+          <div ref={rowsRef} className="relative" style={{ height: rowsHeight }}>
+            {arrows.length > 0 && (
+              <svg
+                className="pointer-events-none absolute inset-0 z-10"
+                width={chartW}
+                height={rowsHeight}
+                aria-hidden="true"
+              >
+                <defs>
+                  <marker
+                    id="pw-arrow"
+                    markerWidth="7"
+                    markerHeight="7"
+                    refX="5.5"
+                    refY="3"
+                    orient="auto"
+                    markerUnits="userSpaceOnUse"
+                  >
+                    <path d="M0,0 L6,3 L0,6 z" fill="var(--sw-faint)" />
+                  </marker>
+                  <marker
+                    id="pw-arrow-crit"
+                    markerWidth="7"
+                    markerHeight="7"
+                    refX="5.5"
+                    refY="3"
+                    orient="auto"
+                    markerUnits="userSpaceOnUse"
+                  >
+                    <path d="M0,0 L6,3 L0,6 z" fill="var(--sw-neg)" />
+                  </marker>
+                </defs>
+                {arrows.map((a) => (
+                  <path
+                    key={a.key}
+                    d={a.d}
+                    fill="none"
+                    stroke={a.critical ? 'var(--sw-neg)' : 'var(--sw-faint)'}
+                    strokeWidth={a.critical ? 1.5 : 1.25}
+                    markerEnd={`url(#${a.critical ? 'pw-arrow-crit' : 'pw-arrow'})`}
+                  />
+                ))}
+              </svg>
+            )}
+
+            {flatRows.map((row) => {
+              if (row.kind === 'phase') {
+                return (
+                  <div
+                    key={row.key}
+                    className="flex items-center bg-sw-bg"
+                    style={{ height: PHASE_ROW_H }}
+                  >
                     <div
-                      key={t.id as string}
-                      className="group flex items-center border-b border-sw-rule-l hover:bg-sw-muted/5"
+                      className="shrink-0 pr-4 text-[9px] font-bold uppercase tracking-[0.1em] text-sw-dim"
+                      style={{ width: LABEL_W }}
                     >
-                      <div className="w-[240px] shrink-0 py-2.5 pr-4">
-                        <button
-                          type="button"
-                          onClick={() => setTaskModal({ task: t })}
-                          className="block cursor-pointer text-left text-[12px] font-semibold text-sw-ink hover:underline"
-                        >
-                          {t.name}
-                        </button>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-[10px] text-sw-faint">
-                            {code ? code.code : '—'}
-                          </span>
-                          <span className="text-[10px] text-sw-faint">{dur}d</span>
-                          <span
-                            className="text-[10px]"
-                            style={{ color: critical ? 'var(--sw-neg)' : 'var(--sw-faint)' }}
-                          >
-                            {critical ? 'critical' : `${float}d float`}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => deleteTask(t)}
-                            aria-label={`Remove ${t.name}`}
-                            className="text-[11px] text-sw-danger opacity-0 transition group-hover:opacity-100"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      </div>
-                      <div className="relative h-9 flex-1">
-                        <div
-                          title={`${formatDate(startOf(t))} → ${formatDate(endOf(t))}${critical ? ' · critical path' : ` · ${float}d float`}`}
-                          className="absolute top-1/2 h-[10px] -translate-y-1/2 rounded-[1px]"
-                          style={{
-                            left: `${left}%`,
-                            width: `${width}%`,
-                            background: statusColor(t.status),
-                            boxShadow: critical ? '0 0 0 1.5px var(--sw-neg)' : undefined,
-                          }}
-                        />
-                      </div>
+                      {row.label}
                     </div>
-                  )
-                })}
-            </div>
-          ))}
+                  </div>
+                )
+              }
+              const t = row.task
+              const code = project.codes.find((c) => c.id === t.ccId)
+              const st = sched.tasks.get(t.id as string)
+              const left = clamp(pct(parseISO(startOf(t)).getTime()))
+              const width = Math.max(clamp(pct(parseISO(endOf(t)).getTime())) - left, 0.8)
+              const dur = st?.duration ?? durationWorkingDays(t)
+              const critical = st?.critical ?? false
+              const float = st?.totalFloat ?? 0
+              return (
+                <div
+                  key={row.key}
+                  className="group flex items-center border-b border-sw-rule-l hover:bg-sw-muted/5"
+                  style={{ height: TASK_ROW_H }}
+                >
+                  <div
+                    className="flex h-full shrink-0 flex-col justify-center pr-4"
+                    style={{ width: LABEL_W }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setTaskModal({ task: t })}
+                      className="block truncate text-left text-[12px] font-semibold text-sw-ink hover:underline"
+                    >
+                      {t.name}
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] text-sw-faint">
+                        {code ? code.code : '—'}
+                      </span>
+                      <span className="text-[10px] text-sw-faint">{dur}d</span>
+                      <span
+                        className="text-[10px]"
+                        style={{ color: critical ? 'var(--sw-neg)' : 'var(--sw-faint)' }}
+                      >
+                        {critical ? 'critical' : `${float}d float`}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => deleteTask(t)}
+                        aria-label={`Remove ${t.name}`}
+                        className="text-[11px] text-sw-danger opacity-0 transition group-hover:opacity-100"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                  <div className="relative h-full flex-1">
+                    <div
+                      title={`${formatDate(startOf(t))} → ${formatDate(endOf(t))}${critical ? ' · critical path' : ` · ${float}d float`}`}
+                      className="absolute top-1/2 h-[10px] -translate-y-1/2 rounded-[1px]"
+                      style={{
+                        left: `${left}%`,
+                        width: `${width}%`,
+                        background: statusColor(t.status),
+                        boxShadow: critical ? '0 0 0 1.5px var(--sw-neg)' : undefined,
+                      }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
 
           {/* Today marker */}
           {todayInWindow && (

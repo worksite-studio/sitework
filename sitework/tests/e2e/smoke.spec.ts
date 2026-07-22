@@ -336,6 +336,15 @@ test('Program of Works runs the scheduling engine — critical path + predecesso
   await expect(page.getByLabel('Predecessor 1 type')).toBeVisible()
 })
 
+test('Gantt draws dependency arrows between linked tasks (gap 4.7-Q1)', async ({ page }) => {
+  await page.goto('/projects/PRJ-001/schedule')
+  const svg = page.locator('svg[aria-hidden="true"]')
+  // One connector per seeded dependency (FS chain + the SS-parallel drainage).
+  await expect(svg.locator('path[marker-end]')).toHaveCount(7)
+  // The FS chain is critical, so those connectors use the critical marker.
+  await expect(svg.locator('path[marker-end="url(#pw-arrow-crit)"]')).toHaveCount(6)
+})
+
 test('project Defects + Schedule + Diary + RFIs + Selections + Timesheets tabs render', async ({
   page,
 }) => {
