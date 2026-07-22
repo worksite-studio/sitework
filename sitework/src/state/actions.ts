@@ -32,6 +32,8 @@ import type {
   MaterialId,
   Milestone,
   MilestoneId,
+  ScheduleTask,
+  ScheduleTaskId,
   PrimeCostItem,
   PrimeCostItemId,
   ProgressClaim,
@@ -257,6 +259,25 @@ export type UpdateMilestoneAction = {
   patch: Partial<Milestone>
 }
 
+// ─── Programme of works (4.7-O) ──────────────────────────────────────────
+
+export type AddScheduleTaskAction = {
+  type: 'ADD_SCHEDULE_TASK'
+  projectId: ProjectId
+  task: ScheduleTask
+}
+export type UpdateScheduleTaskAction = {
+  type: 'UPDATE_SCHEDULE_TASK'
+  projectId: ProjectId
+  taskId: ScheduleTaskId
+  patch: Partial<ScheduleTask>
+}
+export type DeleteScheduleTaskAction = {
+  type: 'DELETE_SCHEDULE_TASK'
+  projectId: ProjectId
+  taskId: ScheduleTaskId
+}
+
 // ─── RFIs (new in Phase 4) ───────────────────────────────────────────────
 
 export type AddRfiAction = { type: 'ADD_RFI'; projectId: ProjectId; rfi: Rfi }
@@ -386,6 +407,9 @@ export type Action =
   | DeleteTimesheetAction
   | AddMilestoneAction
   | UpdateMilestoneAction
+  | AddScheduleTaskAction
+  | UpdateScheduleTaskAction
+  | DeleteScheduleTaskAction
   | AddRfiAction
   | UpdateRfiAction
   | AddSubAction

@@ -291,12 +291,39 @@ test('retention is optional — turning it off zeroes claim retention (gap 4.7-I
   await expect(page.getByRole('row', { name: /PRJ-001-C1/ }).getByText('—')).toBeVisible()
 })
 
+test('Schedule is a Program of Works Gantt — phases, bars, lookahead (gap 4.7-O)', async ({
+  page,
+}) => {
+  await page.goto('/projects/PRJ-001/schedule')
+  await expect(page.getByRole('heading', { name: 'Program of Works' })).toBeVisible()
+
+  // Seeded programme: phase bands + cost-code task rows.
+  await expect(page.getByText('Site & Sub-structure', { exact: true })).toBeVisible()
+  await expect(page.getByText('Lockup', { exact: true })).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Excavation & site establishment', exact: true }),
+  ).toBeVisible()
+
+  // Lookahead is the second view; the seeded programme is historical.
+  await page.getByRole('button', { name: '6-week lookahead' }).click()
+  await expect(page.getByText(/No programme activity in the next six weeks/)).toBeVisible()
+  await page.getByRole('button', { name: 'Full programme' }).click()
+  await expect(
+    page.getByRole('button', { name: 'Excavation & site establishment', exact: true }),
+  ).toBeVisible()
+
+  // A task places a cost code on the timeline.
+  await page.getByRole('button', { name: '+ Task' }).click()
+  await expect(page.getByRole('heading', { name: 'Add Task' })).toBeVisible()
+  await expect(page.getByLabel(/Cost code/)).toBeVisible()
+})
+
 test('project Defects + Schedule + Diary + RFIs + Selections + Timesheets tabs render', async ({
   page,
 }) => {
   for (const [path, heading] of [
     ['defects', 'Retention & FFC'],
-    ['schedule', 'Schedule'],
+    ['schedule', 'Program of Works'],
     ['diary', 'Site Diary'],
     ['rfis', 'RFI Register'],
     ['selections', 'Client Selections'],
