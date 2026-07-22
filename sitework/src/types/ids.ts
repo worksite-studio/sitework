@@ -24,6 +24,7 @@ export type InvoiceId = Brand<string, 'InvoiceId'>
 export type PurchaseId = Brand<string, 'PurchaseId'>
 export type ProgressClaimId = Brand<string, 'ProgressClaimId'>
 export type MilestoneId = Brand<string, 'MilestoneId'>
+export type ScheduleTaskId = Brand<string, 'ScheduleTaskId'>
 export type DiaryEntryId = Brand<string, 'DiaryEntryId'>
 export type SelectionId = Brand<string, 'SelectionId'>
 export type TimesheetId = Brand<string, 'TimesheetId'>

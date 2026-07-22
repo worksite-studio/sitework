@@ -12,6 +12,7 @@ const minimalSeed = (): RootState => ({
   suppliers: [],
   templates: [],
   milestones: {},
+  scheduleTasks: {},
   diary: {},
   timesheets: {},
   defects: {},

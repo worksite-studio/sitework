@@ -18,6 +18,7 @@ import type {
   Material,
   MaterialId,
   Milestone,
+  ScheduleTask,
   PrimeCostItem,
   ProgressClaim,
   Project,
@@ -79,6 +80,7 @@ function emptyState(overrides: Partial<RootState> = {}): RootState {
     suppliers: [],
     templates: [],
     milestones: {},
+    scheduleTasks: {},
     diary: {},
     timesheets: {},
     defects: {},
@@ -608,6 +610,49 @@ describe('milestones (new in Phase 4)', () => {
       patch: { status: 'complete' },
     })
     expect(s.milestones[P1 as string]![0]!.status).toBe('complete')
+  })
+})
+
+// ─── Programme of works (4.7-O) ──────────────────────────────────────────
+
+describe('schedule tasks (programme of works, 4.7-O)', () => {
+  const t: ScheduleTask = {
+    id: asId('ST-001'),
+    ccId: CC1,
+    name: 'Framing',
+    start: '2026-03-01',
+    end: '2026-03-20',
+    status: 'upcoming',
+    phase: 'Frame',
+  }
+
+  it('ADD_SCHEDULE_TASK appends to the project', () => {
+    const s = reducer(emptyState(), { type: 'ADD_SCHEDULE_TASK', projectId: P1, task: t })
+    expect(s.scheduleTasks[P1 as string]).toHaveLength(1)
+    expect(s.scheduleTasks[P1 as string]![0]!.ccId).toBe(CC1)
+  })
+
+  it('UPDATE_SCHEDULE_TASK patches dates and status', () => {
+    const s0 = reducer(emptyState(), { type: 'ADD_SCHEDULE_TASK', projectId: P1, task: t })
+    const s = reducer(s0, {
+      type: 'UPDATE_SCHEDULE_TASK',
+      projectId: P1,
+      taskId: t.id,
+      patch: { end: '2026-04-10', status: 'in-progress' },
+    })
+    expect(s.scheduleTasks[P1 as string]![0]!.end).toBe('2026-04-10')
+    expect(s.scheduleTasks[P1 as string]![0]!.status).toBe('in-progress')
+    // start untouched
+    expect(s.scheduleTasks[P1 as string]![0]!.start).toBe('2026-03-01')
+  })
+
+  it('DELETE_SCHEDULE_TASK removes only that task', () => {
+    const t2: ScheduleTask = { ...t, id: asId('ST-002'), name: 'Lockup' }
+    let s = reducer(emptyState(), { type: 'ADD_SCHEDULE_TASK', projectId: P1, task: t })
+    s = reducer(s, { type: 'ADD_SCHEDULE_TASK', projectId: P1, task: t2 })
+    s = reducer(s, { type: 'DELETE_SCHEDULE_TASK', projectId: P1, taskId: t.id })
+    expect(s.scheduleTasks[P1 as string]).toHaveLength(1)
+    expect(s.scheduleTasks[P1 as string]![0]!.name).toBe('Lockup')
   })
 })
 

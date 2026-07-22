@@ -6,6 +6,7 @@ import type { Estimate } from './estimate'
 import type { Lead } from './lead'
 import type { Material } from './material'
 import type { Milestone } from './milestone'
+import type { ScheduleTask } from './scheduleTask'
 import type { PrimeCostItem } from './primeCostItem'
 import type { ProgressClaim } from './progressClaim'
 import type { Project } from './project'
@@ -47,6 +48,8 @@ export interface RootState {
 
   // Per-project-keyed dictionaries
   milestones: ByProject<Milestone>
+  /** Programme-of-works tasks (4.7-O) — cost codes placed on the timeline. */
+  scheduleTasks: ByProject<ScheduleTask>
   diary: ByProject<DiaryEntry>
   timesheets: ByProject<Timesheet>
   defects: ByProject<Defect>
@@ -79,6 +82,7 @@ export type {
   Purchase,
   Retention,
   Rfi,
+  ScheduleTask,
   Selection,
   Settings,
   Subcontractor,

@@ -406,6 +406,34 @@ export function reducer(state: RootState, action: Action): RootState {
         ),
       }
 
+    // ─── Programme of works (4.7-O) ──────────────────────────────────────
+    case 'ADD_SCHEDULE_TASK':
+      return {
+        ...state,
+        scheduleTasks: pushByProject(state.scheduleTasks, action.projectId, action.task),
+      }
+
+    case 'UPDATE_SCHEDULE_TASK':
+      return {
+        ...state,
+        scheduleTasks: patchByProject(
+          state.scheduleTasks,
+          action.projectId,
+          (t) => t.id === action.taskId,
+          action.patch,
+        ),
+      }
+
+    case 'DELETE_SCHEDULE_TASK':
+      return {
+        ...state,
+        scheduleTasks: filterByProject(
+          state.scheduleTasks,
+          action.projectId,
+          (t) => t.id !== action.taskId,
+        ),
+      }
+
     // ─── RFIs (new in Phase 4) ────────────────────────────────────────────
     case 'ADD_RFI': {
       // Auto-fill rfiNo if missing — same pattern as ADD_CLAIM.
