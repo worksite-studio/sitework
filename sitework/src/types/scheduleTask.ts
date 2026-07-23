@@ -35,9 +35,15 @@ export interface TaskDependency {
  */
 export interface ScheduleTask {
   id: ScheduleTaskId
-  /** The BOQ cost code this task schedules. */
-  ccId: CostCodeId
-  /** Defaults to the cost code's description when left blank. */
+  /**
+   * The BOQ cost code this leaf task schedules. Optional (4.7-Q2): a summary /
+   * parent row is a pure grouping heading with no code — its dates roll up
+   * from its children.
+   */
+  ccId?: CostCodeId
+  /** Parent task id for the WBS tree (4.7-Q2). Absent = top-level row. */
+  parentId?: ScheduleTaskId
+  /** Task/summary name. Defaults to the cost code's description when left blank. */
   name: string
   /**
    * ISO date (yyyy-mm-dd) the task starts. Acts as a "start no earlier than"
