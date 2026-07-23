@@ -3,13 +3,15 @@ import { act, renderHook } from '@testing-library/react'
 import {
   loadInitialState,
   mergeSeedWithStored,
+  normalizeScheduleTree,
   useReducerPersisted,
   STATE_KEY,
   LEGACY_KEY,
   type PersistedStorage,
 } from './persistence'
 import { migrateLegacyState } from './migrate-v1'
-import type { RootState } from '@/types'
+import { asId } from '@/types'
+import type { RootState, ScheduleTask, ScheduleTaskId } from '@/types'
 
 class MemoryStorage implements PersistedStorage {
   private map = new Map<string, string>()
@@ -94,6 +96,68 @@ describe('loadInitialState', () => {
     const seed = minimalSeed()
     storage.setItem(STATE_KEY, '{not json')
     expect(loadInitialState(seed, storage)).toEqual(seed)
+  })
+})
+
+describe('normalizeScheduleTree (4.7-Q2 phase → summary migration)', () => {
+  const legacyTask = (id: string, phase: string): ScheduleTask => ({
+    id: asId<ScheduleTaskId>(id),
+    ccId: asId('CC-001'),
+    name: id,
+    start: '2026-03-02',
+    end: '2026-03-06',
+    status: 'upcoming',
+    phase,
+  })
+
+  it('converts each distinct phase into a top-level summary with its tasks as children', () => {
+    const base = {
+      ...minimalSeed(),
+      scheduleTasks: {
+        'PRJ-1': [legacyTask('A', 'Frame'), legacyTask('B', 'Frame'), legacyTask('C', 'Lockup')],
+      },
+    } as RootState
+    const out = normalizeScheduleTree(base)
+    const list = out.scheduleTasks['PRJ-1']!
+
+    // Two summaries added; originals re-parented and their phase cleared.
+    const summaries = list.filter((t) => !t.parentId)
+    expect(summaries.map((s) => s.name).sort()).toEqual(['Frame', 'Lockup'])
+    const a = list.find((t) => t.id === ('A' as unknown as ScheduleTaskId))!
+    const b = list.find((t) => t.id === ('B' as unknown as ScheduleTaskId))!
+    const c = list.find((t) => t.id === ('C' as unknown as ScheduleTaskId))!
+    expect(a.parentId).toBeDefined()
+    expect(a.parentId).toBe(b.parentId) // same phase → same summary
+    expect(c.parentId).not.toBe(a.parentId)
+    expect(a.phase).toBeUndefined()
+    // Summary is emitted before its first child.
+    expect(list.findIndex((t) => t.id === a.parentId)).toBeLessThan(list.indexOf(a))
+  })
+
+  it('is idempotent — already-parented tasks are left alone', () => {
+    const base = {
+      ...minimalSeed(),
+      scheduleTasks: { 'PRJ-1': [legacyTask('A', 'Frame')] },
+    } as RootState
+    const once = normalizeScheduleTree(base)
+    const twice = normalizeScheduleTree(once)
+    expect(twice.scheduleTasks['PRJ-1']).toEqual(once.scheduleTasks['PRJ-1'])
+    expect(twice.scheduleTasks['PRJ-1']).toHaveLength(2)
+  })
+
+  it('leaves a project with no legacy phases untouched', () => {
+    const tree: ScheduleTask[] = [
+      {
+        id: asId<ScheduleTaskId>('S'),
+        name: 'Group',
+        start: '2026-03-02',
+        end: '2026-03-06',
+        status: 'upcoming',
+      },
+      { ...legacyTask('A', ''), parentId: asId<ScheduleTaskId>('S'), phase: undefined },
+    ]
+    const base = { ...minimalSeed(), scheduleTasks: { 'PRJ-1': tree } } as RootState
+    expect(normalizeScheduleTree(base).scheduleTasks['PRJ-1']).toEqual(tree)
   })
 })
 

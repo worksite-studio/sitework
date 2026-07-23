@@ -21,34 +21,49 @@ import { newId } from '@/lib/newId'
 const DAY_MS = 86_400_000
 const LOOKAHEAD_DAYS = 42
 const DEP_TYPES: DependencyType[] = ['FS', 'SS', 'FF', 'SF']
-const LABEL_W = 240
-const PHASE_ROW_H = 28
-const TASK_ROW_H = 44
+const ROW_H = 40
+const AXIS_H = 28
+const GRID_W = 592
 
 function parseISO(s: string): Date {
   return new Date(`${s}T00:00:00`)
 }
-
-/** Bar / diamond colour per status — matches the legacy milestone dots. */
 function statusColor(status: MilestoneStatus): string {
   if (status === 'complete') return 'var(--sw-pos)'
   if (status === 'in-progress') return 'var(--sw-ink)'
   if (status === 'delayed') return 'var(--sw-neg)'
   return 'var(--sw-faint)'
 }
+/** Summary status rolled up from its children. */
+function rollUpStatus(kids: MilestoneStatus[]): MilestoneStatus {
+  if (kids.length === 0) return 'upcoming'
+  if (kids.every((s) => s === 'complete')) return 'complete'
+  if (kids.some((s) => s === 'delayed')) return 'delayed'
+  if (kids.some((s) => s === 'in-progress' || s === 'complete')) return 'in-progress'
+  return 'upcoming'
+}
+
+interface Resolved {
+  start: string
+  end: string
+  duration: number
+  critical: boolean
+  status: MilestoneStatus
+  float: number
+}
 
 /**
- * Program of Works — the cost-code Gantt with a critical-path engine
- * (Phase 4.7-O rows; 4.7-P scheduling engine).
+ * Program of Works — cost-code Gantt with a critical-path engine (4.7-P) and a
+ * WBS split-grid (4.7-Q2).
  *
- * Rows are BOQ cost codes placed on a timeline via `ScheduleTask` records. The
- * pure engine (`@/lib/schedule`) resolves typed dependencies (FS/SS/FF/SF +
- * lag) over a working-day calendar, so a task's bar is positioned by its
- * COMPUTED dates — shift a predecessor and its successors cascade. Critical-
- * path tasks (zero float) are ringed; each row shows its slack. A dependency
- * cycle is caught and surfaced rather than mis-drawn.
- *
- * Dependency arrows + the editable split-grid land in the next tier (4.7-Q).
+ * The programme is a tree of `ScheduleTask`s (`parentId`). A row with children
+ * is a SUMMARY: its dates / duration / status roll up from its descendants and
+ * it renders as a roll-up bar; a leaf row books to a cost code and is scheduled
+ * by the pure engine (`@/lib/schedule`) over typed dependencies (FS/SS/FF/SF +
+ * lag) on a working-day calendar. The left grid is an editable MS-Project-style
+ * register (WBS · Name · Duration · Start · Finish · Predecessors) with
+ * indent/outdent and collapsible summaries; the right chart shows the bars,
+ * milestone diamonds and dependency arrows, aligned row-for-row.
  */
 export function MilestonesTab() {
   const project = useProject()
@@ -57,8 +72,11 @@ export function MilestonesTab() {
   const confirm = useConfirm()
   const { toast } = useToast()
   const [msModal, setMsModal] = useState<'new' | { milestone: Milestone } | null>(null)
-  const [taskModal, setTaskModal] = useState<'new' | { task: ScheduleTask } | null>(null)
+  const [taskModal, setTaskModal] = useState<
+    'new-task' | 'new-group' | { task: ScheduleTask } | null
+  >(null)
   const [view, setView] = useState<'full' | 'lookahead'>('full')
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
   const pid = project?.id as string | undefined
   const tasks: ScheduleTask[] = useMemo(
@@ -70,16 +88,10 @@ export function MilestonesTab() {
     [state.milestones, pid],
   )
 
-  // Run the scheduling engine — computed dates drive the chart.
-  const sched = useMemo(() => computeSchedule(tasks), [tasks])
-  const startOf = (t: ScheduleTask) => sched.tasks.get(t.id as string)?.start ?? t.start
-  const endOf = (t: ScheduleTask) => sched.tasks.get(t.id as string)?.end ?? t.end
-
-  // Measured chart width — the dependency-arrow overlay needs pixel coords.
-  const rowsRef = useRef<HTMLDivElement>(null)
+  const chartRef = useRef<HTMLDivElement>(null)
   const [chartW, setChartW] = useState(0)
   useEffect(() => {
-    const el = rowsRef.current
+    const el = chartRef.current
     if (!el) return
     const update = () => setChartW(el.clientWidth)
     update()
@@ -88,118 +100,123 @@ export function MilestonesTab() {
     return () => ro.disconnect()
   })
 
-  // ── Window (uses computed dates) ────────────────────────────────────────
+  // ── Tree + schedule ────────────────────────────────────────────────────
+  const { rows, resolved, arrowsData, wbsById } = useMemo(() => {
+    const byId = new Map(tasks.map((t) => [t.id as string, t]))
+    const childrenOf = new Map<string, ScheduleTask[]>()
+    const roots: ScheduleTask[] = []
+    for (const t of tasks) {
+      const parent = t.parentId
+        ? byId.get(t.parentId as string)
+          ? (t.parentId as string)
+          : null
+        : null
+      if (parent) childrenOf.set(parent, [...(childrenOf.get(parent) ?? []), t])
+      else roots.push(t)
+    }
+    const isSummary = (t: ScheduleTask) => (childrenOf.get(t.id as string)?.length ?? 0) > 0
+    const leaves = tasks.filter((t) => !isSummary(t))
+    const sched = computeSchedule(leaves)
+
+    const resolved = new Map<string, Resolved>()
+    for (const leaf of leaves) {
+      const s = sched.tasks.get(leaf.id as string)
+      resolved.set(leaf.id as string, {
+        start: s?.start ?? leaf.start,
+        end: s?.end ?? leaf.end,
+        duration: s?.duration ?? durationWorkingDays(leaf),
+        critical: s?.critical ?? false,
+        status: leaf.status,
+        float: s?.totalFloat ?? 0,
+      })
+    }
+    const resolveNode = (t: ScheduleTask): Resolved => {
+      const existing = resolved.get(t.id as string)
+      if (existing) return existing
+      const kids = childrenOf.get(t.id as string) ?? []
+      const kr = kids.map(resolveNode)
+      const start = kr.reduce((m, r) => (r.start < m ? r.start : m), kr[0]?.start ?? t.start)
+      const end = kr.reduce((m, r) => (r.end > m ? r.end : m), kr[0]?.end ?? t.end)
+      const r: Resolved = {
+        start,
+        end,
+        duration: durationWorkingDays({ start, end }),
+        critical: kr.some((x) => x.critical),
+        status: rollUpStatus(kr.map((x) => x.status)),
+        float: 0,
+      }
+      resolved.set(t.id as string, r)
+      return r
+    }
+    for (const t of tasks) if (isSummary(t)) resolveNode(t)
+
+    // Depth-first visible-row list + WBS numbering.
+    type Row = { task: ScheduleTask; depth: number; wbs: string; isSummary: boolean }
+    const rows: Row[] = []
+    const wbsById = new Map<string, string>()
+    const walk = (list: ScheduleTask[], depth: number, prefix: string) => {
+      list.forEach((t, i) => {
+        const wbs = prefix ? `${prefix}.${i + 1}` : `${i + 1}`
+        wbsById.set(t.id as string, wbs)
+        const kids = childrenOf.get(t.id as string) ?? []
+        rows.push({ task: t, depth, wbs, isSummary: kids.length > 0 })
+        if (kids.length > 0 && !collapsed.has(t.id as string)) walk(kids, depth + 1, wbs)
+      })
+    }
+    walk(roots, 0, '')
+
+    return { rows, resolved, wbsById, arrowsData: sched }
+  }, [tasks, collapsed])
+
+  // Positions for the arrow overlay (depends on window + measured width).
   const today = new Date()
   today.setHours(0, 0, 0, 0)
+
   const win = useMemo(() => {
     if (view === 'lookahead') {
       return { start: today.getTime(), end: today.getTime() + LOOKAHEAD_DAYS * DAY_MS }
     }
     const stamps: number[] = []
-    for (const t of tasks) {
-      stamps.push(parseISO(startOf(t)).getTime(), parseISO(endOf(t)).getTime())
+    for (const r of rows) {
+      const res = resolved.get(r.task.id as string)
+      if (res) stamps.push(parseISO(res.start).getTime(), parseISO(res.end).getTime())
     }
     for (const m of milestones) stamps.push(parseISO(m.date).getTime())
     if (stamps.length === 0) return null
     return { start: Math.min(...stamps) - 3 * DAY_MS, end: Math.max(...stamps) + 3 * DAY_MS }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, milestones, view, sched])
+  }, [rows, resolved, milestones, view])
 
   if (!project) return null
 
   const span = win ? win.end - win.start : 1
   const pct = (ms: number) => ((ms - (win?.start ?? 0)) / span) * 100
   const clamp = (n: number) => Math.max(0, Math.min(100, n))
+  const rowsHeight = rows.length * ROW_H
 
-  const shownTasks = win
-    ? tasks.filter(
-        (t) =>
-          parseISO(endOf(t)).getTime() >= win.start && parseISO(startOf(t)).getTime() <= win.end,
-      )
-    : []
-  const shownMilestones = win
-    ? milestones.filter((m) => {
-        const d = parseISO(m.date).getTime()
-        return d >= win.start && d <= win.end
-      })
-    : []
-
-  const phases: string[] = []
-  for (const t of shownTasks) {
-    const p = t.phase?.trim() || 'Unphased'
-    if (!phases.includes(p)) phases.push(p)
-  }
-
-  const ticks: Array<{ left: number; label: string }> = []
-  if (win) {
-    const cur = new Date(win.start)
-    cur.setDate(1)
-    cur.setHours(0, 0, 0, 0)
-    while (cur.getTime() <= win.end) {
-      if (cur.getTime() >= win.start) {
-        ticks.push({
-          left: pct(cur.getTime()),
-          label: cur.toLocaleDateString('en-AU', { month: 'short', year: '2-digit' }),
-        })
-      }
-      cur.setMonth(cur.getMonth() + 1)
-    }
-  }
-
-  const todayInWindow = !!win && today.getTime() >= win.start && today.getTime() <= win.end
-  const complete = tasks.filter((t) => t.status === 'complete').length
-  const criticalCount = [...sched.tasks.values()].filter((s) => s.critical).length
-
-  async function deleteTask(t: ScheduleTask) {
-    if (!project) return
-    const ok = await confirm({
-      title: 'Remove from programme',
-      message: `Remove "${t.name}" from the programme? The cost code itself is untouched.`,
-      confirmLabel: 'Remove',
-      danger: true,
-    })
-    if (!ok) return
-    dispatch({ type: 'DELETE_SCHEDULE_TASK', projectId: project.id, taskId: t.id })
-    toast('Task removed from programme', 'success')
-  }
-
-  // Flatten phase bands + task rows into a deterministic-height list so the
-  // dependency-arrow overlay can find each bar's centre (4.7-Q1).
-  type FlatRow =
-    | { kind: 'phase'; key: string; label: string }
-    | { kind: 'task'; key: string; task: ScheduleTask }
-  const flatRows: FlatRow[] = []
-  const taskPos = new Map<
+  // Row centre Ys + bar extents for arrows.
+  const pos = new Map<
     string,
     { centerY: number; startPct: number; endPct: number; critical: boolean }
   >()
-  let rowsHeight = 0
-  for (const phase of phases) {
-    flatRows.push({ kind: 'phase', key: `p:${phase}`, label: phase })
-    rowsHeight += PHASE_ROW_H
-    for (const t of shownTasks.filter((t) => (t.phase?.trim() || 'Unphased') === phase)) {
-      taskPos.set(t.id as string, {
-        centerY: rowsHeight + TASK_ROW_H / 2,
-        startPct: clamp(pct(parseISO(startOf(t)).getTime())),
-        endPct: clamp(pct(parseISO(endOf(t)).getTime())),
-        critical: sched.tasks.get(t.id as string)?.critical ?? false,
-      })
-      flatRows.push({ kind: 'task', key: t.id as string, task: t })
-      rowsHeight += TASK_ROW_H
-    }
-  }
-
-  // Dependency connectors — orthogonal elbows from the predecessor edge implied
-  // by the link type to the successor edge.
-  const timelineW = Math.max(chartW - LABEL_W, 0)
-  const xOf = (p: number) => LABEL_W + (p / 100) * timelineW
+  rows.forEach((r, i) => {
+    const res = resolved.get(r.task.id as string)
+    if (!res) return
+    pos.set(r.task.id as string, {
+      centerY: i * ROW_H + ROW_H / 2,
+      startPct: clamp(pct(parseISO(res.start).getTime())),
+      endPct: clamp(pct(parseISO(res.end).getTime())),
+      critical: res.critical,
+    })
+  })
+  const xOf = (p: number) => (p / 100) * chartW
   const arrows: Array<{ key: string; d: string; critical: boolean }> = []
   if (chartW > 0) {
-    for (const succ of shownTasks) {
-      const sp = taskPos.get(succ.id as string)
+    for (const r of rows) {
+      const sp = pos.get(r.task.id as string)
       if (!sp) continue
-      for (const d of succ.deps ?? []) {
-        const pp = taskPos.get(d.id as string)
+      for (const d of r.task.deps ?? []) {
+        const pp = pos.get(d.id as string)
         if (!pp) continue
         let sPct: number
         let tPct: number
@@ -224,13 +241,96 @@ export function MilestonesTab() {
         const x2 = xOf(tPct)
         const outX = x1 + (x2 >= x1 ? 8 : -8)
         arrows.push({
-          key: `${d.id}->${succ.id as string}`,
+          key: `${d.id}->${r.task.id as string}`,
           d: `M ${x1} ${pp.centerY} H ${outX} V ${sp.centerY} H ${x2}`,
           critical: pp.critical && sp.critical,
         })
       }
     }
   }
+
+  const ticks: Array<{ left: number; label: string }> = []
+  if (win) {
+    const cur = new Date(win.start)
+    cur.setDate(1)
+    cur.setHours(0, 0, 0, 0)
+    while (cur.getTime() <= win.end) {
+      if (cur.getTime() >= win.start) {
+        ticks.push({
+          left: pct(cur.getTime()),
+          label: cur.toLocaleDateString('en-AU', { month: 'short', year: '2-digit' }),
+        })
+      }
+      cur.setMonth(cur.getMonth() + 1)
+    }
+  }
+  const todayInWindow = !!win && today.getTime() >= win.start && today.getTime() <= win.end
+  const criticalCount = [...resolved.entries()].filter(
+    ([id, r]) => r.critical && !rows.find((x) => x.task.id === id)?.isSummary,
+  ).length
+
+  // ── Tree editing ─────────────────────────────────────────────────────────
+  const siblingsOf = (t: ScheduleTask): ScheduleTask[] => {
+    const parentId = t.parentId ?? null
+    return tasks.filter((x) => (x.parentId ?? null) === parentId)
+  }
+  const indent = (t: ScheduleTask) => {
+    const sibs = siblingsOf(t)
+    const idx = sibs.findIndex((s) => s.id === t.id)
+    if (idx <= 0) return
+    dispatch({
+      type: 'UPDATE_SCHEDULE_TASK',
+      projectId: project.id,
+      taskId: t.id,
+      patch: { parentId: sibs[idx - 1]!.id },
+    })
+  }
+  const outdent = (t: ScheduleTask) => {
+    if (!t.parentId) return
+    const parent = tasks.find((x) => x.id === t.parentId)
+    dispatch({
+      type: 'UPDATE_SCHEDULE_TASK',
+      projectId: project.id,
+      taskId: t.id,
+      patch: { parentId: parent?.parentId },
+    })
+  }
+  const toggleCollapse = (id: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+
+  async function deleteTask(t: ScheduleTask) {
+    if (!project) return
+    const kids = tasks.filter((x) => x.parentId === t.id)
+    const ok = await confirm({
+      title: kids.length ? 'Remove group' : 'Remove from programme',
+      message: kids.length
+        ? `Remove "${t.name}"? Its ${kids.length} task${kids.length > 1 ? 's' : ''} move up a level; the cost codes are untouched.`
+        : `Remove "${t.name}" from the programme? The cost code itself is untouched.`,
+      confirmLabel: 'Remove',
+      danger: true,
+    })
+    if (!ok) return
+    for (const k of kids) {
+      dispatch({
+        type: 'UPDATE_SCHEDULE_TASK',
+        projectId: project.id,
+        taskId: k.id,
+        patch: { parentId: t.parentId },
+      })
+    }
+    dispatch({ type: 'DELETE_SCHEDULE_TASK', projectId: project.id, taskId: t.id })
+    toast('Removed from programme', 'success')
+  }
+
+  const patchTask = (t: ScheduleTask, patch: Partial<ScheduleTask>) =>
+    dispatch({ type: 'UPDATE_SCHEDULE_TASK', projectId: project.id, taskId: t.id, patch })
+
+  const empty = rows.length === 0 && milestones.length === 0
 
   return (
     <div>
@@ -240,9 +340,8 @@ export function MilestonesTab() {
             Program of Works
           </h2>
           <div className="text-[13px] text-sw-dim">
-            {tasks.length} task{tasks.length !== 1 ? 's' : ''} · {complete} complete ·{' '}
-            {criticalCount} on critical path · {milestones.length} milestone
-            {milestones.length !== 1 ? 's' : ''}
+            {rows.length} row{rows.length !== 1 ? 's' : ''} · {criticalCount} on critical path ·{' '}
+            {milestones.length} milestone{milestones.length !== 1 ? 's' : ''}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -267,36 +366,185 @@ export function MilestonesTab() {
           <Button variant="secondary" onClick={() => setMsModal('new')}>
             + Milestone
           </Button>
-          <Button onClick={() => setTaskModal('new')} disabled={project.codes.length === 0}>
+          <Button variant="secondary" onClick={() => setTaskModal('new-group')}>
+            + Group
+          </Button>
+          <Button onClick={() => setTaskModal('new-task')} disabled={project.codes.length === 0}>
             + Task
           </Button>
         </div>
       </header>
 
-      {sched.cycle.length > 0 && (
+      {arrowsData.cycle.length > 0 && (
         <div className="mb-4 rounded-[1px] border border-sw-neg bg-sw-neg-bg px-4 py-2.5 text-[12px] text-sw-neg">
-          A dependency loop was found between {sched.cycle.length} tasks — the programme can't be
-          scheduled until it's broken. Bars fall back to their saved dates and the critical path is
-          paused.
+          A dependency loop was found between {arrowsData.cycle.length} tasks — the programme can't
+          be scheduled until it's broken. Bars fall back to their saved dates.
         </div>
       )}
 
-      {!win || shownTasks.length + shownMilestones.length === 0 ? (
+      {empty ? (
         <div className="border-y border-sw-rule py-14 text-center text-[13px] text-sw-faint">
-          {tasks.length === 0 && milestones.length === 0
-            ? 'No programme yet — add a task to place a cost code on the timeline.'
-            : view === 'lookahead'
-              ? 'No programme activity in the next six weeks.'
-              : 'Nothing to show in this window.'}
+          No programme yet — add a task to place a cost code on the timeline, or a group heading to
+          structure it.
         </div>
       ) : (
-        <div className="border-t border-sw-ink">
-          {/* Month axis */}
-          <div className="flex border-b border-sw-rule">
-            <div className="w-[240px] shrink-0 py-2 text-[9px] font-semibold uppercase tracking-[0.1em] text-sw-dim">
-              Task
+        <div className="flex overflow-x-auto border-t border-sw-ink">
+          {/* ── Grid pane ─────────────────────────────────────────────── */}
+          <div className="shrink-0" style={{ width: GRID_W }}>
+            <div
+              className="flex items-center border-b border-sw-rule bg-white text-[9px] font-semibold uppercase tracking-[0.08em] text-sw-dim"
+              style={{ height: AXIS_H }}
+            >
+              <span className="shrink-0 pl-2" style={{ width: 44 }}>
+                WBS
+              </span>
+              <span className="flex-1">Task</span>
+              <span className="shrink-0 text-right" style={{ width: 44 }}>
+                Dur
+              </span>
+              <span className="shrink-0 pr-1 text-right" style={{ width: 48 }}>
+                Float
+              </span>
+              <span className="shrink-0 pl-2" style={{ width: 96 }}>
+                Start
+              </span>
+              <span className="shrink-0 pl-2" style={{ width: 96 }}>
+                Finish
+              </span>
+              <span className="shrink-0 pl-2" style={{ width: 56 }}>
+                Pred
+              </span>
             </div>
-            <div className="relative flex-1 py-2">
+            {/* Milestone spacer row aligns with the chart's diamond row */}
+            <div
+              className="flex items-center border-b border-sw-rule-l pl-2 text-[11px] font-semibold text-sw-dim"
+              style={{ height: ROW_H }}
+            >
+              Milestones
+            </div>
+            {rows.map((r) => {
+              const res = resolved.get(r.task.id as string)!
+              const isSum = r.isSummary
+              const preds = (r.task.deps ?? [])
+                .map((d) => wbsById.get(d.id as string))
+                .filter(Boolean)
+                .join(', ')
+              return (
+                <div
+                  key={r.task.id as string}
+                  className="group/row flex items-center border-b border-sw-rule-l hover:bg-sw-muted/5"
+                  style={{ height: ROW_H }}
+                >
+                  <span
+                    className="shrink-0 pl-2 font-mono text-[10px] text-sw-faint"
+                    style={{ width: 44 }}
+                  >
+                    {r.wbs}
+                  </span>
+                  <span
+                    className="flex min-w-0 flex-1 items-center gap-1"
+                    style={{ paddingLeft: r.depth * 14 }}
+                  >
+                    {isSum ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleCollapse(r.task.id as string)}
+                        aria-label={collapsed.has(r.task.id as string) ? 'Expand' : 'Collapse'}
+                        className="w-3 shrink-0 text-[9px] text-sw-dim"
+                      >
+                        {collapsed.has(r.task.id as string) ? '▸' : '▾'}
+                      </button>
+                    ) : (
+                      <span className="w-3 shrink-0" />
+                    )}
+                    <input
+                      value={r.task.name}
+                      onChange={(e) => patchTask(r.task, { name: e.target.value })}
+                      aria-label={`Name ${r.wbs}`}
+                      className={`min-w-0 flex-1 truncate border-0 bg-transparent p-0 text-[12px] focus:outline-none ${isSum ? 'font-bold text-sw-ink' : 'font-medium text-sw-ink'}`}
+                    />
+                  </span>
+                  <span
+                    className="shrink-0 text-right text-[11px] text-sw-dim"
+                    style={{ width: 44 }}
+                  >
+                    {res.duration}d
+                  </span>
+                  <span
+                    className="shrink-0 pr-1 text-right text-[11px]"
+                    style={{
+                      width: 48,
+                      color: res.critical ? 'var(--sw-neg)' : 'var(--sw-faint)',
+                      fontWeight: res.critical ? 600 : 400,
+                    }}
+                    title={res.critical ? 'On the critical path — no slack' : 'Total slack'}
+                  >
+                    {isSum ? '—' : `${res.float}d`}
+                  </span>
+                  <span className="shrink-0 pl-2" style={{ width: 96 }}>
+                    {isSum ? (
+                      <span className="text-[11px] text-sw-faint">{formatDate(res.start)}</span>
+                    ) : (
+                      <input
+                        type="date"
+                        value={r.task.start}
+                        onChange={(e) => patchTask(r.task, { start: e.target.value })}
+                        aria-label={`Start ${r.wbs}`}
+                        className="w-full border-0 bg-transparent p-0 text-[11px] text-sw-dim focus:outline-none"
+                      />
+                    )}
+                  </span>
+                  <span className="shrink-0 pl-2 text-[11px] text-sw-faint" style={{ width: 96 }}>
+                    {formatDate(res.end)}
+                  </span>
+                  <span
+                    className="flex shrink-0 items-center gap-1 pl-2 text-[11px] text-sw-dim"
+                    style={{ width: 56 }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setTaskModal({ task: r.task })}
+                      className="truncate text-left hover:text-sw-ink hover:underline"
+                      title="Edit task"
+                    >
+                      {preds || (isSum ? '—' : '+')}
+                    </button>
+                    <span className="ml-auto hidden shrink-0 items-center group-hover/row:flex">
+                      <button
+                        type="button"
+                        onClick={() => outdent(r.task)}
+                        aria-label={`Outdent ${r.wbs}`}
+                        className="px-[2px] text-[11px] text-sw-faint hover:text-sw-ink"
+                      >
+                        ‹
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => indent(r.task)}
+                        aria-label={`Indent ${r.wbs}`}
+                        className="px-[2px] text-[11px] text-sw-faint hover:text-sw-ink"
+                      >
+                        ›
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteTask(r.task)}
+                        aria-label={`Remove ${r.task.name}`}
+                        className="px-[2px] text-[11px] text-sw-danger"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* ── Chart pane ────────────────────────────────────────────── */}
+          <div className="min-w-[360px] flex-1 border-l border-sw-rule">
+            {/* Month axis */}
+            <div className="relative border-b border-sw-rule" style={{ height: AXIS_H }}>
               {ticks.map((t) => (
                 <span
                   key={t.label + t.left}
@@ -306,175 +554,120 @@ export function MilestonesTab() {
                   {t.label}
                 </span>
               ))}
-              <div className="h-3" />
             </div>
-          </div>
-
-          {/* Milestone diamonds */}
-          {shownMilestones.length > 0 && (
-            <div className="flex items-center border-b border-sw-rule-l">
-              <div className="w-[240px] shrink-0 py-2.5 pr-4 text-[11px] font-semibold text-sw-dim">
-                Milestones
-              </div>
-              <div className="relative h-9 flex-1">
-                {shownMilestones.map((m) => (
-                  <span
-                    key={m.id as string}
-                    title={`${m.name} · ${formatDate(m.date)}`}
-                    className="absolute top-1/2"
-                    style={{
-                      left: `${clamp(pct(parseISO(m.date).getTime()))}%`,
-                      transform: 'translate(-50%, -50%) rotate(45deg)',
-                      width: 9,
-                      height: 9,
-                      background: statusColor(m.status),
-                    }}
-                  />
-                ))}
-              </div>
+            {/* Milestone diamonds */}
+            <div className="relative border-b border-sw-rule-l" style={{ height: ROW_H }}>
+              {milestones.map((m) => (
+                <span
+                  key={m.id as string}
+                  title={`${m.name} · ${formatDate(m.date)}`}
+                  className="absolute top-1/2"
+                  style={{
+                    left: `${clamp(pct(parseISO(m.date).getTime()))}%`,
+                    transform: 'translate(-50%, -50%) rotate(45deg)',
+                    width: 9,
+                    height: 9,
+                    background: statusColor(m.status),
+                  }}
+                />
+              ))}
             </div>
-          )}
-
-          {/* Flattened phase bands + task bars, with the dependency-arrow overlay */}
-          <div ref={rowsRef} className="relative" style={{ height: rowsHeight }}>
-            {arrows.length > 0 && (
-              <svg
-                className="pointer-events-none absolute inset-0 z-10"
-                width={chartW}
-                height={rowsHeight}
-                aria-hidden="true"
-              >
-                <defs>
-                  <marker
-                    id="pw-arrow"
-                    markerWidth="7"
-                    markerHeight="7"
-                    refX="5.5"
-                    refY="3"
-                    orient="auto"
-                    markerUnits="userSpaceOnUse"
-                  >
-                    <path d="M0,0 L6,3 L0,6 z" fill="var(--sw-faint)" />
-                  </marker>
-                  <marker
-                    id="pw-arrow-crit"
-                    markerWidth="7"
-                    markerHeight="7"
-                    refX="5.5"
-                    refY="3"
-                    orient="auto"
-                    markerUnits="userSpaceOnUse"
-                  >
-                    <path d="M0,0 L6,3 L0,6 z" fill="var(--sw-neg)" />
-                  </marker>
-                </defs>
-                {arrows.map((a) => (
-                  <path
-                    key={a.key}
-                    d={a.d}
-                    fill="none"
-                    stroke={a.critical ? 'var(--sw-neg)' : 'var(--sw-faint)'}
-                    strokeWidth={a.critical ? 1.5 : 1.25}
-                    markerEnd={`url(#${a.critical ? 'pw-arrow-crit' : 'pw-arrow'})`}
-                  />
-                ))}
-              </svg>
-            )}
-
-            {flatRows.map((row) => {
-              if (row.kind === 'phase') {
+            {/* Bars + arrows */}
+            <div ref={chartRef} className="relative" style={{ height: rowsHeight }}>
+              {arrows.length > 0 && (
+                <svg
+                  className="pointer-events-none absolute inset-0 z-10"
+                  width={chartW}
+                  height={rowsHeight}
+                  aria-hidden="true"
+                >
+                  <defs>
+                    {(['pw-arrow', 'pw-arrow-crit'] as const).map((mid) => (
+                      <marker
+                        key={mid}
+                        id={mid}
+                        markerWidth="7"
+                        markerHeight="7"
+                        refX="5.5"
+                        refY="3"
+                        orient="auto"
+                        markerUnits="userSpaceOnUse"
+                      >
+                        <path
+                          d="M0,0 L6,3 L0,6 z"
+                          fill={mid === 'pw-arrow-crit' ? 'var(--sw-neg)' : 'var(--sw-faint)'}
+                        />
+                      </marker>
+                    ))}
+                  </defs>
+                  {arrows.map((a) => (
+                    <path
+                      key={a.key}
+                      d={a.d}
+                      fill="none"
+                      stroke={a.critical ? 'var(--sw-neg)' : 'var(--sw-faint)'}
+                      strokeWidth={a.critical ? 1.5 : 1.25}
+                      markerEnd={`url(#${a.critical ? 'pw-arrow-crit' : 'pw-arrow'})`}
+                    />
+                  ))}
+                </svg>
+              )}
+              {rows.map((r) => {
+                const res = resolved.get(r.task.id as string)!
+                const left = clamp(pct(parseISO(res.start).getTime()))
+                const width = Math.max(clamp(pct(parseISO(res.end).getTime())) - left, 0.6)
+                const color = statusColor(res.status)
                 return (
                   <div
-                    key={row.key}
-                    className="flex items-center bg-sw-bg"
-                    style={{ height: PHASE_ROW_H }}
+                    key={r.task.id as string}
+                    className="relative border-b border-sw-rule-l"
+                    style={{ height: ROW_H }}
                   >
-                    <div
-                      className="shrink-0 pr-4 text-[9px] font-bold uppercase tracking-[0.1em] text-sw-dim"
-                      style={{ width: LABEL_W }}
-                    >
-                      {row.label}
-                    </div>
+                    {r.isSummary ? (
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2"
+                        style={{ left: `${left}%`, width: `${width}%` }}
+                        title={`${formatDate(res.start)} → ${formatDate(res.end)}`}
+                      >
+                        <div className="h-[4px] w-full" style={{ background: 'var(--sw-ink)' }} />
+                        <div className="flex justify-between">
+                          <span
+                            className="h-[5px] w-[2px]"
+                            style={{ background: 'var(--sw-ink)' }}
+                          />
+                          <span
+                            className="h-[5px] w-[2px]"
+                            style={{ background: 'var(--sw-ink)' }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        title={`${formatDate(res.start)} → ${formatDate(res.end)}${res.critical ? ' · critical path' : ` · ${res.float}d float`}`}
+                        className="absolute top-1/2 h-[10px] -translate-y-1/2 rounded-[1px]"
+                        style={{
+                          left: `${left}%`,
+                          width: `${width}%`,
+                          background: color,
+                          boxShadow: res.critical ? '0 0 0 1.5px var(--sw-neg)' : undefined,
+                        }}
+                      />
+                    )}
                   </div>
                 )
-              }
-              const t = row.task
-              const code = project.codes.find((c) => c.id === t.ccId)
-              const st = sched.tasks.get(t.id as string)
-              const left = clamp(pct(parseISO(startOf(t)).getTime()))
-              const width = Math.max(clamp(pct(parseISO(endOf(t)).getTime())) - left, 0.8)
-              const dur = st?.duration ?? durationWorkingDays(t)
-              const critical = st?.critical ?? false
-              const float = st?.totalFloat ?? 0
-              return (
+              })}
+              {todayInWindow && (
                 <div
-                  key={row.key}
-                  className="group flex items-center border-b border-sw-rule-l hover:bg-sw-muted/5"
-                  style={{ height: TASK_ROW_H }}
+                  className="pointer-events-none absolute top-0 z-20 border-l border-dashed border-sw-neg"
+                  style={{ left: `${clamp(pct(today.getTime()))}%`, height: rowsHeight }}
                 >
-                  <div
-                    className="flex h-full shrink-0 flex-col justify-center pr-4"
-                    style={{ width: LABEL_W }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setTaskModal({ task: t })}
-                      className="block truncate text-left text-[12px] font-semibold text-sw-ink hover:underline"
-                    >
-                      {t.name}
-                    </button>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-[10px] text-sw-faint">
-                        {code ? code.code : '—'}
-                      </span>
-                      <span className="text-[10px] text-sw-faint">{dur}d</span>
-                      <span
-                        className="text-[10px]"
-                        style={{ color: critical ? 'var(--sw-neg)' : 'var(--sw-faint)' }}
-                      >
-                        {critical ? 'critical' : `${float}d float`}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => deleteTask(t)}
-                        aria-label={`Remove ${t.name}`}
-                        className="text-[11px] text-sw-danger opacity-0 transition group-hover:opacity-100"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  </div>
-                  <div className="relative h-full flex-1">
-                    <div
-                      title={`${formatDate(startOf(t))} → ${formatDate(endOf(t))}${critical ? ' · critical path' : ` · ${float}d float`}`}
-                      className="absolute top-1/2 h-[10px] -translate-y-1/2 rounded-[1px]"
-                      style={{
-                        left: `${left}%`,
-                        width: `${width}%`,
-                        background: statusColor(t.status),
-                        boxShadow: critical ? '0 0 0 1.5px var(--sw-neg)' : undefined,
-                      }}
-                    />
-                  </div>
+                  <span className="absolute -top-0 left-1 text-[9px] font-bold uppercase text-sw-neg">
+                    Today
+                  </span>
                 </div>
-              )
-            })}
-          </div>
-
-          {/* Today marker */}
-          {todayInWindow && (
-            <div className="flex">
-              <div className="w-[240px] shrink-0" />
-              <div className="relative h-5 flex-1">
-                <span
-                  className="absolute top-0 text-[9px] font-bold uppercase tracking-[0.08em] text-sw-neg"
-                  style={{ left: `${clamp(pct(today.getTime()))}%`, transform: 'translateX(-50%)' }}
-                >
-                  Today
-                </span>
-              </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       )}
 
@@ -504,6 +697,10 @@ export function MilestonesTab() {
           Critical path
         </span>
         <span className="flex items-center gap-1.5">
+          <span className="inline-block h-[4px] w-[14px]" style={{ background: 'var(--sw-ink)' }} />
+          Summary
+        </span>
+        <span className="flex items-center gap-1.5">
           <span
             className="inline-block"
             style={{ width: 8, height: 8, background: 'var(--sw-dim)', transform: 'rotate(45deg)' }}
@@ -516,30 +713,59 @@ export function MilestonesTab() {
       {msModal !== null && msModal !== 'new' && (
         <MilestoneForm onClose={() => setMsModal(null)} initial={msModal.milestone} />
       )}
-      {taskModal === 'new' && <TaskForm onClose={() => setTaskModal(null)} />}
-      {taskModal !== null && taskModal !== 'new' && (
-        <TaskForm onClose={() => setTaskModal(null)} initial={taskModal.task} />
+      {taskModal === 'new-task' && <TaskForm onClose={() => setTaskModal(null)} mode="task" />}
+      {taskModal === 'new-group' && <TaskForm onClose={() => setTaskModal(null)} mode="group" />}
+      {taskModal !== null && typeof taskModal === 'object' && (
+        <TaskForm
+          onClose={() => setTaskModal(null)}
+          initial={taskModal.task}
+          mode={tasks.some((x) => x.parentId === taskModal.task.id) ? 'group' : 'task'}
+        />
       )}
     </div>
   )
 }
 
-/** Add/edit a programme task — cost code, duration, status, and predecessors. */
-function TaskForm({ onClose, initial }: { onClose: () => void; initial?: ScheduleTask }) {
+/** Add/edit a programme task or group heading. */
+function TaskForm({
+  onClose,
+  initial,
+  mode,
+}: {
+  onClose: () => void
+  initial?: ScheduleTask
+  mode: 'task' | 'group'
+}) {
   const project = useProject()
   const state = useAppState()
   const dispatch = useDispatch()
-  const today = new Date().toISOString().slice(0, 10)
+  const isGroup = mode === 'group'
+  const todayISO = new Date().toISOString().slice(0, 10)
   const allTasks = project ? (state.scheduleTasks[project.id as string] ?? []) : []
   const others = allTasks.filter((t) => t.id !== initial?.id)
+  // Predecessor candidates: leaf tasks only (summaries roll up).
+  const leafOthers = others.filter((t) => !allTasks.some((x) => x.parentId === t.id))
+  // A row can't be nested under itself or one of its own descendants.
+  const descendants = new Set<string>()
+  if (initial) {
+    const stack = [initial.id as string]
+    while (stack.length) {
+      const id = stack.pop()!
+      for (const c of allTasks.filter((x) => (x.parentId as string) === id)) {
+        descendants.add(c.id as string)
+        stack.push(c.id as string)
+      }
+    }
+  }
+  const parentCandidates = others.filter((t) => !descendants.has(t.id as string))
 
   const [form, setForm] = useState(() => ({
-    ccId: (initial?.ccId ?? project?.codes[0]?.id ?? '') as string,
+    ccId: (initial?.ccId ?? '') as string,
+    parentId: (initial?.parentId ?? '') as string,
     name: initial?.name ?? '',
-    start: initial?.start ?? today,
+    start: initial?.start ?? todayISO,
     durationDays: initial ? durationWorkingDays(initial) : 5,
     status: initial?.status ?? ('upcoming' as MilestoneStatus),
-    phase: initial?.phase ?? '',
     deps: (initial?.deps ?? []) as TaskDependency[],
     notes: initial?.notes ?? '',
   }))
@@ -547,20 +773,17 @@ function TaskForm({ onClose, initial }: { onClose: () => void; initial?: Schedul
   const isEdit = !!initial
   if (!project) return null
 
-  const codeMissing = !form.ccId
-  const durBad = !form.durationDays || form.durationDays < 1
+  const nameMissing = isGroup && form.name.trim() === ''
+  const durBad = !isGroup && (!form.durationDays || form.durationDays < 1)
   const selectedCode = project.codes.find((c) => (c.id as string) === form.ccId)
-
   const taskName = (id: string) => others.find((t) => (t.id as string) === id)?.name ?? id
+
   const addDep = () => {
-    const firstFree = others.find(
+    const free = leafOthers.find(
       (t) => !form.deps.some((d) => (d.id as string) === (t.id as string)),
     )
-    if (!firstFree) return
-    setForm({
-      ...form,
-      deps: [...form.deps, { id: firstFree.id, type: 'FS', lag: 0 }],
-    })
+    if (!free) return
+    setForm({ ...form, deps: [...form.deps, { id: free.id, type: 'FS', lag: 0 }] })
   }
   const patchDep = (i: number, patch: Partial<TaskDependency>) =>
     setForm({ ...form, deps: form.deps.map((d, idx) => (idx === i ? { ...d, ...patch } : d)) })
@@ -569,23 +792,28 @@ function TaskForm({ onClose, initial }: { onClose: () => void; initial?: Schedul
 
   function save() {
     if (!project) return
-    if (codeMissing || durBad) {
+    if (nameMissing || durBad) {
       setAttempted(true)
       return
     }
-    const name = form.name.trim() || selectedCode?.desc || 'Task'
-    const end = addWorkingDays(form.start, form.durationDays - 1)
-    const payload = {
-      ccId: form.ccId as CostCodeId,
+    const name = form.name.trim() || selectedCode?.desc || (isGroup ? 'New group' : 'Task')
+    const parentId = form.parentId ? asId<ScheduleTaskId>(form.parentId) : undefined
+    const common = {
       name,
-      start: form.start,
-      end,
-      durationDays: form.durationDays,
+      parentId,
       status: form.status,
-      phase: form.phase.trim() || undefined,
-      deps: form.deps.length ? form.deps : undefined,
       notes: form.notes.trim() || undefined,
     }
+    const payload: Omit<ScheduleTask, 'id'> = isGroup
+      ? { ...common, start: form.start, end: form.start }
+      : {
+          ...common,
+          ccId: form.ccId ? (form.ccId as CostCodeId) : undefined,
+          start: form.start,
+          end: addWorkingDays(form.start, form.durationDays - 1),
+          durationDays: form.durationDays,
+          deps: form.deps.length ? form.deps : undefined,
+        }
     if (isEdit && initial) {
       dispatch({
         type: 'UPDATE_SCHEDULE_TASK',
@@ -607,134 +835,146 @@ function TaskForm({ onClose, initial }: { onClose: () => void; initial?: Schedul
     <Dialog
       open
       onClose={onClose}
-      title={isEdit ? 'Edit Task' : 'Add Task'}
+      title={isEdit ? (isGroup ? 'Edit Group' : 'Edit Task') : isGroup ? 'Add Group' : 'Add Task'}
       widthClass="max-w-lg"
-      footer={<Button onClick={save}>Save Task</Button>}
+      footer={<Button onClick={save}>Save</Button>}
     >
-      <Field label="Cost code" required error={attempted && codeMissing ? 'Required' : undefined}>
-        <CostCodeSelect
-          projectId={project.id}
-          codes={project.codes}
-          value={form.ccId}
-          onChange={(cc) => setForm({ ...form, ccId: cc })}
-          invalid={attempted && codeMissing}
-        />
-      </Field>
-      <Field label="Task name" hint="Leave blank to use the cost code's description.">
+      <Field
+        label="Name"
+        required={isGroup}
+        error={attempted && nameMissing ? 'Required' : undefined}
+      >
         <Input
+          autoFocus
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
-          placeholder={selectedCode?.desc ?? 'e.g. Framing — carpentry'}
-        />
-      </Field>
-      <div className="grid grid-cols-3 gap-3">
-        <Field label="Start" hint="Earliest — predecessors may push it.">
-          <Input
-            type="date"
-            value={form.start}
-            onChange={(e) => setForm({ ...form, start: e.target.value })}
-          />
-        </Field>
-        <Field label="Duration (days)" error={attempted && durBad ? 'Min 1' : undefined}>
-          <Input
-            type="number"
-            min={1}
-            value={form.durationDays}
-            onChange={(e) =>
-              setForm({ ...form, durationDays: Math.round(Number(e.target.value) || 0) })
-            }
-            invalid={attempted && durBad}
-          />
-        </Field>
-        <Field label="Status">
-          <Select
-            value={form.status}
-            onChange={(e) => setForm({ ...form, status: e.target.value as MilestoneStatus })}
-          >
-            <option value="upcoming">Upcoming</option>
-            <option value="in-progress">In Progress</option>
-            <option value="complete">Complete</option>
-            <option value="delayed">Delayed</option>
-          </Select>
-        </Field>
-      </div>
-      <Field label="Phase" hint="Groups rows, e.g. Lockup.">
-        <Input
-          value={form.phase}
-          onChange={(e) => setForm({ ...form, phase: e.target.value })}
-          placeholder="e.g. Frame"
+          invalid={attempted && nameMissing}
+          placeholder={isGroup ? 'e.g. Sub-structure' : (selectedCode?.desc ?? 'e.g. Framing')}
         />
       </Field>
 
-      {/* Predecessors */}
-      <div className="mt-1">
-        <div className="mb-1.5 flex items-center justify-between">
-          <span className="text-[11px] font-medium text-sw-muted">Predecessors</span>
-          <button
-            type="button"
-            onClick={addDep}
-            disabled={others.length === 0 || form.deps.length >= others.length}
-            className="cursor-pointer text-[11px] font-medium text-sw-violet hover:underline disabled:cursor-default disabled:text-sw-faint disabled:no-underline"
-          >
-            + Add predecessor
-          </button>
-        </div>
-        {others.length === 0 ? (
-          <p className="text-[11px] text-sw-faint">Add more tasks to link predecessors.</p>
-        ) : form.deps.length === 0 ? (
-          <p className="text-[11px] text-sw-faint">
-            No predecessors — this task starts on its own date.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {form.deps.map((d, i) => (
-              <div key={i} className="grid grid-cols-[1fr_64px_64px_24px] items-center gap-2">
-                <Select
-                  aria-label={`Predecessor ${i + 1} task`}
-                  value={d.id as string}
-                  onChange={(e) => patchDep(i, { id: asId<ScheduleTaskId>(e.target.value) })}
-                >
-                  {others.map((t) => (
-                    <option key={t.id as string} value={t.id as string}>
-                      {taskName(t.id as string)}
-                    </option>
-                  ))}
-                </Select>
-                <Select
-                  aria-label={`Predecessor ${i + 1} type`}
-                  value={d.type}
-                  onChange={(e) => patchDep(i, { type: e.target.value as DependencyType })}
-                >
-                  {DEP_TYPES.map((tp) => (
-                    <option key={tp} value={tp}>
-                      {tp}
-                    </option>
-                  ))}
-                </Select>
-                <Input
-                  type="number"
-                  aria-label={`Predecessor ${i + 1} lag`}
-                  value={d.lag}
-                  onChange={(e) => patchDep(i, { lag: Math.round(Number(e.target.value) || 0) })}
-                  title="Lead/lag in working days"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeDep(i)}
-                  aria-label={`Remove predecessor ${i + 1}`}
-                  className="text-[13px] text-sw-danger"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-            <p className="text-[10px] text-sw-faint">
-              Type: FS finish→start · SS start→start · FF finish→finish · SF start→finish. Lag is in
-              working days (negative = lead).
-            </p>
+      <Field label="Parent group" hint="Leave as top-level, or nest under a group.">
+        <Select
+          value={form.parentId}
+          onChange={(e) => setForm({ ...form, parentId: e.target.value })}
+        >
+          <option value="">— Top level —</option>
+          {parentCandidates.map((t) => (
+            <option key={t.id as string} value={t.id as string}>
+              {t.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+
+      {!isGroup && (
+        <>
+          <Field label="Cost code" hint="Optional — a task usually books to a code.">
+            <CostCodeSelect
+              projectId={project.id}
+              codes={project.codes}
+              value={form.ccId}
+              onChange={(cc) => setForm({ ...form, ccId: cc })}
+            />
+          </Field>
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="Start" hint="Predecessors may push it.">
+              <Input
+                type="date"
+                value={form.start}
+                onChange={(e) => setForm({ ...form, start: e.target.value })}
+              />
+            </Field>
+            <Field label="Duration (days)" error={attempted && durBad ? 'Min 1' : undefined}>
+              <Input
+                type="number"
+                min={1}
+                value={form.durationDays}
+                onChange={(e) =>
+                  setForm({ ...form, durationDays: Math.round(Number(e.target.value) || 0) })
+                }
+                invalid={attempted && durBad}
+              />
+            </Field>
+            <Field label="Status">
+              <Select
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value as MilestoneStatus })}
+              >
+                <option value="upcoming">Upcoming</option>
+                <option value="in-progress">In Progress</option>
+                <option value="complete">Complete</option>
+                <option value="delayed">Delayed</option>
+              </Select>
+            </Field>
           </div>
-        )}
-      </div>
+
+          <div className="mt-1">
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="text-[11px] font-medium text-sw-muted">Predecessors</span>
+              <button
+                type="button"
+                onClick={addDep}
+                disabled={leafOthers.length === 0 || form.deps.length >= leafOthers.length}
+                className="cursor-pointer text-[11px] font-medium text-sw-violet hover:underline disabled:cursor-default disabled:text-sw-faint disabled:no-underline"
+              >
+                + Add predecessor
+              </button>
+            </div>
+            {form.deps.length === 0 ? (
+              <p className="text-[11px] text-sw-faint">
+                No predecessors — this task starts on its own date.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {form.deps.map((d, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_64px_64px_24px] items-center gap-2">
+                    <Select
+                      aria-label={`Predecessor ${i + 1} task`}
+                      value={d.id as string}
+                      onChange={(e) => patchDep(i, { id: asId<ScheduleTaskId>(e.target.value) })}
+                    >
+                      {leafOthers.map((t) => (
+                        <option key={t.id as string} value={t.id as string}>
+                          {taskName(t.id as string)}
+                        </option>
+                      ))}
+                    </Select>
+                    <Select
+                      aria-label={`Predecessor ${i + 1} type`}
+                      value={d.type}
+                      onChange={(e) => patchDep(i, { type: e.target.value as DependencyType })}
+                    >
+                      {DEP_TYPES.map((tp) => (
+                        <option key={tp} value={tp}>
+                          {tp}
+                        </option>
+                      ))}
+                    </Select>
+                    <Input
+                      type="number"
+                      aria-label={`Predecessor ${i + 1} lag`}
+                      value={d.lag}
+                      onChange={(e) =>
+                        patchDep(i, { lag: Math.round(Number(e.target.value) || 0) })
+                      }
+                      title="Lead/lag in working days"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeDep(i)}
+                      aria-label={`Remove predecessor ${i + 1}`}
+                      className="text-[13px] text-sw-danger"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       <Field label="Notes">
         <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />

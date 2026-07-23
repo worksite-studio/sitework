@@ -1,5 +1,11 @@
 import { useEffect, useReducer, useRef, useState, type Dispatch, type Reducer } from 'react'
-import { asId, type LineItemId, type RootState } from '@/types'
+import {
+  asId,
+  type LineItemId,
+  type RootState,
+  type ScheduleTask,
+  type ScheduleTaskId,
+} from '@/types'
 import { newId } from '@/lib/newId'
 
 /** Current persistence schema version. Bump when the shape changes incompatibly. */
@@ -86,6 +92,60 @@ export function normalizeCodeBudgets(state: RootState): RootState {
 }
 
 /**
+ * 4.7-Q2: the programme is a WBS tree. Legacy tasks grouped only by the `phase`
+ * string (no `parentId`) are converted once into real top-level summary rows —
+ * one summary per distinct phase, its tasks re-parented under it and their
+ * `phase` cleared. Idempotent: once tasks carry `parentId` (and summaries have
+ * no phase), there's nothing left to convert.
+ */
+export function normalizeScheduleTree(state: RootState): RootState {
+  if (!state.scheduleTasks) return state
+  let changed = false
+  const scheduleTasks: RootState['scheduleTasks'] = { ...state.scheduleTasks }
+  for (const [projectId, list] of Object.entries(state.scheduleTasks)) {
+    const tasks = list ?? []
+    const legacy = tasks.filter((t) => t.phase && !t.parentId)
+    if (legacy.length === 0) continue
+
+    const summaryFor = new Map<string, ScheduleTask>()
+    const migrated: ScheduleTask[] = tasks.map((t) => {
+      if (!t.phase || t.parentId) return t
+      const phase = t.phase
+      let summary = summaryFor.get(phase)
+      if (!summary) {
+        summary = {
+          id: asId<ScheduleTaskId>(newId('ST')),
+          name: phase,
+          start: t.start,
+          end: t.end,
+          status: 'in-progress',
+        }
+        summaryFor.set(phase, summary)
+      }
+      const rest = { ...t }
+      delete rest.phase
+      return { ...rest, parentId: summary.id }
+    })
+    // Prepend each new summary before its first child, preserving order.
+    const out: ScheduleTask[] = []
+    const emitted = new Set<string>()
+    for (const t of migrated) {
+      if (t.parentId && !emitted.has(t.parentId as string)) {
+        const s = [...summaryFor.values()].find((x) => x.id === t.parentId)
+        if (s) {
+          out.push(s)
+          emitted.add(s.id as string)
+        }
+      }
+      out.push(t)
+    }
+    scheduleTasks[projectId] = out
+    changed = true
+  }
+  return changed ? { ...state, scheduleTasks } : state
+}
+
+/**
  * Compute the initial state for the persisted reducer. Reads sw_state_v2
  * if present, otherwise falls back to seed. Doesn't perform the v1
  * migration — call `migrateLegacyState()` ahead of mount for that.
@@ -101,7 +161,7 @@ export function loadInitialState(seed: RootState, storage = browserStorage): Roo
       return seed
     }
   })()
-  return normalizeCodeBudgets(base)
+  return normalizeScheduleTree(normalizeCodeBudgets(base))
 }
 
 /**

@@ -297,20 +297,19 @@ test('Schedule is a Program of Works Gantt — phases, bars, lookahead (gap 4.7-
   await page.goto('/projects/PRJ-001/schedule')
   await expect(page.getByRole('heading', { name: 'Program of Works' })).toBeVisible()
 
-  // Seeded programme: phase bands + cost-code task rows.
-  await expect(page.getByText('Site & Sub-structure', { exact: true })).toBeVisible()
-  await expect(page.getByText('Lockup', { exact: true })).toBeVisible()
-  await expect(
-    page.getByRole('button', { name: 'Excavation & site establishment', exact: true }),
-  ).toBeVisible()
+  // Seeded programme: summary rows + their cost-code tasks (names are editable).
+  await expect(page.getByLabel('Name 1', { exact: true })).toHaveValue('Site & Sub-structure')
+  await expect(page.getByLabel('Name 1.1', { exact: true })).toHaveValue(
+    'Excavation & site establishment',
+  )
+  await expect(page.getByLabel('Name 3', { exact: true })).toHaveValue('Lockup')
 
-  // Lookahead is the second view; the seeded programme is historical.
+  // The view toggle switches the axis window.
   await page.getByRole('button', { name: '6-week lookahead' }).click()
-  await expect(page.getByText(/No programme activity in the next six weeks/)).toBeVisible()
   await page.getByRole('button', { name: 'Full programme' }).click()
-  await expect(
-    page.getByRole('button', { name: 'Excavation & site establishment', exact: true }),
-  ).toBeVisible()
+  await expect(page.getByLabel('Name 1.1', { exact: true })).toHaveValue(
+    'Excavation & site establishment',
+  )
 
   // A task places a cost code on the timeline.
   await page.getByRole('button', { name: '+ Task' }).click()
@@ -324,9 +323,10 @@ test('Program of Works runs the scheduling engine — critical path + predecesso
   await page.goto('/projects/PRJ-001/schedule')
   // The engine reports the critical path in the sub-line.
   await expect(page.getByText(/on critical path/)).toBeVisible()
-  // Seeded FS chain is critical; the SS-parallel drainage task carries float.
-  await expect(page.getByText('critical').first()).toBeVisible()
-  await expect(page.getByText(/\d+d float/).first()).toBeVisible()
+  // Total-slack column: the FS chain is critical (0d); the SS-parallel
+  // drainage task carries real float.
+  await expect(page.getByText('0d').first()).toBeVisible()
+  await expect(page.getByText('79d')).toBeVisible()
 
   // The task dialog exposes duration + a typed predecessors editor.
   await page.getByRole('button', { name: '+ Task' }).click()
@@ -334,6 +334,38 @@ test('Program of Works runs the scheduling engine — critical path + predecesso
   await expect(page.getByText('Predecessors', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: '+ Add predecessor' }).click()
   await expect(page.getByLabel('Predecessor 1 type')).toBeVisible()
+})
+
+test('Program of Works has a WBS grid — summaries, numbering, collapse (gap 4.7-Q2)', async ({
+  page,
+}) => {
+  await page.goto('/projects/PRJ-001/schedule')
+
+  // Grid columns.
+  for (const col of ['WBS', 'Dur', 'Float', 'Start', 'Finish', 'Pred']) {
+    await expect(page.getByText(col, { exact: true })).toBeVisible()
+  }
+
+  // Hierarchical numbering: summaries at 1..4, their tasks at 1.1, 1.2…
+  await expect(page.getByLabel('Name 1', { exact: true })).toHaveValue('Site & Sub-structure')
+  await expect(page.getByLabel('Name 1.3', { exact: true })).toHaveValue(
+    'Drainage — septic & stormwater',
+  )
+
+  // A summary's duration is the SPAN of its children, not their sum.
+  const summaryRow = page.locator('[class*="group/row"]').first()
+  await expect(summaryRow).toContainText('28d')
+
+  // Collapsing a summary hides its children.
+  await expect(page.getByLabel('Name 1.1', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Collapse' }).first().click()
+  await expect(page.getByLabel('Name 1.1', { exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Expand' }).first().click()
+  await expect(page.getByLabel('Name 1.1', { exact: true })).toBeVisible()
+
+  // Names are editable inline.
+  await page.getByLabel('Name 1.1', { exact: true }).fill('Excavation reworded')
+  await expect(page.getByLabel('Name 1.1', { exact: true })).toHaveValue('Excavation reworded')
 })
 
 test('Gantt draws dependency arrows between linked tasks (gap 4.7-Q1)', async ({ page }) => {
