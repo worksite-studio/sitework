@@ -277,6 +277,13 @@ export type DeleteScheduleTaskAction = {
   projectId: ProjectId
   taskId: ScheduleTaskId
 }
+/** Snapshot the current computed dates as the approved baseline (4.7-R). */
+export type SetScheduleBaselineAction = {
+  type: 'SET_SCHEDULE_BASELINE'
+  projectId: ProjectId
+  /** taskId → the dates to freeze. Tasks absent from the map are untouched. */
+  baselines: Record<string, { start: string; end: string }>
+}
 
 // ─── RFIs (new in Phase 4) ───────────────────────────────────────────────
 
@@ -410,6 +417,7 @@ export type Action =
   | AddScheduleTaskAction
   | UpdateScheduleTaskAction
   | DeleteScheduleTaskAction
+  | SetScheduleBaselineAction
   | AddRfiAction
   | UpdateRfiAction
   | AddSubAction

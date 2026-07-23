@@ -91,6 +91,34 @@ export function durationWorkingDays(
   return Math.max(1, workingDaysInclusive(task.start, task.end, cal))
 }
 
+/**
+ * Signed working-day variance from `fromISO` to `toISO` (4.7-R). Positive means
+ * `toISO` is later — i.e. slippage against a baseline; negative means ahead.
+ */
+export function workingDayVariance(
+  fromISO: string,
+  toISO: string,
+  cal: WorkCalendar = DEFAULT_CALENDAR,
+): number {
+  if (fromISO === toISO) return 0
+  if (toISO > fromISO) return workingDaysInclusive(fromISO, toISO, cal) - 1
+  return -(workingDaysInclusive(toISO, fromISO, cal) - 1)
+}
+
+/**
+ * Duration-weighted percent complete for a summary (4.7-R) — a 20-day task at
+ * 50% counts for twice as much as a 10-day task at 50%.
+ */
+export function rollUpPercent(children: Array<{ duration: number; percent: number }>): number {
+  const totalDur = children.reduce((s, c) => s + Math.max(c.duration, 0), 0)
+  if (totalDur <= 0) return 0
+  const weighted = children.reduce(
+    (s, c) => s + Math.max(c.duration, 0) * Math.min(Math.max(c.percent, 0), 100),
+    0,
+  )
+  return Math.round(weighted / totalDur)
+}
+
 // ── Critical-path scheduling ───────────────────────────────────────────────
 
 export interface ScheduledTask {

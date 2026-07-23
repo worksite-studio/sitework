@@ -4,6 +4,8 @@ import {
   computeSchedule,
   durationWorkingDays,
   nextWorkingDay,
+  rollUpPercent,
+  workingDayVariance,
   workingDaysInclusive,
   type WorkCalendar,
 } from './schedule'
@@ -73,6 +75,40 @@ describe('working-day calendar helpers', () => {
     expect(durationWorkingDays({ start: MON, end: FRI })).toBe(5)
     expect(durationWorkingDays({ start: MON, end: FRI, durationDays: 3 })).toBe(3)
     expect(durationWorkingDays({ start: MON, end: MON })).toBe(1)
+  })
+})
+
+describe('baseline variance & progress roll-up (4.7-R)', () => {
+  it('workingDayVariance is positive when later (slipped), negative when earlier', () => {
+    expect(workingDayVariance(MON, MON)).toBe(0)
+    expect(workingDayVariance(MON, TUE)).toBe(1)
+    expect(workingDayVariance(FRI, NEXT_MON)).toBe(1) // weekend doesn't count
+    expect(workingDayVariance(MON, NEXT_MON)).toBe(5)
+    expect(workingDayVariance(NEXT_MON, FRI)).toBe(-1)
+  })
+
+  it('rollUpPercent weights by duration', () => {
+    expect(rollUpPercent([])).toBe(0)
+    expect(rollUpPercent([{ duration: 10, percent: 50 }])).toBe(50)
+    // 20d @100% + 10d @0% → 67%
+    expect(
+      rollUpPercent([
+        { duration: 20, percent: 100 },
+        { duration: 10, percent: 0 },
+      ]),
+    ).toBe(67)
+    // equal durations average
+    expect(
+      rollUpPercent([
+        { duration: 5, percent: 100 },
+        { duration: 5, percent: 0 },
+      ]),
+    ).toBe(50)
+  })
+
+  it('rollUpPercent clamps out-of-range values', () => {
+    expect(rollUpPercent([{ duration: 5, percent: 150 }])).toBe(100)
+    expect(rollUpPercent([{ duration: 5, percent: -20 }])).toBe(0)
   })
 })
 
