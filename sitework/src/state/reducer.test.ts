@@ -646,6 +646,21 @@ describe('schedule tasks (programme of works, 4.7-O)', () => {
     expect(s.scheduleTasks[P1 as string]![0]!.start).toBe('2026-03-01')
   })
 
+  it('SET_SCHEDULE_BASELINE freezes the supplied dates, leaving others untouched', () => {
+    const t2: ScheduleTask = { ...t, id: asId('ST-002'), name: 'Lockup' }
+    let s = reducer(emptyState(), { type: 'ADD_SCHEDULE_TASK', projectId: P1, task: t })
+    s = reducer(s, { type: 'ADD_SCHEDULE_TASK', projectId: P1, task: t2 })
+    s = reducer(s, {
+      type: 'SET_SCHEDULE_BASELINE',
+      projectId: P1,
+      baselines: { 'ST-001': { start: '2026-03-01', end: '2026-03-20' } },
+    })
+    const list = s.scheduleTasks[P1 as string]!
+    expect(list[0]!.baselineStart).toBe('2026-03-01')
+    expect(list[0]!.baselineEnd).toBe('2026-03-20')
+    expect(list[1]!.baselineStart).toBeUndefined()
+  })
+
   it('DELETE_SCHEDULE_TASK removes only that task', () => {
     const t2: ScheduleTask = { ...t, id: asId('ST-002'), name: 'Lockup' }
     let s = reducer(emptyState(), { type: 'ADD_SCHEDULE_TASK', projectId: P1, task: t })

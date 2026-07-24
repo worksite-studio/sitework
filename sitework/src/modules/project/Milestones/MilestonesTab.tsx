@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Dialog, Field, Input, Select, useConfirm, useToast } from '@/components/ui'
 import { formatDate } from '@/lib/formatDate'
-import { addWorkingDays, computeSchedule, durationWorkingDays } from '@/lib/schedule'
+import {
+  addWorkingDays,
+  computeSchedule,
+  durationWorkingDays,
+  rollUpPercent,
+  workingDayVariance,
+} from '@/lib/schedule'
 import { useAppState, useDispatch } from '@/state/context'
 import { useProject } from '../useProject'
 import { CostCodeSelect } from '../CostCodeSelect'
@@ -23,7 +29,7 @@ const LOOKAHEAD_DAYS = 42
 const DEP_TYPES: DependencyType[] = ['FS', 'SS', 'FF', 'SF']
 const ROW_H = 40
 const AXIS_H = 28
-const GRID_W = 592
+const GRID_W = 684
 
 function parseISO(s: string): Date {
   return new Date(`${s}T00:00:00`)
@@ -50,6 +56,13 @@ interface Resolved {
   critical: boolean
   status: MilestoneStatus
   float: number
+  /** Work complete 0–100 — leaf value, or duration-weighted roll-up. */
+  percent: number
+  /** Baseline finish, when a baseline has been taken. */
+  baselineStart?: string
+  baselineEnd?: string
+  /** Working days late (+) / early (−) against the baseline finish. */
+  slip?: number
 }
 
 /**
@@ -121,13 +134,18 @@ export function MilestonesTab() {
     const resolved = new Map<string, Resolved>()
     for (const leaf of leaves) {
       const s = sched.tasks.get(leaf.id as string)
+      const end = s?.end ?? leaf.end
       resolved.set(leaf.id as string, {
         start: s?.start ?? leaf.start,
-        end: s?.end ?? leaf.end,
+        end,
         duration: s?.duration ?? durationWorkingDays(leaf),
         critical: s?.critical ?? false,
         status: leaf.status,
         float: s?.totalFloat ?? 0,
+        percent: Math.min(Math.max(leaf.percentComplete ?? 0, 0), 100),
+        baselineStart: leaf.baselineStart,
+        baselineEnd: leaf.baselineEnd,
+        slip: leaf.baselineEnd ? workingDayVariance(leaf.baselineEnd, end) : undefined,
       })
     }
     const resolveNode = (t: ScheduleTask): Resolved => {
@@ -137,6 +155,11 @@ export function MilestonesTab() {
       const kr = kids.map(resolveNode)
       const start = kr.reduce((m, r) => (r.start < m ? r.start : m), kr[0]?.start ?? t.start)
       const end = kr.reduce((m, r) => (r.end > m ? r.end : m), kr[0]?.end ?? t.end)
+      // Baseline span rolls up too, so a summary shows its own slippage.
+      const bStarts = kr.map((x) => x.baselineStart).filter(Boolean) as string[]
+      const bEnds = kr.map((x) => x.baselineEnd).filter(Boolean) as string[]
+      const baselineStart = bStarts.length ? bStarts.reduce((m, d) => (d < m ? d : m)) : undefined
+      const baselineEnd = bEnds.length ? bEnds.reduce((m, d) => (d > m ? d : m)) : undefined
       const r: Resolved = {
         start,
         end,
@@ -144,6 +167,10 @@ export function MilestonesTab() {
         critical: kr.some((x) => x.critical),
         status: rollUpStatus(kr.map((x) => x.status)),
         float: 0,
+        percent: rollUpPercent(kr.map((x) => ({ duration: x.duration, percent: x.percent }))),
+        baselineStart,
+        baselineEnd,
+        slip: baselineEnd ? workingDayVariance(baselineEnd, end) : undefined,
       }
       resolved.set(t.id as string, r)
       return r
@@ -330,6 +357,41 @@ export function MilestonesTab() {
   const patchTask = (t: ScheduleTask, patch: Partial<ScheduleTask>) =>
     dispatch({ type: 'UPDATE_SCHEDULE_TASK', projectId: project.id, taskId: t.id, patch })
 
+  // ── Baseline (4.7-R) ─────────────────────────────────────────────────────
+  const hasBaseline = tasks.some((t) => !!t.baselineEnd)
+  // Programme slippage = the latest computed finish vs the latest baseline finish.
+  const latestEnd = rows.reduce<string | null>((m, r) => {
+    const e = resolved.get(r.task.id as string)?.end
+    return e && (!m || e > m) ? e : m
+  }, null)
+  const latestBaseline = tasks.reduce<string | null>(
+    (m, t) => (t.baselineEnd && (!m || t.baselineEnd > m) ? t.baselineEnd : m),
+    null,
+  )
+  const programmeSlip =
+    latestEnd && latestBaseline ? workingDayVariance(latestBaseline, latestEnd) : null
+
+  async function setBaseline() {
+    if (!project) return
+    if (hasBaseline) {
+      const ok = await confirm({
+        title: 'Re-baseline programme',
+        message:
+          'Replace the approved baseline with the current dates? The existing baseline — and the slippage measured against it — will be lost.',
+        confirmLabel: 'Re-baseline',
+        danger: true,
+      })
+      if (!ok) return
+    }
+    const baselines: Record<string, { start: string; end: string }> = {}
+    for (const t of tasks) {
+      const r = resolved.get(t.id as string)
+      if (r) baselines[t.id as string] = { start: r.start, end: r.end }
+    }
+    dispatch({ type: 'SET_SCHEDULE_BASELINE', projectId: project.id, baselines })
+    toast(hasBaseline ? 'Programme re-baselined' : 'Baseline set', 'success')
+  }
+
   const empty = rows.length === 0 && milestones.length === 0
 
   return (
@@ -342,6 +404,21 @@ export function MilestonesTab() {
           <div className="text-[13px] text-sw-dim">
             {rows.length} row{rows.length !== 1 ? 's' : ''} · {criticalCount} on critical path ·{' '}
             {milestones.length} milestone{milestones.length !== 1 ? 's' : ''}
+            {programmeSlip !== null && (
+              <>
+                {' · '}
+                <span
+                  style={{ color: programmeSlip > 0 ? 'var(--sw-neg)' : 'var(--sw-pos)' }}
+                  className="font-semibold"
+                >
+                  {programmeSlip > 0
+                    ? `${programmeSlip} days behind baseline`
+                    : programmeSlip < 0
+                      ? `${Math.abs(programmeSlip)} days ahead of baseline`
+                      : 'on baseline'}
+                </span>
+              </>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -363,6 +440,9 @@ export function MilestonesTab() {
               </button>
             ))}
           </div>
+          <Button variant="secondary" onClick={setBaseline} disabled={rows.length === 0}>
+            {hasBaseline ? 'Re-baseline' : 'Set baseline'}
+          </Button>
           <Button variant="secondary" onClick={() => setMsModal('new')}>
             + Milestone
           </Button>
@@ -404,6 +484,12 @@ export function MilestonesTab() {
               </span>
               <span className="shrink-0 pr-1 text-right" style={{ width: 48 }}>
                 Float
+              </span>
+              <span className="shrink-0 pr-1 text-right" style={{ width: 44 }}>
+                %
+              </span>
+              <span className="shrink-0 pr-1 text-right" style={{ width: 48 }}>
+                Slip
               </span>
               <span className="shrink-0 pl-2" style={{ width: 96 }}>
                 Start
@@ -480,6 +566,48 @@ export function MilestonesTab() {
                     title={res.critical ? 'On the critical path — no slack' : 'Total slack'}
                   >
                     {isSum ? '—' : `${res.float}d`}
+                  </span>
+                  <span className="shrink-0 pr-1 text-right" style={{ width: 44 }}>
+                    {isSum ? (
+                      <span className="text-[11px] text-sw-dim">{res.percent}%</span>
+                    ) : (
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={res.percent}
+                        onChange={(e) =>
+                          patchTask(r.task, {
+                            percentComplete: Math.min(
+                              Math.max(Math.round(Number(e.target.value) || 0), 0),
+                              100,
+                            ),
+                          })
+                        }
+                        aria-label={`Percent ${r.wbs}`}
+                        className="w-full border-0 bg-transparent p-0 text-right text-[11px] text-sw-dim focus:outline-none"
+                      />
+                    )}
+                  </span>
+                  <span
+                    className="shrink-0 pr-1 text-right text-[11px]"
+                    style={{
+                      width: 48,
+                      color:
+                        res.slip === undefined
+                          ? 'var(--sw-faint)'
+                          : res.slip > 0
+                            ? 'var(--sw-neg)'
+                            : 'var(--sw-pos)',
+                      fontWeight: res.slip && res.slip > 0 ? 600 : 400,
+                    }}
+                    title={
+                      res.baselineEnd
+                        ? `Baseline finish ${formatDate(res.baselineEnd)}`
+                        : 'No baseline set'
+                    }
+                  >
+                    {res.slip === undefined ? '—' : res.slip > 0 ? `+${res.slip}d` : `${res.slip}d`}
                   </span>
                   <span className="shrink-0 pl-2" style={{ width: 96 }}>
                     {isSum ? (
@@ -643,13 +771,38 @@ export function MilestonesTab() {
                       </div>
                     ) : (
                       <div
-                        title={`${formatDate(res.start)} → ${formatDate(res.end)}${res.critical ? ' · critical path' : ` · ${res.float}d float`}`}
-                        className="absolute top-1/2 h-[10px] -translate-y-1/2 rounded-[1px]"
+                        title={`${formatDate(res.start)} → ${formatDate(res.end)} · ${res.percent}% complete${res.critical ? ' · critical path' : ` · ${res.float}d float`}${res.slip !== undefined ? ` · ${res.slip > 0 ? `${res.slip}d late` : res.slip < 0 ? `${Math.abs(res.slip)}d early` : 'on baseline'} vs baseline` : ''}`}
+                        className="absolute top-1/2 h-[10px] -translate-y-1/2 overflow-hidden rounded-[1px]"
                         style={{
                           left: `${left}%`,
                           width: `${width}%`,
-                          background: color,
-                          boxShadow: res.critical ? '0 0 0 1.5px var(--sw-neg)' : undefined,
+                          background: 'var(--sw-rule-l)',
+                          boxShadow: res.critical
+                            ? '0 0 0 1.5px var(--sw-neg)'
+                            : `inset 0 0 0 1px ${color}`,
+                        }}
+                      >
+                        {/* Progress fill — solid portion = work complete */}
+                        <div
+                          className="h-full"
+                          style={{ width: `${res.percent}%`, background: color }}
+                        />
+                      </div>
+                    )}
+                    {/* Baseline ghost — the approved dates, under the live bar */}
+                    {res.baselineStart && res.baselineEnd && (
+                      <div
+                        className="absolute h-[3px] rounded-[1px]"
+                        title={`Baseline ${formatDate(res.baselineStart)} → ${formatDate(res.baselineEnd)}`}
+                        style={{
+                          top: 'calc(50% + 9px)',
+                          left: `${clamp(pct(parseISO(res.baselineStart).getTime()))}%`,
+                          width: `${Math.max(
+                            clamp(pct(parseISO(res.baselineEnd).getTime())) -
+                              clamp(pct(parseISO(res.baselineStart).getTime())),
+                            0.6,
+                          )}%`,
+                          background: 'var(--sw-rule)',
                         }}
                       />
                     )}
@@ -699,6 +852,13 @@ export function MilestonesTab() {
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-[4px] w-[14px]" style={{ background: 'var(--sw-ink)' }} />
           Summary
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span
+            className="inline-block h-[3px] w-[14px]"
+            style={{ background: 'var(--sw-rule)' }}
+          />
+          Baseline
         </span>
         <span className="flex items-center gap-1.5">
           <span

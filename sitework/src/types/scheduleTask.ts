@@ -58,7 +58,19 @@ export interface ScheduleTask {
    *  start/end when absent (4.7-P). */
   durationDays?: number
   status: MilestoneStatus
-  /** Optional grouping band, e.g. "Site & Sub-structure", "Lockup". */
+  /**
+   * Work complete, 0–100 (4.7-R). Leaf rows carry it; a summary's figure is
+   * rolled up duration-weighted from its descendants.
+   */
+  percentComplete?: number
+  /**
+   * Baseline snapshot (4.7-R) — the approved programme dates this task was
+   * signed off against. Captured by "Set baseline"; slippage is measured
+   * against `baselineEnd`. Absent until a baseline is taken.
+   */
+  baselineStart?: string
+  baselineEnd?: string
+  /** @deprecated 4.7-Q2 — legacy grouping band, migrated to summary rows. */
   phase?: string
   notes?: string
   /** Predecessor links (4.7-P) — typed, with lead/lag in working days. */

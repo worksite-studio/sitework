@@ -368,6 +368,27 @@ test('Program of Works has a WBS grid — summaries, numbering, collapse (gap 4.
   await expect(page.getByLabel('Name 1.1', { exact: true })).toHaveValue('Excavation reworded')
 })
 
+test('Program of Works tracks baseline vs actual — % complete + slippage (gap 4.7-R)', async ({
+  page,
+}) => {
+  await page.goto('/projects/PRJ-001/schedule')
+
+  // New tracking columns.
+  await expect(page.getByText('%', { exact: true })).toBeVisible()
+  await expect(page.getByText('Slip', { exact: true })).toBeVisible()
+
+  // The seed carries a baseline, so the programme reports its slippage and
+  // the cascaded tasks show where it accrued.
+  await expect(page.getByText(/days behind baseline/)).toBeVisible()
+  await expect(page.getByText('+4d').first()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Re-baseline' })).toBeVisible()
+
+  // % complete is inline-editable on a leaf row.
+  const pct = page.getByLabel('Percent 4.1', { exact: true })
+  await pct.fill('80')
+  await expect(pct).toHaveValue('80')
+})
+
 test('Gantt draws dependency arrows between linked tasks (gap 4.7-Q1)', async ({ page }) => {
   await page.goto('/projects/PRJ-001/schedule')
   const svg = page.locator('svg[aria-hidden="true"]')

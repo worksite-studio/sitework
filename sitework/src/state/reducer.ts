@@ -434,6 +434,21 @@ export function reducer(state: RootState, action: Action): RootState {
         ),
       }
 
+    case 'SET_SCHEDULE_BASELINE': {
+      const key = action.projectId as string
+      const existing = state.scheduleTasks[key] ?? []
+      return {
+        ...state,
+        scheduleTasks: {
+          ...state.scheduleTasks,
+          [key]: existing.map((t) => {
+            const b = action.baselines[t.id as string]
+            return b ? { ...t, baselineStart: b.start, baselineEnd: b.end } : t
+          }),
+        },
+      }
+    }
+
     // ─── RFIs (new in Phase 4) ────────────────────────────────────────────
     case 'ADD_RFI': {
       // Auto-fill rfiNo if missing — same pattern as ADD_CLAIM.
