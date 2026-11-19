@@ -389,6 +389,30 @@ test('Program of Works tracks baseline vs actual — % complete + slippage (gap 
   await expect(pct).toHaveValue('80')
 })
 
+test('Program of Works zooms the timeline (fit → fixed density scroll) (gap 4.7-T)', async ({
+  page,
+}) => {
+  await page.goto('/projects/PRJ-001/schedule')
+  const chart = page
+    .locator('.overflow-x-auto')
+    .filter({ has: page.locator('svg[aria-hidden="true"]') })
+  const content = chart.locator('> div').first()
+
+  const paneBox = await chart.boundingBox()
+  const fitBox = await content.boundingBox()
+  expect(fitBox!.width).toBeLessThanOrEqual(paneBox!.width + 2)
+
+  // Week: fixed density makes the timeline far wider than the pane (scrolls).
+  await page.getByRole('button', { name: 'Week', exact: true }).click()
+  const weekBox = await content.boundingBox()
+  expect(weekBox!.width).toBeGreaterThan(paneBox!.width * 2)
+
+  // Back to Fit.
+  await page.getByRole('button', { name: 'Fit', exact: true }).click()
+  const refit = await content.boundingBox()
+  expect(refit!.width).toBeLessThanOrEqual(paneBox!.width + 2)
+})
+
 test('Program of Works assigns a subcontractor resource to a task (gap 4.7-S)', async ({
   page,
 }) => {

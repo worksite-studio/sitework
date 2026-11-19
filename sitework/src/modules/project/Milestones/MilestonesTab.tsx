@@ -32,6 +32,18 @@ const ROW_H = 40
 const AXIS_H = 28
 const GRID_W = 684
 
+/** Zoom levels → calendar pixels per day. 'fit' squeezes the whole window into
+ *  the pane; the others use a fixed density and scroll horizontally (4.7-T). */
+const ZOOM_PX_PER_DAY = { quarter: 1.6, month: 5, week: 22 } as const
+type Zoom = 'fit' | keyof typeof ZOOM_PX_PER_DAY
+const ZOOMS: Zoom[] = ['fit', 'quarter', 'month', 'week']
+const ZOOM_LABEL: Record<Zoom, string> = {
+  fit: 'Fit',
+  quarter: 'Quarter',
+  month: 'Month',
+  week: 'Week',
+}
+
 function parseISO(s: string): Date {
   return new Date(`${s}T00:00:00`)
 }
@@ -90,6 +102,7 @@ export function MilestonesTab() {
     'new-task' | 'new-group' | { task: ScheduleTask } | null
   >(null)
   const [view, setView] = useState<'full' | 'lookahead'>('full')
+  const [zoom, setZoom] = useState<Zoom>('fit')
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
   const pid = project?.id as string | undefined
@@ -218,55 +231,59 @@ export function MilestonesTab() {
   if (!project) return null
 
   const span = win ? win.end - win.start : 1
-  const pct = (ms: number) => ((ms - (win?.start ?? 0)) / span) * 100
-  const clamp = (n: number) => Math.max(0, Math.min(100, n))
   const rowsHeight = rows.length * ROW_H
 
-  // Row centre Ys + bar extents for arrows.
+  // Chart content width: 'fit' fills the measured pane; a fixed zoom uses a
+  // pixels-per-day density and overflows the pane (horizontal scroll). (4.7-T)
+  const spanDays = span / DAY_MS
+  const contentW =
+    zoom === 'fit' ? chartW : Math.max(Math.round(spanDays * ZOOM_PX_PER_DAY[zoom]), chartW)
+  // Timestamp → x pixels within the content, and a clamp to the content box.
+  const xpx = (ms: number) => (win ? ((ms - win.start) / span) * contentW : 0)
+  const clampX = (x: number) => Math.max(0, Math.min(contentW, x))
+
+  // Row centre Ys + bar extents (px) for arrows.
   const pos = new Map<
     string,
-    { centerY: number; startPct: number; endPct: number; critical: boolean }
+    { centerY: number; startX: number; endX: number; critical: boolean }
   >()
   rows.forEach((r, i) => {
     const res = resolved.get(r.task.id as string)
     if (!res) return
     pos.set(r.task.id as string, {
       centerY: i * ROW_H + ROW_H / 2,
-      startPct: clamp(pct(parseISO(res.start).getTime())),
-      endPct: clamp(pct(parseISO(res.end).getTime())),
+      startX: clampX(xpx(parseISO(res.start).getTime())),
+      endX: clampX(xpx(parseISO(res.end).getTime())),
       critical: res.critical,
     })
   })
-  const xOf = (p: number) => (p / 100) * chartW
   const arrows: Array<{ key: string; d: string; critical: boolean }> = []
-  if (chartW > 0) {
+  if (contentW > 0) {
     for (const r of rows) {
       const sp = pos.get(r.task.id as string)
       if (!sp) continue
       for (const d of r.task.deps ?? []) {
         const pp = pos.get(d.id as string)
         if (!pp) continue
-        let sPct: number
-        let tPct: number
+        let x1: number
+        let x2: number
         switch (d.type) {
           case 'SS':
-            sPct = pp.startPct
-            tPct = sp.startPct
+            x1 = pp.startX
+            x2 = sp.startX
             break
           case 'FF':
-            sPct = pp.endPct
-            tPct = sp.endPct
+            x1 = pp.endX
+            x2 = sp.endX
             break
           case 'SF':
-            sPct = pp.startPct
-            tPct = sp.endPct
+            x1 = pp.startX
+            x2 = sp.endX
             break
           default:
-            sPct = pp.endPct
-            tPct = sp.startPct
+            x1 = pp.endX
+            x2 = sp.startX
         }
-        const x1 = xOf(sPct)
-        const x2 = xOf(tPct)
         const outX = x1 + (x2 >= x1 ? 8 : -8)
         arrows.push({
           key: `${d.id}->${r.task.id as string}`,
@@ -277,19 +294,34 @@ export function MilestonesTab() {
     }
   }
 
+  // Axis ticks (x in px). Weekly gridlines when zoomed into Week, else monthly.
   const ticks: Array<{ left: number; label: string }> = []
   if (win) {
-    const cur = new Date(win.start)
-    cur.setDate(1)
-    cur.setHours(0, 0, 0, 0)
-    while (cur.getTime() <= win.end) {
-      if (cur.getTime() >= win.start) {
+    if (zoom === 'week') {
+      const cur = new Date(win.start)
+      cur.setHours(0, 0, 0, 0)
+      // advance to the next Monday
+      while (cur.getDay() !== 1) cur.setDate(cur.getDate() + 1)
+      while (cur.getTime() <= win.end) {
         ticks.push({
-          left: pct(cur.getTime()),
-          label: cur.toLocaleDateString('en-AU', { month: 'short', year: '2-digit' }),
+          left: xpx(cur.getTime()),
+          label: cur.toLocaleDateString('en-AU', { day: '2-digit', month: 'short' }),
         })
+        cur.setDate(cur.getDate() + 7)
       }
-      cur.setMonth(cur.getMonth() + 1)
+    } else {
+      const cur = new Date(win.start)
+      cur.setDate(1)
+      cur.setHours(0, 0, 0, 0)
+      while (cur.getTime() <= win.end) {
+        if (cur.getTime() >= win.start) {
+          ticks.push({
+            left: xpx(cur.getTime()),
+            label: cur.toLocaleDateString('en-AU', { month: 'short', year: '2-digit' }),
+          })
+        }
+        cur.setMonth(cur.getMonth() + 1)
+      }
     }
   }
   const todayInWindow = !!win && today.getTime() >= win.start && today.getTime() <= win.end
@@ -465,13 +497,35 @@ export function MilestonesTab() {
         </div>
       )}
 
+      {!empty && (
+        <div className="mb-2 flex items-center justify-end gap-1.5 text-[11px] text-sw-dim">
+          <span className="mr-1 uppercase tracking-[0.08em]">Zoom</span>
+          {ZOOMS.map((z) => (
+            <button
+              key={z}
+              type="button"
+              onClick={() => setZoom(z)}
+              aria-pressed={zoom === z}
+              className="cursor-pointer rounded-[1px] px-2 py-[3px] text-[11px]"
+              style={{
+                border: `1px solid ${zoom === z ? 'var(--sw-ink)' : 'var(--sw-rule)'}`,
+                background: zoom === z ? 'var(--sw-ink)' : 'transparent',
+                color: zoom === z ? '#fff' : 'var(--sw-dim)',
+              }}
+            >
+              {ZOOM_LABEL[z]}
+            </button>
+          ))}
+        </div>
+      )}
+
       {empty ? (
         <div className="border-y border-sw-rule py-14 text-center text-[13px] text-sw-faint">
           No programme yet — add a task to place a cost code on the timeline, or a group heading to
           structure it.
         </div>
       ) : (
-        <div className="flex overflow-x-auto border-t border-sw-ink">
+        <div className="flex border-t border-sw-ink">
           {/* ── Grid pane ─────────────────────────────────────────────── */}
           <div className="shrink-0" style={{ width: GRID_W }}>
             <div
@@ -672,165 +726,170 @@ export function MilestonesTab() {
             })}
           </div>
 
-          {/* ── Chart pane ────────────────────────────────────────────── */}
-          <div className="min-w-[360px] flex-1 border-l border-sw-rule">
-            {/* Month axis */}
-            <div className="relative border-b border-sw-rule" style={{ height: AXIS_H }}>
-              {ticks.map((t) => (
-                <span
-                  key={t.label + t.left}
-                  className="absolute top-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-sw-faint"
-                  style={{ left: `${clamp(t.left)}%` }}
-                >
-                  {t.label}
-                </span>
-              ))}
-            </div>
-            {/* Milestone diamonds */}
-            <div className="relative border-b border-sw-rule-l" style={{ height: ROW_H }}>
-              {milestones.map((m) => (
-                <span
-                  key={m.id as string}
-                  title={`${m.name} · ${formatDate(m.date)}`}
-                  className="absolute top-1/2"
-                  style={{
-                    left: `${clamp(pct(parseISO(m.date).getTime()))}%`,
-                    transform: 'translate(-50%, -50%) rotate(45deg)',
-                    width: 9,
-                    height: 9,
-                    background: statusColor(m.status),
-                  }}
-                />
-              ))}
-            </div>
-            {/* Bars + arrows */}
-            <div ref={chartRef} className="relative" style={{ height: rowsHeight }}>
-              {arrows.length > 0 && (
-                <svg
-                  className="pointer-events-none absolute inset-0 z-10"
-                  width={chartW}
-                  height={rowsHeight}
-                  aria-hidden="true"
-                >
-                  <defs>
-                    {(['pw-arrow', 'pw-arrow-crit'] as const).map((mid) => (
-                      <marker
-                        key={mid}
-                        id={mid}
-                        markerWidth="7"
-                        markerHeight="7"
-                        refX="5.5"
-                        refY="3"
-                        orient="auto"
-                        markerUnits="userSpaceOnUse"
-                      >
-                        <path
-                          d="M0,0 L6,3 L0,6 z"
-                          fill={mid === 'pw-arrow-crit' ? 'var(--sw-neg)' : 'var(--sw-faint)'}
-                        />
-                      </marker>
-                    ))}
-                  </defs>
-                  {arrows.map((a) => (
-                    <path
-                      key={a.key}
-                      d={a.d}
-                      fill="none"
-                      stroke={a.critical ? 'var(--sw-neg)' : 'var(--sw-faint)'}
-                      strokeWidth={a.critical ? 1.5 : 1.25}
-                      markerEnd={`url(#${a.critical ? 'pw-arrow-crit' : 'pw-arrow'})`}
-                    />
-                  ))}
-                </svg>
-              )}
-              {rows.map((r) => {
-                const res = resolved.get(r.task.id as string)!
-                const left = clamp(pct(parseISO(res.start).getTime()))
-                const width = Math.max(clamp(pct(parseISO(res.end).getTime())) - left, 0.6)
-                const color = statusColor(res.status)
-                return (
-                  <div
-                    key={r.task.id as string}
-                    className="relative border-b border-sw-rule-l"
-                    style={{ height: ROW_H }}
+          {/* ── Chart pane (horizontal scroll at fixed zoom levels) ──────── */}
+          <div
+            ref={chartRef}
+            className="min-w-[360px] flex-1 overflow-x-auto border-l border-sw-rule"
+          >
+            <div className="relative" style={{ width: contentW }}>
+              {/* Axis */}
+              <div className="relative border-b border-sw-rule" style={{ height: AXIS_H }}>
+                {ticks.map((t) => (
+                  <span
+                    key={t.label + t.left}
+                    className="absolute top-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-sw-faint"
+                    style={{ left: `${t.left}px` }}
                   >
-                    {r.isSummary ? (
-                      <div
-                        className="absolute top-1/2 -translate-y-1/2"
-                        style={{ left: `${left}%`, width: `${width}%` }}
-                        title={`${formatDate(res.start)} → ${formatDate(res.end)}`}
-                      >
-                        <div className="h-[4px] w-full" style={{ background: 'var(--sw-ink)' }} />
-                        <div className="flex justify-between">
-                          <span
-                            className="h-[5px] w-[2px]"
-                            style={{ background: 'var(--sw-ink)' }}
+                    {t.label}
+                  </span>
+                ))}
+              </div>
+              {/* Milestone diamonds */}
+              <div className="relative border-b border-sw-rule-l" style={{ height: ROW_H }}>
+                {milestones.map((m) => (
+                  <span
+                    key={m.id as string}
+                    title={`${m.name} · ${formatDate(m.date)}`}
+                    className="absolute top-1/2"
+                    style={{
+                      left: `${clampX(xpx(parseISO(m.date).getTime()))}px`,
+                      transform: 'translate(-50%, -50%) rotate(45deg)',
+                      width: 9,
+                      height: 9,
+                      background: statusColor(m.status),
+                    }}
+                  />
+                ))}
+              </div>
+              {/* Bars + arrows */}
+              <div className="relative" style={{ height: rowsHeight }}>
+                {arrows.length > 0 && (
+                  <svg
+                    className="pointer-events-none absolute inset-0 z-10"
+                    width={contentW}
+                    height={rowsHeight}
+                    aria-hidden="true"
+                  >
+                    <defs>
+                      {(['pw-arrow', 'pw-arrow-crit'] as const).map((mid) => (
+                        <marker
+                          key={mid}
+                          id={mid}
+                          markerWidth="7"
+                          markerHeight="7"
+                          refX="5.5"
+                          refY="3"
+                          orient="auto"
+                          markerUnits="userSpaceOnUse"
+                        >
+                          <path
+                            d="M0,0 L6,3 L0,6 z"
+                            fill={mid === 'pw-arrow-crit' ? 'var(--sw-neg)' : 'var(--sw-faint)'}
                           />
-                          <span
-                            className="h-[5px] w-[2px]"
-                            style={{ background: 'var(--sw-ink)' }}
+                        </marker>
+                      ))}
+                    </defs>
+                    {arrows.map((a) => (
+                      <path
+                        key={a.key}
+                        d={a.d}
+                        fill="none"
+                        stroke={a.critical ? 'var(--sw-neg)' : 'var(--sw-faint)'}
+                        strokeWidth={a.critical ? 1.5 : 1.25}
+                        markerEnd={`url(#${a.critical ? 'pw-arrow-crit' : 'pw-arrow'})`}
+                      />
+                    ))}
+                  </svg>
+                )}
+                {rows.map((r) => {
+                  const res = resolved.get(r.task.id as string)!
+                  const leftX = clampX(xpx(parseISO(res.start).getTime()))
+                  const widthX = Math.max(clampX(xpx(parseISO(res.end).getTime())) - leftX, 2)
+                  const color = statusColor(res.status)
+                  return (
+                    <div
+                      key={r.task.id as string}
+                      className="relative border-b border-sw-rule-l"
+                      style={{ height: ROW_H }}
+                    >
+                      {r.isSummary ? (
+                        <div
+                          className="absolute top-1/2 -translate-y-1/2"
+                          style={{ left: `${leftX}px`, width: `${widthX}px` }}
+                          title={`${formatDate(res.start)} → ${formatDate(res.end)}`}
+                        >
+                          <div className="h-[4px] w-full" style={{ background: 'var(--sw-ink)' }} />
+                          <div className="flex justify-between">
+                            <span
+                              className="h-[5px] w-[2px]"
+                              style={{ background: 'var(--sw-ink)' }}
+                            />
+                            <span
+                              className="h-[5px] w-[2px]"
+                              style={{ background: 'var(--sw-ink)' }}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          title={`${formatDate(res.start)} → ${formatDate(res.end)} · ${res.percent}% complete${res.critical ? ' · critical path' : ` · ${res.float}d float`}${res.slip !== undefined ? ` · ${res.slip > 0 ? `${res.slip}d late` : res.slip < 0 ? `${Math.abs(res.slip)}d early` : 'on baseline'} vs baseline` : ''}`}
+                          className="absolute top-1/2 h-[10px] -translate-y-1/2 overflow-hidden rounded-[1px]"
+                          style={{
+                            left: `${leftX}px`,
+                            width: `${widthX}px`,
+                            background: 'var(--sw-rule-l)',
+                            boxShadow: res.critical
+                              ? '0 0 0 1.5px var(--sw-neg)'
+                              : `inset 0 0 0 1px ${color}`,
+                          }}
+                        >
+                          {/* Progress fill — solid portion = work complete */}
+                          <div
+                            className="h-full"
+                            style={{ width: `${res.percent}%`, background: color }}
                           />
                         </div>
-                      </div>
-                    ) : (
-                      <div
-                        title={`${formatDate(res.start)} → ${formatDate(res.end)} · ${res.percent}% complete${res.critical ? ' · critical path' : ` · ${res.float}d float`}${res.slip !== undefined ? ` · ${res.slip > 0 ? `${res.slip}d late` : res.slip < 0 ? `${Math.abs(res.slip)}d early` : 'on baseline'} vs baseline` : ''}`}
-                        className="absolute top-1/2 h-[10px] -translate-y-1/2 overflow-hidden rounded-[1px]"
-                        style={{
-                          left: `${left}%`,
-                          width: `${width}%`,
-                          background: 'var(--sw-rule-l)',
-                          boxShadow: res.critical
-                            ? '0 0 0 1.5px var(--sw-neg)'
-                            : `inset 0 0 0 1px ${color}`,
-                        }}
-                      >
-                        {/* Progress fill — solid portion = work complete */}
+                      )}
+                      {/* Resource label — assigned subcontractor, beside the bar (4.7-S) */}
+                      {!r.isSummary && r.task.subId && (
+                        <span
+                          className="pointer-events-none absolute top-1/2 -translate-y-1/2 whitespace-nowrap pl-1.5 text-[10px] text-sw-faint"
+                          style={{ left: `${clampX(xpx(parseISO(res.end).getTime()))}px` }}
+                        >
+                          {subName(r.task.subId as string)}
+                        </span>
+                      )}
+                      {/* Baseline ghost — the approved dates, under the live bar */}
+                      {res.baselineStart && res.baselineEnd && (
                         <div
-                          className="h-full"
-                          style={{ width: `${res.percent}%`, background: color }}
+                          className="absolute h-[3px] rounded-[1px]"
+                          title={`Baseline ${formatDate(res.baselineStart)} → ${formatDate(res.baselineEnd)}`}
+                          style={{
+                            top: 'calc(50% + 9px)',
+                            left: `${clampX(xpx(parseISO(res.baselineStart).getTime()))}px`,
+                            width: `${Math.max(
+                              clampX(xpx(parseISO(res.baselineEnd).getTime())) -
+                                clampX(xpx(parseISO(res.baselineStart).getTime())),
+                              2,
+                            )}px`,
+                            background: 'var(--sw-rule)',
+                          }}
                         />
-                      </div>
-                    )}
-                    {/* Resource label — assigned subcontractor, beside the bar (4.7-S) */}
-                    {!r.isSummary && r.task.subId && (
-                      <span
-                        className="pointer-events-none absolute top-1/2 -translate-y-1/2 whitespace-nowrap pl-1.5 text-[10px] text-sw-faint"
-                        style={{ left: `${clamp(pct(parseISO(res.end).getTime()))}%` }}
-                      >
-                        {subName(r.task.subId as string)}
-                      </span>
-                    )}
-                    {/* Baseline ghost — the approved dates, under the live bar */}
-                    {res.baselineStart && res.baselineEnd && (
-                      <div
-                        className="absolute h-[3px] rounded-[1px]"
-                        title={`Baseline ${formatDate(res.baselineStart)} → ${formatDate(res.baselineEnd)}`}
-                        style={{
-                          top: 'calc(50% + 9px)',
-                          left: `${clamp(pct(parseISO(res.baselineStart).getTime()))}%`,
-                          width: `${Math.max(
-                            clamp(pct(parseISO(res.baselineEnd).getTime())) -
-                              clamp(pct(parseISO(res.baselineStart).getTime())),
-                            0.6,
-                          )}%`,
-                          background: 'var(--sw-rule)',
-                        }}
-                      />
-                    )}
+                      )}
+                    </div>
+                  )
+                })}
+                {todayInWindow && (
+                  <div
+                    className="pointer-events-none absolute top-0 z-20 border-l border-dashed border-sw-neg"
+                    style={{ left: `${clampX(xpx(today.getTime()))}px`, height: rowsHeight }}
+                  >
+                    <span className="absolute -top-0 left-1 text-[9px] font-bold uppercase text-sw-neg">
+                      Today
+                    </span>
                   </div>
-                )
-              })}
-              {todayInWindow && (
-                <div
-                  className="pointer-events-none absolute top-0 z-20 border-l border-dashed border-sw-neg"
-                  style={{ left: `${clamp(pct(today.getTime()))}%`, height: rowsHeight }}
-                >
-                  <span className="absolute -top-0 left-1 text-[9px] font-bold uppercase text-sw-neg">
-                    Today
-                  </span>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
