@@ -1,4 +1,4 @@
-import type { CostCodeId, ScheduleTaskId } from './ids'
+import type { CostCodeId, ScheduleTaskId, SubcontractorId } from './ids'
 import type { MilestoneStatus } from './enums'
 
 /**
@@ -58,6 +58,9 @@ export interface ScheduleTask {
    *  start/end when absent (4.7-P). */
   durationDays?: number
   status: MilestoneStatus
+  /** Subcontractor assigned to this task (4.7-S). Leaf rows only; the Gantt
+   *  shows the name beside the bar and in the grid's Resource column. */
+  subId?: SubcontractorId
   /**
    * Work complete, 0–100 (4.7-R). Leaf rows carry it; a summary's figure is
    * rolled up duration-weighted from its descendants.

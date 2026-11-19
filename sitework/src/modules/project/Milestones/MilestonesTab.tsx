@@ -20,6 +20,7 @@ import type {
   MilestoneStatus,
   ScheduleTask,
   ScheduleTaskId,
+  SubcontractorId,
   TaskDependency,
 } from '@/types'
 import { newId } from '@/lib/newId'
@@ -356,6 +357,8 @@ export function MilestonesTab() {
 
   const patchTask = (t: ScheduleTask, patch: Partial<ScheduleTask>) =>
     dispatch({ type: 'UPDATE_SCHEDULE_TASK', projectId: project.id, taskId: t.id, patch })
+
+  const subName = (id: string) => state.subs.find((s) => (s.id as string) === id)?.name ?? ''
 
   // ── Baseline (4.7-R) ─────────────────────────────────────────────────────
   const hasBaseline = tasks.some((t) => !!t.baselineEnd)
@@ -789,6 +792,15 @@ export function MilestonesTab() {
                         />
                       </div>
                     )}
+                    {/* Resource label — assigned subcontractor, beside the bar (4.7-S) */}
+                    {!r.isSummary && r.task.subId && (
+                      <span
+                        className="pointer-events-none absolute top-1/2 -translate-y-1/2 whitespace-nowrap pl-1.5 text-[10px] text-sw-faint"
+                        style={{ left: `${clamp(pct(parseISO(res.end).getTime()))}%` }}
+                      >
+                        {subName(r.task.subId as string)}
+                      </span>
+                    )}
                     {/* Baseline ghost — the approved dates, under the live bar */}
                     {res.baselineStart && res.baselineEnd && (
                       <div
@@ -926,6 +938,7 @@ function TaskForm({
     start: initial?.start ?? todayISO,
     durationDays: initial ? durationWorkingDays(initial) : 5,
     status: initial?.status ?? ('upcoming' as MilestoneStatus),
+    subId: (initial?.subId ?? '') as string,
     deps: (initial?.deps ?? []) as TaskDependency[],
     notes: initial?.notes ?? '',
   }))
@@ -969,6 +982,7 @@ function TaskForm({
       : {
           ...common,
           ccId: form.ccId ? (form.ccId as CostCodeId) : undefined,
+          subId: form.subId ? (form.subId as SubcontractorId) : undefined,
           start: form.start,
           end: addWorkingDays(form.start, form.durationDays - 1),
           durationDays: form.durationDays,
@@ -1029,14 +1043,30 @@ function TaskForm({
 
       {!isGroup && (
         <>
-          <Field label="Cost code" hint="Optional — a task usually books to a code.">
-            <CostCodeSelect
-              projectId={project.id}
-              codes={project.codes}
-              value={form.ccId}
-              onChange={(cc) => setForm({ ...form, ccId: cc })}
-            />
-          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Cost code" hint="Optional — a task usually books to a code.">
+              <CostCodeSelect
+                projectId={project.id}
+                codes={project.codes}
+                value={form.ccId}
+                onChange={(cc) => setForm({ ...form, ccId: cc })}
+              />
+            </Field>
+            <Field label="Resource" hint="Subcontractor doing the work.">
+              <Select
+                value={form.subId}
+                onChange={(e) => setForm({ ...form, subId: e.target.value })}
+              >
+                <option value="">— Unassigned —</option>
+                {state.subs.map((s) => (
+                  <option key={s.id as string} value={s.id as string}>
+                    {s.name}
+                    {s.trade ? ` · ${s.trade}` : ''}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
           <div className="grid grid-cols-3 gap-3">
             <Field label="Start" hint="Predecessors may push it.">
               <Input
