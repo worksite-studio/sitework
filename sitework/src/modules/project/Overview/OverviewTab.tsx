@@ -5,18 +5,10 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { useAppState, useDispatch } from '@/state/context'
 import { ProjectForm } from '@/modules/Projects/ProjectForm'
-import { collapseToTop, donutSegments, type Slice } from '@/lib/pie'
+import { donutSegments, type Slice } from '@/lib/pie'
 import { useProject } from '../useProject'
 import { codeDocTotals, computeProjectFinancials } from '../computeFinancials'
 import { CostDonut } from './CostDonut'
-
-/**
- * Graduated violet ramp for the cost-distribution donut (6 codes + Other, deep →
- * light). Violet carries no status meaning in SITEWORK — pink/green stay reserved
- * for the over-budget signal in the variance-hotspots list — so the donut can
- * read as a warm "where the money sits" gradient without colliding with it.
- */
-const DONUT_RAMP = ['#4c1d95', '#5b21b6', '#6d28d9', '#7c3aed', '#8b5cf6', '#a78bfa', '#c4b5fd']
 
 /**
  * Project Overview — the builder's internal cockpit (Phase 4.7-M redesign).
@@ -52,17 +44,23 @@ export function OverviewTab() {
       code: c,
       committed: codeDocTotals(c.id, invoices, purchases).committed,
     }))
-    const slices: Slice[] = codeCommits
-      .filter((x) => x.committed > 0)
-      .map((x) => ({ label: x.code.desc || x.code.code, value: x.committed }))
+    // Full cost-code index: every code is in the scroll list (committed-desc,
+    // so spenders lead and the zero-spend balance follows). Only codes with
+    // committed spend draw an arc; the rest list at 0% for navigation.
+    const slices: Slice[] = [...codeCommits]
+      .sort((a, b) => b.committed - a.committed)
+      .map((x) => ({
+        key: x.code.id as string,
+        label: x.code.desc || x.code.code,
+        value: x.committed,
+      }))
     return {
       committedTotal: codeCommits.reduce((s, x) => s + x.committed, 0),
-      segments: donutSegments(collapseToTop(slices, 6), {
-        cx: 60,
-        cy: 60,
-        rOuter: 56,
-        rInner: 34,
-      }),
+      segments: donutSegments(
+        slices,
+        { cx: 60, cy: 60, rOuter: 56, rInner: 34 },
+        { includeZero: true },
+      ),
       // Variance hotspots — codes committed over their budget, worst first.
       hotspots: codeCommits
         .filter((x) => x.committed > x.code.budget)
@@ -204,7 +202,7 @@ export function OverviewTab() {
       {/* ── Cost distribution + variance hotspots (4.8-B) ────────────────── */}
       <section aria-label="Cost distribution" className="mb-9 grid gap-8 md:grid-cols-[auto_1fr]">
         {/* Donut + legend (4.8-C interactive) */}
-        <CostDonut segments={segments} total={committedTotal} ramp={DONUT_RAMP} />
+        <CostDonut segments={segments} total={committedTotal} />
 
         {/* Variance hotspots */}
         <div className="border-t border-sw-rule pt-4 md:border-l md:border-t-0 md:pl-8 md:pt-0">

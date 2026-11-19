@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { collapseToTop, donutSegments, shortestAngleDelta, type Slice } from './pie'
+import { collapseToTop, donutSegments, shortestAngleDelta, violetRamp, type Slice } from './pie'
 
 const geom = { cx: 50, cy: 50, rOuter: 40, rInner: 24 }
 
@@ -99,6 +99,59 @@ describe('donutSegments', () => {
     expect(segs[0]!.fraction).toBe(1)
     // two half-arcs outer + two half-arcs inner
     expect(segs[0]!.d.match(/A /g)).toHaveLength(4)
+  })
+})
+
+describe('donutSegments includeZero (full index)', () => {
+  it('keeps zero-value slices as degenerate, arc-less segments', () => {
+    const segs = donutSegments(
+      [
+        { label: 'a', value: 3 },
+        { label: 'z', value: 0 },
+        { label: 'b', value: 1 },
+      ],
+      geom,
+      { includeZero: true },
+    )
+    expect(segs).toHaveLength(3)
+    const z = segs.find((s) => s.label === 'z')!
+    expect(z.fraction).toBe(0)
+    expect(z.d).toBe('') // no arc drawn
+    expect(z.startAngle).toBe(z.endAngle) // zero width
+    // valued slices still sum to the whole ring
+    expect(segs[0]!.fraction + segs[2]!.fraction).toBeCloseTo(1)
+  })
+
+  it('still returns [] when every slice is zero', () => {
+    expect(donutSegments([{ label: 'a', value: 0 }], geom, { includeZero: true })).toEqual([])
+  })
+
+  it('drops zero slices by default (no option)', () => {
+    const segs = donutSegments(
+      [
+        { label: 'a', value: 3 },
+        { label: 'z', value: 0 },
+      ],
+      geom,
+    )
+    expect(segs).toHaveLength(1)
+    expect(segs[0]!.label).toBe('a')
+  })
+})
+
+describe('violetRamp', () => {
+  it('returns n colours, deep → light', () => {
+    const r = violetRamp(5)
+    expect(r).toHaveLength(5)
+    expect(r.every((c) => c.startsWith('hsl(262'))).toBe(true)
+    // lightness rises across the ramp
+    const l = (c: string) => Number(c.match(/(\d+(?:\.\d+)?)%\)$/)![1])
+    expect(l(r[0]!)).toBeLessThan(l(r[4]!))
+  })
+
+  it('handles the degenerate counts', () => {
+    expect(violetRamp(0)).toEqual([])
+    expect(violetRamp(1)).toHaveLength(1)
   })
 })
 
