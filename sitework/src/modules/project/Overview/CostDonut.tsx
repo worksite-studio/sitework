@@ -67,7 +67,7 @@ export function CostDonut({ segments, total, ramp }: CostDonutProps) {
   if (total <= 0) {
     return (
       <div className="flex items-center gap-5">
-        <div className="flex h-[120px] w-[120px] items-center justify-center rounded-full border border-dashed border-sw-rule text-center text-[10px] text-sw-faint">
+        <div className="flex h-[140px] w-[140px] items-center justify-center rounded-full border border-dashed border-sw-rule text-center text-[10px] text-sw-faint">
           No committed cost yet
         </div>
       </div>
@@ -80,8 +80,8 @@ export function CostDonut({ segments, total, ramp }: CostDonutProps) {
     <div className="flex items-center gap-5">
       <div ref={wrapRef} className="shrink-0">
         <svg
-          width={120}
-          height={120}
+          width={140}
+          height={140}
           viewBox="0 0 120 120"
           role="img"
           aria-label="Committed cost by code"
@@ -92,7 +92,8 @@ export function CostDonut({ segments, total, ramp }: CostDonutProps) {
               transform: `rotate(${rotation}deg)`,
               transformBox: 'view-box',
               transformOrigin: '60px 60px',
-              transition: 'transform .45s cubic-bezier(.4,0,.2,1)',
+              // Slow, gently-settling turn (easeOutQuint) — reads smoother than a snappy ease.
+              transition: 'transform .8s cubic-bezier(.22,1,.36,1)',
             }}
           >
             {segments.map((seg, i) => (
