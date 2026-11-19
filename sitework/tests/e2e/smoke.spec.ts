@@ -389,6 +389,52 @@ test('Program of Works tracks baseline vs actual — % complete + slippage (gap 
   await expect(pct).toHaveValue('80')
 })
 
+test('Program of Works — drag a bar body to move the task (gap 4.7-U)', async ({ page }) => {
+  await page.goto('/projects/PRJ-001/schedule')
+  await page.getByRole('button', { name: 'Week', exact: true }).click() // 22px/day
+  await expect(page.getByRole('button', { name: 'Week', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  const startField = page.getByLabel('Start 1.1', { exact: true })
+  const startBefore = await startField.inputValue()
+  const bar = page.locator('[data-bar="1.1"]')
+  await bar.scrollIntoViewIfNeeded()
+  const b = (await bar.boundingBox())!
+  await page.mouse.move(b.x + 6, b.y + b.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(b.x + 40, b.y + b.height / 2, { steps: 4 })
+  await page.mouse.move(b.x + 72, b.y + b.height / 2, { steps: 6 })
+  await page.mouse.up()
+  await expect.poll(() => startField.inputValue()).not.toBe(startBefore)
+})
+
+test('Program of Works — drag the grip to resize the task (gap 4.7-U)', async ({ page }) => {
+  await page.goto('/projects/PRJ-001/schedule')
+  await page.getByRole('button', { name: 'Week', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Week', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  const endOfTask1 = () =>
+    page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem('sw_state_v2')!).scheduleTasks['PRJ-001'].find(
+          (t: { id: string }) => t.id === 'ST-001',
+        ).end,
+    )
+  const endBefore = await endOfTask1()
+  const grip = page.getByLabel('Resize 1.1')
+  await grip.scrollIntoViewIfNeeded()
+  const g = (await grip.boundingBox())!
+  await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(g.x + g.width / 2 + 30, g.y + g.height / 2, { steps: 4 })
+  await page.mouse.move(g.x + g.width / 2 + 66, g.y + g.height / 2, { steps: 6 })
+  await page.mouse.up()
+  await expect.poll(endOfTask1).not.toBe(endBefore)
+})
+
 test('Program of Works zooms the timeline (fit → fixed density scroll) (gap 4.7-T)', async ({
   page,
 }) => {
