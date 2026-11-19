@@ -277,7 +277,24 @@ test('project Invoices tab — fixed-price doesn’t gate on docs', async ({ pag
 
 test('project POs tab renders + Receive button on sent POs', async ({ page }) => {
   await page.goto('/projects/PRJ-001/purchases')
-  await expect(page.getByRole('heading', { name: 'Purchase Orders' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Purchase Orders & Subcontracts' })).toBeVisible()
+})
+
+test('purchases tab shows the Subcontracts section + reconciliation (gap 4.8-E)', async ({
+  page,
+}) => {
+  await page.goto('/projects/PRJ-001/purchases')
+  const section = page.getByRole('region', { name: 'Subcontracts' })
+  await expect(section).toBeVisible()
+  // Seeded AquaFlow subcontract row with its stage count.
+  await expect(section.getByText('SC-001', { exact: true })).toBeVisible()
+  await expect(section.getByText('AquaFlow Plumbing', { exact: true })).toBeVisible()
+  await expect(section.getByText('3 stages', { exact: true })).toBeVisible()
+  // Awarded-vs-BOQ reconciliation renders.
+  await expect(section.getByText('Awarded vs BOQ budget', { exact: true })).toBeVisible()
+  // Opening a subcontract row shows the scope editor.
+  await section.getByText('AquaFlow Plumbing', { exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Edit Subcontract' })).toBeVisible()
 })
 
 test('project Claims tab — claim numbering + substantiation gate', async ({ page }) => {

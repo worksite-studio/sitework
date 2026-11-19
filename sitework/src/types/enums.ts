@@ -58,6 +58,9 @@ export type InvoiceStatus = 'Pending' | 'Approved' | 'Paid' | 'Disputed'
  */
 export type PurchaseStatus = 'pending' | 'ordered' | 'received' | 'cancelled' | 'draft' | 'sent'
 
+/** Subcontract agreement lifecycle (4.8-E). */
+export type SubcontractStatus = 'draft' | 'awarded' | 'complete' | 'terminated'
+
 export type ProgressClaimStatus = 'Draft' | 'Issued' | 'Pending' | 'Approved' | 'Paid' | 'Disputed'
 
 export type MilestoneStatus = 'upcoming' | 'in-progress' | 'complete' | 'delayed'

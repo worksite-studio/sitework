@@ -44,7 +44,7 @@ export const PROJECT_TABS: NavItem[] = [
   { id: 'selections', label: 'Client Selections' },
   { id: 'schedule', label: 'Schedule' },
   { id: 'calendar', label: 'Calendar' },
-  { id: 'purchases', label: 'Purchase Orders' },
+  { id: 'purchases', label: 'Purchase Orders & Subcontracts' },
   { id: 'variations', label: 'Variations' },
   { id: 'invoices', label: 'Invoices' },
   { id: 'timesheets', label: 'Timesheets' },

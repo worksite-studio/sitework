@@ -8,8 +8,10 @@ import { gstOf, incGst } from '@/lib/money'
 import { useTableSort } from '@/lib/useTableSort'
 import { useAppState, useDispatch } from '@/state/context'
 import { useProject } from '../useProject'
+import { reconcileSubcontracts } from '../computeFinancials'
 import { POForm } from './POForm'
-import type { Purchase } from '@/types'
+import { SubcontractForm } from './SubcontractForm'
+import type { Purchase, Subcontract } from '@/types'
 
 type POSortKey = 'poNum' | 'supplier' | 'code' | 'amount' | 'date' | 'status'
 
@@ -26,6 +28,8 @@ export function POsTab() {
   const dispatch = useDispatch()
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<Purchase | null>(null)
+  const [creatingSub, setCreatingSub] = useState(false)
+  const [editingSub, setEditingSub] = useState<Subcontract | null>(null)
   const [search, setSearch] = useState('')
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -88,6 +92,13 @@ export function POsTab() {
   // Footer total reflects the rows currently shown; equals `total` unfiltered.
   const shownTotal = filtered.reduce((s, p) => s + (p.amount || 0), 0)
 
+  // ── Subcontracts (4.8-E) ──────────────────────────────────────────────────
+  const subcontracts = state.subcontracts[project.id as string] ?? []
+  const subName = (sc: Subcontract): string =>
+    state.subs.find((s) => (s.id as string) === (sc.subId as string))?.name ?? '—'
+  const scTotal = (sc: Subcontract): number => sc.scope.reduce((s, l) => s + (l.amount || 0), 0)
+  const recon = reconcileSubcontracts(subcontracts, project.codes)
+
   const sortTh = (label: string, key: POSortKey, className = '') => (
     <th
       className={`cursor-pointer select-none hover:text-sw-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-sw-ink ${className}`}
@@ -121,7 +132,7 @@ export function POsTab() {
       <header className="mb-6 flex items-center justify-between">
         <div>
           <h2 className="mb-1 text-[26px] font-bold tracking-[-0.02em] text-sw-ink">
-            Purchase Orders
+            Purchase Orders &amp; Subcontracts
           </h2>
           <div className="text-[13px] text-sw-dim">
             {formatCurrency(received)} received of {formatCurrency(total)} committed
@@ -252,9 +263,123 @@ export function POsTab() {
         </div>
       )}
 
+      {/* ── Subcontracts ─────────────────────────────────────────────────── */}
+      <section aria-label="Subcontracts" className="mt-12">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h3 className="text-[18px] font-bold tracking-[-0.01em] text-sw-ink">Subcontracts</h3>
+            <div className="text-[13px] text-sw-dim">
+              A trade&apos;s whole multi-stage scope, allocated to cost codes — awarded commitments
+              reconciled against the BOQ.
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setCreatingSub(true)}
+            disabled={project.codes.length === 0}
+          >
+            + Add Subcontract
+          </Button>
+        </div>
+
+        {subcontracts.length === 0 ? (
+          <EmptyState
+            title="No subcontracts yet"
+            description="Capture a subcontractor's whole scope across stages and allocate each to a cost code."
+          />
+        ) : (
+          <>
+            <div className="border-t border-sw-ink">
+              <table className="sw-table">
+                <thead>
+                  <tr>
+                    <th>Ref</th>
+                    <th>Subcontractor</th>
+                    <th>Stages</th>
+                    <th className="text-right">Awarded (ex GST)</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {subcontracts.map((sc, idx) => (
+                    <tr
+                      key={sc.id as string}
+                      onClick={() => setEditingSub(sc)}
+                      className="cursor-pointer"
+                      style={{ background: idx % 2 === 0 ? '#fff' : 'var(--sw-bg)' }}
+                    >
+                      <td className="font-mono text-sw-dim">{sc.ref}</td>
+                      <td className="font-medium text-sw-ink">{subName(sc)}</td>
+                      <td className="text-sw-dim">
+                        {sc.scope.length} stage{sc.scope.length !== 1 ? 's' : ''}
+                      </td>
+                      <td className="text-right font-mono font-semibold">
+                        {formatCurrency(scTotal(sc))}
+                      </td>
+                      <td>
+                        <StatusBadge status={sc.status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Reconciliation vs BOQ budget */}
+            <div className="mt-6">
+              <div className="mb-2 text-[9px] font-semibold uppercase tracking-[0.1em] text-sw-dim">
+                Awarded vs BOQ budget
+              </div>
+              <table className="sw-table">
+                <thead>
+                  <tr>
+                    <th>Cost Code</th>
+                    <th className="text-right">Awarded</th>
+                    <th className="text-right">BOQ Budget</th>
+                    <th className="text-right">Variance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recon.byCode.map((r) => (
+                    <tr key={r.ccId}>
+                      <td className="text-sw-dim">{r.codeLabel}</td>
+                      <td className="text-right font-mono">{formatCurrency(r.awarded)}</td>
+                      <td className="text-right font-mono text-sw-dim">
+                        {formatCurrency(r.budget)}
+                      </td>
+                      <td
+                        className="text-right font-mono font-semibold"
+                        style={{ color: r.variance > 0 ? 'var(--sw-neg)' : 'var(--sw-pos)' }}
+                      >
+                        {r.variance > 0 ? '+' : ''}
+                        {formatCurrency(r.variance)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="mt-1 text-[11px] text-sw-faint">
+                Awarded totals are a forward commitment — they don&apos;t change committed-to-date;
+                the sub&apos;s invoices/POs draw down against them.
+              </div>
+            </div>
+          </>
+        )}
+      </section>
+
       <POForm open={creating} onClose={() => setCreating(false)} project={project} />
       {editing && (
         <POForm open onClose={() => setEditing(null)} project={project} initial={editing} />
+      )}
+      <SubcontractForm open={creatingSub} onClose={() => setCreatingSub(false)} project={project} />
+      {editingSub && (
+        <SubcontractForm
+          open
+          onClose={() => setEditingSub(null)}
+          project={project}
+          initial={editingSub}
+        />
       )}
     </div>
   )

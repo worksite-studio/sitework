@@ -1,4 +1,4 @@
-import type { Project, Purchase, RootState } from '@/types'
+import type { CostCode, Project, Purchase, RootState, Subcontract } from '@/types'
 import { gstOf, incGst } from '@/lib/money'
 
 /**
@@ -248,6 +248,71 @@ export interface PcPsCalc {
    * remaining allowance in legacy's abs-value display).
    */
   netToClaim: number
+}
+
+// ─── Subcontract reconciliation vs BOQ — 4.8-E ──────────────────────────────
+//
+// A subcontract's scope lines are a FORWARD commitment (what you've awarded a
+// sub, per stage/cost code). This rolls that awarded value up per cost code and
+// compares it to the code's BOQ budget — the "does what I've awarded align with
+// the original BOQ?" check. It deliberately does NOT touch committed-to-date
+// (`codeDocTotals`), so the sub's later invoices/POs aren't double-counted.
+
+export interface SubcontractCodeRecon {
+  ccId: string
+  /** "code desc", or the bare id when the code no longer exists. */
+  codeLabel: string
+  /** Σ scope-line amounts allocated to this code. */
+  awarded: number
+  /** The code's BOQ budget (0 when the code is missing). */
+  budget: number
+  /** awarded − budget — positive means awarded over the BOQ budget. */
+  variance: number
+}
+
+export interface SubcontractReconciliation {
+  /** One row per cost code that any scope line is allocated to, awarded-desc. */
+  byCode: SubcontractCodeRecon[]
+  /** Σ every scope-line amount across all subcontracts. */
+  totalAwarded: number
+  /** Σ budget of the codes touched by any scope line. */
+  totalBudgetOfTouchedCodes: number
+}
+
+/**
+ * Reconcile awarded subcontract scope against the BOQ budget, per cost code
+ * (4.8-E). Pure — mirrors the `reconcilePcPs` pattern.
+ */
+export function reconcileSubcontracts(
+  subcontracts: Subcontract[],
+  codes: CostCode[],
+): SubcontractReconciliation {
+  const awardedByCode = new Map<string, number>()
+  for (const sc of subcontracts) {
+    for (const line of sc.scope) {
+      const key = line.ccId as string
+      awardedByCode.set(key, (awardedByCode.get(key) ?? 0) + (line.amount || 0))
+    }
+  }
+
+  const byCode: SubcontractCodeRecon[] = [...awardedByCode.entries()].map(([ccId, awarded]) => {
+    const code = codes.find((c) => (c.id as string) === ccId)
+    const budget = code?.budget ?? 0
+    return {
+      ccId,
+      codeLabel: code ? `${code.code} ${code.desc}` : ccId,
+      awarded,
+      budget,
+      variance: awarded - budget,
+    }
+  })
+  byCode.sort((a, b) => b.awarded - a.awarded)
+
+  return {
+    byCode,
+    totalAwarded: byCode.reduce((s, r) => s + r.awarded, 0),
+    totalBudgetOfTouchedCodes: byCode.reduce((s, r) => s + r.budget, 0),
+  }
 }
 
 /** Legacy `Pcps` calc(): margin rate defaults to 0.2 when absent/NaN. */

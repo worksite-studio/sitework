@@ -44,6 +44,8 @@ import type {
   ProvisionalSumId,
   Purchase,
   PurchaseId,
+  Subcontract,
+  SubcontractId,
   Retention,
   Rfi,
   RfiId,
@@ -161,6 +163,25 @@ export type ReceivePurchaseAction = {
   projectId: ProjectId
   purchaseId: PurchaseId
   receivedDate: string
+}
+
+// ─── Subcontracts (4.8-E) ────────────────────────────────────────────────
+
+export type AddSubcontractAction = {
+  type: 'ADD_SUBCONTRACT'
+  projectId: ProjectId
+  subcontract: Subcontract
+}
+export type UpdateSubcontractAction = {
+  type: 'UPDATE_SUBCONTRACT'
+  projectId: ProjectId
+  subcontractId: SubcontractId
+  patch: Partial<Subcontract>
+}
+export type DeleteSubcontractAction = {
+  type: 'DELETE_SUBCONTRACT'
+  projectId: ProjectId
+  subcontractId: SubcontractId
 }
 
 // ─── Progress claims ─────────────────────────────────────────────────────
@@ -396,6 +417,9 @@ export type Action =
   | AddPurchaseAction
   | UpdatePurchaseAction
   | ReceivePurchaseAction
+  | AddSubcontractAction
+  | UpdateSubcontractAction
+  | DeleteSubcontractAction
   | AddClaimAction
   | UpdateClaimAction
   | AddPcItemAction
