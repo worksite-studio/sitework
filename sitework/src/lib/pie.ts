@@ -30,6 +30,18 @@ export interface DonutGeometry {
   rInner: number
 }
 
+/**
+ * Signed rotation that carries `from` onto `to` the **short way** around the
+ * circle — always in the half-open range `(-180, 180]`. Accumulate the result
+ * so an animated donut turns the shorter direction instead of unwinding 350°.
+ */
+export function shortestAngleDelta(from: number, to: number): number {
+  let delta = (to - from) % 360
+  if (delta <= -180) delta += 360
+  else if (delta > 180) delta -= 360
+  return delta
+}
+
 /** Point on a circle, 0° at 12 o'clock, angle increasing clockwise. */
 function polar(cx: number, cy: number, r: number, angleDeg: number): [number, number] {
   const a = ((angleDeg - 90) * Math.PI) / 180

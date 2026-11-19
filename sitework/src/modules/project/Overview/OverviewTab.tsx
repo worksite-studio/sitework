@@ -8,6 +8,7 @@ import { ProjectForm } from '@/modules/Projects/ProjectForm'
 import { collapseToTop, donutSegments, type Slice } from '@/lib/pie'
 import { useProject } from '../useProject'
 import { codeDocTotals, computeProjectFinancials } from '../computeFinancials'
+import { CostDonut } from './CostDonut'
 
 /**
  * Greyscale ramp for the cost-distribution donut (6 codes + Other). Deliberately
@@ -36,6 +37,40 @@ export function OverviewTab() {
     const purchases = state.purchases[project.id as string] ?? []
     return computeProjectFinancials(project, purchases)
   }, [project, state.purchases])
+
+  // ── Cost distribution (4.8-B / interactive 4.8-C) ────────────────────────
+  // Committed spend per cost code, from live documents (invoices + POs), same
+  // basis the BOQ tab renders — so the donut and the BOQ agree. Memoised so the
+  // donut's hover/wheel re-renders don't recompute codeDocTotals each tick.
+  // (Hoisted above the early return — hooks must run on every render.)
+  const dist = useMemo(() => {
+    const codes = project?.codes ?? []
+    const invoices = project?.invoices ?? []
+    const purchases = project ? (state.purchases[project.id as string] ?? []) : []
+    const codeCommits = codes.map((c) => ({
+      code: c,
+      committed: codeDocTotals(c.id, invoices, purchases).committed,
+    }))
+    const slices: Slice[] = codeCommits
+      .filter((x) => x.committed > 0)
+      .map((x) => ({ label: x.code.desc || x.code.code, value: x.committed }))
+    return {
+      committedTotal: codeCommits.reduce((s, x) => s + x.committed, 0),
+      segments: donutSegments(collapseToTop(slices, 6), {
+        cx: 60,
+        cy: 60,
+        rOuter: 56,
+        rInner: 34,
+      }),
+      // Variance hotspots — codes committed over their budget, worst first.
+      hotspots: codeCommits
+        .filter((x) => x.committed > x.code.budget)
+        .map((x) => ({ ...x, overrun: x.committed - x.code.budget }))
+        .sort((a, b) => b.overrun - a.overrun)
+        .slice(0, 4),
+    }
+  }, [project, state.purchases])
+
   if (!project || !fin) return null
 
   const pid = project.id as string
@@ -43,27 +78,7 @@ export function OverviewTab() {
   const marginTarget = project.margin ?? 15
   const base = `/projects/${pid}`
 
-  // ── Cost distribution (4.8-B) ────────────────────────────────────────────
-  // Committed spend per cost code, from live documents (invoices + POs), same
-  // basis the BOQ tab renders — so the donut and the BOQ agree.
-  const purchases = state.purchases[pid] ?? []
-  const codeCommits = project.codes.map((c) => ({
-    code: c,
-    committed: codeDocTotals(c.id, project.invoices, purchases).committed,
-  }))
-  const committedTotal = codeCommits.reduce((s, x) => s + x.committed, 0)
-  const slices: Slice[] = codeCommits
-    .filter((x) => x.committed > 0)
-    .map((x) => ({ label: x.code.desc || x.code.code, value: x.committed }))
-  const topSlices = collapseToTop(slices, 6)
-  const segments = donutSegments(topSlices, { cx: 60, cy: 60, rOuter: 56, rInner: 34 })
-
-  // Variance hotspots — codes committed over their budget, worst first.
-  const hotspots = codeCommits
-    .filter((x) => x.committed > x.code.budget)
-    .map((x) => ({ ...x, overrun: x.committed - x.code.budget }))
-    .sort((a, b) => b.overrun - a.overrun)
-    .slice(0, 4)
+  const { committedTotal, segments, hotspots } = dist
 
   // ── Finance strip derived values ─────────────────────────────────────────
   const marginOk = fin.currentMarginPct >= marginTarget
@@ -190,55 +205,8 @@ export function OverviewTab() {
         aria-label="Cost distribution"
         className="mb-9 grid gap-8 rounded-[2px] border border-sw-rule p-5 md:grid-cols-[auto_1fr]"
       >
-        {/* Donut + legend */}
-        <div className="flex items-center gap-5">
-          {committedTotal > 0 ? (
-            <svg
-              width={120}
-              height={120}
-              viewBox="0 0 120 120"
-              role="img"
-              aria-label="Committed cost by code"
-            >
-              {segments.map((seg, i) => (
-                <path key={seg.label} d={seg.d} fill={DONUT_RAMP[i % DONUT_RAMP.length]} />
-              ))}
-              <text
-                x={60}
-                y={56}
-                textAnchor="middle"
-                className="fill-sw-dim text-[8px] font-semibold uppercase tracking-[0.1em]"
-              >
-                Committed
-              </text>
-              <text x={60} y={70} textAnchor="middle" className="fill-sw-ink text-[13px] font-bold">
-                {formatCurrency(committedTotal)}
-              </text>
-            </svg>
-          ) : (
-            <div className="flex h-[120px] w-[120px] items-center justify-center rounded-full border border-dashed border-sw-rule text-center text-[10px] text-sw-faint">
-              No committed cost yet
-            </div>
-          )}
-          {committedTotal > 0 && (
-            <ul className="min-w-[160px] space-y-1.5">
-              {segments.map((seg, i) => (
-                <li key={seg.label} className="flex items-center gap-2 text-[11px]">
-                  <span
-                    className="inline-block h-2.5 w-2.5 shrink-0 rounded-[1px]"
-                    style={{ background: DONUT_RAMP[i % DONUT_RAMP.length] }}
-                  />
-                  <span className="truncate text-sw-mid" title={seg.label}>
-                    {seg.label}
-                  </span>
-                  <span className="ml-auto shrink-0 tabular-nums text-sw-dim">
-                    {(seg.fraction * 100).toFixed(0)}%
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        {/* Donut + legend (4.8-C interactive) */}
+        <CostDonut segments={segments} total={committedTotal} ramp={DONUT_RAMP} />
 
         {/* Variance hotspots */}
         <div className="border-t border-sw-rule pt-4 md:border-l md:border-t-0 md:pl-8 md:pt-0">

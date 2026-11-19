@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { collapseToTop, donutSegments, type Slice } from './pie'
+import { collapseToTop, donutSegments, shortestAngleDelta, type Slice } from './pie'
 
 const geom = { cx: 50, cy: 50, rOuter: 40, rInner: 24 }
 
@@ -99,5 +99,32 @@ describe('donutSegments', () => {
     expect(segs[0]!.fraction).toBe(1)
     // two half-arcs outer + two half-arcs inner
     expect(segs[0]!.d.match(/A /g)).toHaveLength(4)
+  })
+})
+
+describe('shortestAngleDelta', () => {
+  it('is zero for a no-op', () => {
+    expect(shortestAngleDelta(90, 90)).toBe(0)
+  })
+
+  it('turns forward for a small positive step', () => {
+    expect(shortestAngleDelta(30, 90)).toBe(60)
+  })
+
+  it('turns backward rather than the long way round', () => {
+    // 350° → 10° is +20° the short way, not −340°
+    expect(shortestAngleDelta(350, 10)).toBe(20)
+    // 10° → 350° is −20°, not +340°
+    expect(shortestAngleDelta(10, 350)).toBe(-20)
+  })
+
+  it('normalises angles outside 0–360 first', () => {
+    expect(shortestAngleDelta(0, 720)).toBe(0)
+    expect(shortestAngleDelta(-10, 10)).toBe(20)
+  })
+
+  it('keeps the result within (-180, 180]', () => {
+    expect(shortestAngleDelta(0, 180)).toBe(180)
+    expect(shortestAngleDelta(0, 181)).toBe(-179)
   })
 })
