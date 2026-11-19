@@ -202,10 +202,7 @@ export function OverviewTab() {
       </div>
 
       {/* ── Cost distribution + variance hotspots (4.8-B) ────────────────── */}
-      <section
-        aria-label="Cost distribution"
-        className="mb-9 grid gap-8 rounded-[2px] border border-sw-rule p-5 md:grid-cols-[auto_1fr]"
-      >
+      <section aria-label="Cost distribution" className="mb-9 grid gap-8 md:grid-cols-[auto_1fr]">
         {/* Donut + legend (4.8-C interactive) */}
         <CostDonut segments={segments} total={committedTotal} ramp={DONUT_RAMP} />
 
@@ -238,7 +235,7 @@ export function OverviewTab() {
               Every cost code is within budget.
             </div>
           )}
-          <div className="flex flex-wrap gap-x-8 gap-y-2 border-t border-sw-rule-l pt-3">
+          <div className="flex flex-wrap gap-x-8 gap-y-2 pt-1">
             <MiniStat
               label="Margin now · target"
               value={`${fin.currentMarginPct.toFixed(1)}% · ${marginTarget}%`}
