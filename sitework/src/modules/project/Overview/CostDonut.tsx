@@ -25,9 +25,10 @@ interface CostDonutProps {
 /**
  * Interactive cost donut (4.8-C, generalised 4.8-F).
  *
- * Scrub the legend (hover or keyboard-focus) or wheel over the ring and the
- * donut rotates so the active segment swings to 12 o'clock and lights up while
- * the rest dim; the centre readout switches to that segment's value + share.
+ * Scrub the legend (hover or keyboard-focus) and the donut rotates so the active
+ * segment swings to 12 o'clock and lights up while the rest dim; the centre
+ * readout switches to that segment's value + share. (No wheel capture — it would
+ * trap page scroll when the donut sits near the top of a tab.)
  *
  * The segment list may be the FULL cost-code index (via `donutSegments(…,
  * { includeZero: true })`) — zero-value codes have no arc but still appear in
@@ -50,10 +51,8 @@ export function CostDonut({
   const [rotation, setRotation] = useState(0)
   const rotationRef = useRef(0)
   const lastMidRef = useRef(0)
-  const wrapRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
   const ramp = violetRamp(segments.length)
-  const n = segments.length
 
   const mid = (seg: Segment) => (seg.startAngle + seg.endAngle) / 2
 
@@ -87,30 +86,10 @@ export function CostDonut({
     else setInternalActive(i)
   }
 
-  // Wheel over the donut cycles the selection.
-  useEffect(() => {
-    const el = wrapRef.current
-    if (!el || n === 0) return
-    function onWheel(e: WheelEvent) {
-      e.preventDefault()
-      const step = e.deltaY > 0 ? 1 : -1
-      const current = controlled
-        ? controlledIdx != null && controlledIdx >= 0
-          ? controlledIdx
-          : -1
-        : (internalActive ?? -1)
-      const next = (current + step + n) % n
-      focus(next)
-    }
-    el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [segments, n, controlled, controlledIdx, internalActive])
-
   if (total <= 0) {
     return (
       <div className="flex items-center gap-5">
-        <div className="flex h-[140px] w-[140px] items-center justify-center rounded-full border border-dashed border-sw-rule text-center text-[10px] text-sw-faint">
+        <div className="flex h-[180px] w-[180px] items-center justify-center rounded-full border border-dashed border-sw-rule text-center text-[10px] text-sw-faint">
           Nothing to show yet
         </div>
       </div>
@@ -121,8 +100,8 @@ export function CostDonut({
 
   return (
     <div className="flex items-center gap-5">
-      <div ref={wrapRef} className="shrink-0">
-        <svg width={140} height={140} viewBox="0 0 120 120" role="img" aria-label={ariaLabel}>
+      <div className="shrink-0">
+        <svg width={180} height={180} viewBox="0 0 120 120" role="img" aria-label={ariaLabel}>
           <g
             className="motion-reduce:transition-none"
             style={{
@@ -163,7 +142,7 @@ export function CostDonut({
         </svg>
       </div>
 
-      <ul ref={listRef} className="max-h-[150px] min-w-[180px] space-y-1.5 overflow-y-auto pr-1">
+      <ul ref={listRef} className="max-h-[180px] min-w-[180px] space-y-1.5 overflow-y-auto pr-1">
         {segments.map((seg, i) => (
           <li key={seg.key ?? seg.label}>
             <button
