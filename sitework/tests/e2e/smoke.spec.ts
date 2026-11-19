@@ -90,6 +90,21 @@ test('project Overview is a health cockpit — finance strip + section cards (ga
   await expect(page).toHaveURL(/\/projects\/PRJ-001\/claims$/)
 })
 
+test('Overview shows the cost-distribution donut + variance hotspots (gap 4.8-B)', async ({
+  page,
+}) => {
+  await page.goto('/projects/PRJ-001/overview')
+  const section = page.getByRole('region', { name: 'Cost distribution' })
+  await expect(section).toBeVisible()
+  // Donut renders, labelled for assistive tech.
+  await expect(section.getByRole('img', { name: /Committed cost by code/ })).toBeVisible()
+  // Variance hotspots surface — PRJ-001 seed has over-budget codes.
+  await expect(section.getByText('Variance hotspots', { exact: true })).toBeVisible()
+  await expect(section.getByText('Margin now · target', { exact: true })).toBeVisible()
+  // At least one over-budget code shows a +$ overrun.
+  await expect(section.getByText(/^\+\$[\d,]+$/).first()).toBeVisible()
+})
+
 test('project BOQ tab renders codes table and supports add', async ({ page }) => {
   await page.goto('/projects/PRJ-001/boq')
   await expect(page.getByRole('heading', { name: 'BOQ & Budget' })).toBeVisible()

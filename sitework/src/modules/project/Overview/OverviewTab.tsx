@@ -5,8 +5,16 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { useAppState, useDispatch } from '@/state/context'
 import { ProjectForm } from '@/modules/Projects/ProjectForm'
+import { collapseToTop, donutSegments, type Slice } from '@/lib/pie'
 import { useProject } from '../useProject'
-import { computeProjectFinancials } from '../computeFinancials'
+import { codeDocTotals, computeProjectFinancials } from '../computeFinancials'
+
+/**
+ * Greyscale ramp for the cost-distribution donut (6 codes + Other). Deliberately
+ * monochrome — pink/green stay reserved for the over-budget signal in the
+ * variance-hotspots list, so the donut reads as neutral "where the money sits".
+ */
+const DONUT_RAMP = ['#000000', '#404040', '#606060', '#808080', '#a0a0a0', '#c0c0c0', '#dcdcdc']
 
 /**
  * Project Overview — the builder's internal cockpit (Phase 4.7-M redesign).
@@ -34,6 +42,28 @@ export function OverviewTab() {
   const client = state.clients.find((c) => c.id === project.clientId)
   const marginTarget = project.margin ?? 15
   const base = `/projects/${pid}`
+
+  // ── Cost distribution (4.8-B) ────────────────────────────────────────────
+  // Committed spend per cost code, from live documents (invoices + POs), same
+  // basis the BOQ tab renders — so the donut and the BOQ agree.
+  const purchases = state.purchases[pid] ?? []
+  const codeCommits = project.codes.map((c) => ({
+    code: c,
+    committed: codeDocTotals(c.id, project.invoices, purchases).committed,
+  }))
+  const committedTotal = codeCommits.reduce((s, x) => s + x.committed, 0)
+  const slices: Slice[] = codeCommits
+    .filter((x) => x.committed > 0)
+    .map((x) => ({ label: x.code.desc || x.code.code, value: x.committed }))
+  const topSlices = collapseToTop(slices, 6)
+  const segments = donutSegments(topSlices, { cx: 60, cy: 60, rOuter: 56, rInner: 34 })
+
+  // Variance hotspots — codes committed over their budget, worst first.
+  const hotspots = codeCommits
+    .filter((x) => x.committed > x.code.budget)
+    .map((x) => ({ ...x, overrun: x.committed - x.code.budget }))
+    .sort((a, b) => b.overrun - a.overrun)
+    .slice(0, 4)
 
   // ── Finance strip derived values ─────────────────────────────────────────
   const marginOk = fin.currentMarginPct >= marginTarget
@@ -155,6 +185,105 @@ export function OverviewTab() {
         />
       </div>
 
+      {/* ── Cost distribution + variance hotspots (4.8-B) ────────────────── */}
+      <section
+        aria-label="Cost distribution"
+        className="mb-9 grid gap-8 rounded-[2px] border border-sw-rule p-5 md:grid-cols-[auto_1fr]"
+      >
+        {/* Donut + legend */}
+        <div className="flex items-center gap-5">
+          {committedTotal > 0 ? (
+            <svg
+              width={120}
+              height={120}
+              viewBox="0 0 120 120"
+              role="img"
+              aria-label="Committed cost by code"
+            >
+              {segments.map((seg, i) => (
+                <path key={seg.label} d={seg.d} fill={DONUT_RAMP[i % DONUT_RAMP.length]} />
+              ))}
+              <text
+                x={60}
+                y={56}
+                textAnchor="middle"
+                className="fill-sw-dim text-[8px] font-semibold uppercase tracking-[0.1em]"
+              >
+                Committed
+              </text>
+              <text x={60} y={70} textAnchor="middle" className="fill-sw-ink text-[13px] font-bold">
+                {formatCurrency(committedTotal)}
+              </text>
+            </svg>
+          ) : (
+            <div className="flex h-[120px] w-[120px] items-center justify-center rounded-full border border-dashed border-sw-rule text-center text-[10px] text-sw-faint">
+              No committed cost yet
+            </div>
+          )}
+          {committedTotal > 0 && (
+            <ul className="min-w-[160px] space-y-1.5">
+              {segments.map((seg, i) => (
+                <li key={seg.label} className="flex items-center gap-2 text-[11px]">
+                  <span
+                    className="inline-block h-2.5 w-2.5 shrink-0 rounded-[1px]"
+                    style={{ background: DONUT_RAMP[i % DONUT_RAMP.length] }}
+                  />
+                  <span className="truncate text-sw-mid" title={seg.label}>
+                    {seg.label}
+                  </span>
+                  <span className="ml-auto shrink-0 tabular-nums text-sw-dim">
+                    {(seg.fraction * 100).toFixed(0)}%
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Variance hotspots */}
+        <div className="border-t border-sw-rule pt-4 md:border-l md:border-t-0 md:pl-8 md:pt-0">
+          <div className="mb-3 text-[9px] font-semibold uppercase tracking-[0.1em] text-sw-dim">
+            Variance hotspots
+          </div>
+          {hotspots.length > 0 ? (
+            <ul className="mb-4 space-y-2">
+              {hotspots.map((h) => (
+                <li
+                  key={h.code.id}
+                  className="flex items-baseline justify-between gap-3 text-[12px]"
+                >
+                  <span className="truncate text-sw-ink" title={h.code.desc}>
+                    {h.code.desc || h.code.code}
+                  </span>
+                  <span
+                    className="shrink-0 tabular-nums font-semibold"
+                    style={{ color: 'var(--sw-neg)' }}
+                  >
+                    +{formatCurrency(h.overrun)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="mb-4 text-[12px]" style={{ color: 'var(--sw-pos)' }}>
+              Every cost code is within budget.
+            </div>
+          )}
+          <div className="flex flex-wrap gap-x-8 gap-y-2 border-t border-sw-rule-l pt-3">
+            <MiniStat
+              label="Margin now · target"
+              value={`${fin.currentMarginPct.toFixed(1)}% · ${marginTarget}%`}
+              color={marginColor}
+            />
+            <MiniStat
+              label="True overrun"
+              value={fin.trueOverrun > 0 ? formatCurrency(fin.trueOverrun) : 'Within budget'}
+              color={fin.trueOverrun > 0 ? 'var(--sw-neg)' : 'var(--sw-pos)'}
+            />
+          </div>
+        </div>
+      </section>
+
       {/* ── Section cards ────────────────────────────────────────────────── */}
       <section aria-label="Project sections" className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <SectionCard
@@ -259,6 +388,23 @@ function Stat({
         {value}
       </div>
       {sub && <div className="text-[11px] text-sw-faint">{sub}</div>}
+    </div>
+  )
+}
+
+/** Compact label/value pair used under the variance hotspots. */
+function MiniStat({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div>
+      <div className="mb-1 text-[9px] font-medium uppercase tracking-[0.1em] text-sw-dim">
+        {label}
+      </div>
+      <div
+        className="text-[14px] font-bold tracking-[-0.01em]"
+        style={{ color: color ?? 'var(--sw-ink)' }}
+      >
+        {value}
+      </div>
     </div>
   )
 }
