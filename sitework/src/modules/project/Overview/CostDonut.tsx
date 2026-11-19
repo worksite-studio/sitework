@@ -92,7 +92,8 @@ export function CostDonut({ segments, total, ramp }: CostDonutProps) {
               transform: `rotate(${rotation}deg)`,
               transformBox: 'view-box',
               transformOrigin: '60px 60px',
-              transition: 'transform .45s cubic-bezier(.4,0,.2,1)',
+              // Slow, gently-settling turn (easeOutQuint) — reads smoother than a snappy ease.
+              transition: 'transform .8s cubic-bezier(.22,1,.36,1)',
             }}
           >
             {segments.map((seg, i) => (

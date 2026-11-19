@@ -11,11 +11,12 @@ import { codeDocTotals, computeProjectFinancials } from '../computeFinancials'
 import { CostDonut } from './CostDonut'
 
 /**
- * Greyscale ramp for the cost-distribution donut (6 codes + Other). Deliberately
- * monochrome — pink/green stay reserved for the over-budget signal in the
- * variance-hotspots list, so the donut reads as neutral "where the money sits".
+ * Graduated violet ramp for the cost-distribution donut (6 codes + Other, deep →
+ * light). Violet carries no status meaning in SITEWORK — pink/green stay reserved
+ * for the over-budget signal in the variance-hotspots list — so the donut can
+ * read as a warm "where the money sits" gradient without colliding with it.
  */
-const DONUT_RAMP = ['#000000', '#404040', '#606060', '#808080', '#a0a0a0', '#c0c0c0', '#dcdcdc']
+const DONUT_RAMP = ['#4c1d95', '#5b21b6', '#6d28d9', '#7c3aed', '#8b5cf6', '#a78bfa', '#c4b5fd']
 
 /**
  * Project Overview — the builder's internal cockpit (Phase 4.7-M redesign).
