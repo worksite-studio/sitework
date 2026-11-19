@@ -5,8 +5,10 @@ import {
   addWorkingDays,
   computeSchedule,
   durationWorkingDays,
+  nextWorkingDay,
   rollUpPercent,
   workingDayVariance,
+  workingDaysInclusive,
 } from '@/lib/schedule'
 import { useAppState, useDispatch } from '@/state/context'
 import { useProject } from '../useProject'
@@ -46,6 +48,15 @@ const ZOOM_LABEL: Record<Zoom, string> = {
 
 function parseISO(s: string): Date {
   return new Date(`${s}T00:00:00`)
+}
+/** Shift an ISO date by n CALENDAR days. */
+function addCalendarDays(iso: string, n: number): string {
+  const d = parseISO(iso)
+  d.setDate(d.getDate() + n)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 function statusColor(status: MilestoneStatus): string {
   if (status === 'complete') return 'var(--sw-pos)'
@@ -104,6 +115,13 @@ export function MilestonesTab() {
   const [view, setView] = useState<'full' | 'lookahead'>('full')
   const [zoom, setZoom] = useState<Zoom>('fit')
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  // Live drag state for moving / resizing a bar (4.7-U).
+  const [drag, setDrag] = useState<{
+    id: string
+    mode: 'move' | 'resize'
+    startX: number
+    dx: number
+  } | null>(null)
 
   const pid = project?.id as string | undefined
   const tasks: ScheduleTask[] = useMemo(
@@ -391,6 +409,40 @@ export function MilestonesTab() {
     dispatch({ type: 'UPDATE_SCHEDULE_TASK', projectId: project.id, taskId: t.id, patch })
 
   const subName = (id: string) => state.subs.find((s) => (s.id as string) === id)?.name ?? ''
+
+  // ── Drag to move / resize a bar (4.7-U) ──────────────────────────────────
+  // Window-level listeners so the drag keeps tracking even when the pointer
+  // leaves the (thin) bar/grip.
+  const pxPerDay = spanDays > 0 ? contentW / spanDays : 1
+  const commitDrag = (task: ScheduleTask, mode: 'move' | 'resize', dx: number) => {
+    const res = resolved.get(task.id as string)
+    const deltaDays = Math.round(dx / pxPerDay)
+    if (!res || deltaDays === 0) return
+    if (mode === 'move') {
+      patchTask(task, { start: nextWorkingDay(addCalendarDays(task.start, deltaDays)) })
+    } else {
+      const newEnd = addCalendarDays(res.end, deltaDays)
+      const dur = Math.max(1, workingDaysInclusive(res.start, newEnd))
+      patchTask(task, { durationDays: dur, end: addWorkingDays(res.start, dur - 1) })
+    }
+  }
+  const beginDrag = (e: React.PointerEvent, task: ScheduleTask, mode: 'move' | 'resize') => {
+    e.preventDefault()
+    e.stopPropagation()
+    const startX = e.clientX
+    const id = task.id as string
+    setDrag({ id, mode, startX, dx: 0 })
+    const onMove = (ev: PointerEvent) =>
+      setDrag((d) => (d && d.id === id ? { ...d, dx: ev.clientX - startX } : d))
+    const onUp = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      commitDrag(task, mode, ev.clientX - startX)
+      setDrag(null)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
 
   // ── Baseline (4.7-R) ─────────────────────────────────────────────────────
   const hasBaseline = tasks.some((t) => !!t.baselineEnd)
@@ -806,6 +858,13 @@ export function MilestonesTab() {
                   const leftX = clampX(xpx(parseISO(res.start).getTime()))
                   const widthX = Math.max(clampX(xpx(parseISO(res.end).getTime())) - leftX, 2)
                   const color = statusColor(res.status)
+                  // Live drag preview (4.7-U): offset/resize the bar under the pointer.
+                  const dragging = drag?.id === (r.task.id as string)
+                  const barLeft = leftX + (dragging && drag!.mode === 'move' ? drag!.dx : 0)
+                  const barWidth = Math.max(
+                    widthX + (dragging && drag!.mode === 'resize' ? drag!.dx : 0),
+                    4,
+                  )
                   return (
                     <div
                       key={r.task.id as string}
@@ -831,24 +890,37 @@ export function MilestonesTab() {
                           </div>
                         </div>
                       ) : (
-                        <div
-                          title={`${formatDate(res.start)} → ${formatDate(res.end)} · ${res.percent}% complete${res.critical ? ' · critical path' : ` · ${res.float}d float`}${res.slip !== undefined ? ` · ${res.slip > 0 ? `${res.slip}d late` : res.slip < 0 ? `${Math.abs(res.slip)}d early` : 'on baseline'} vs baseline` : ''}`}
-                          className="absolute top-1/2 h-[10px] -translate-y-1/2 overflow-hidden rounded-[1px]"
-                          style={{
-                            left: `${leftX}px`,
-                            width: `${widthX}px`,
-                            background: 'var(--sw-rule-l)',
-                            boxShadow: res.critical
-                              ? '0 0 0 1.5px var(--sw-neg)'
-                              : `inset 0 0 0 1px ${color}`,
-                          }}
-                        >
-                          {/* Progress fill — solid portion = work complete */}
+                        <>
                           <div
-                            className="h-full"
-                            style={{ width: `${res.percent}%`, background: color }}
+                            data-bar={r.wbs}
+                            onPointerDown={(e) => beginDrag(e, r.task, 'move')}
+                            title={`${formatDate(res.start)} → ${formatDate(res.end)} · ${res.percent}% complete${res.critical ? ' · critical path' : ` · ${res.float}d float`}${res.slip !== undefined ? ` · ${res.slip > 0 ? `${res.slip}d late` : res.slip < 0 ? `${Math.abs(res.slip)}d early` : 'on baseline'} vs baseline` : ''} — drag to move`}
+                            className="absolute top-1/2 z-10 h-[10px] -translate-y-1/2 touch-none overflow-hidden rounded-[1px]"
+                            style={{
+                              left: `${barLeft}px`,
+                              width: `${barWidth}px`,
+                              background: 'var(--sw-rule-l)',
+                              cursor: dragging && drag!.mode === 'move' ? 'grabbing' : 'grab',
+                              boxShadow: res.critical
+                                ? '0 0 0 1.5px var(--sw-neg)'
+                                : `inset 0 0 0 1px ${color}`,
+                            }}
+                          >
+                            {/* Progress fill — solid portion = work complete */}
+                            <div
+                              className="h-full"
+                              style={{ width: `${res.percent}%`, background: color }}
+                            />
+                          </div>
+                          {/* Resize grip — drag the right edge to change duration */}
+                          <div
+                            onPointerDown={(e) => beginDrag(e, r.task, 'resize')}
+                            aria-label={`Resize ${r.wbs}`}
+                            className="absolute top-1/2 z-20 h-[14px] w-[7px] -translate-y-1/2 touch-none cursor-ew-resize"
+                            style={{ left: `${barLeft + barWidth - 3}px` }}
+                            title="Drag to change duration"
                           />
-                        </div>
+                        </>
                       )}
                       {/* Resource label — assigned subcontractor, beside the bar (4.7-S) */}
                       {!r.isSummary && r.task.subId && (
