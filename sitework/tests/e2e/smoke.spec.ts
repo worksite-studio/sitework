@@ -105,6 +105,23 @@ test('Overview shows the cost-distribution donut + variance hotspots (gap 4.8-B)
   await expect(section.getByText(/^\+\$[\d,]+$/).first()).toBeVisible()
 })
 
+test('Overview cost donut is interactive — hovering a centre focuses it (gap 4.8-C)', async ({
+  page,
+}) => {
+  await page.goto('/projects/PRJ-001/overview')
+  const section = page.getByRole('region', { name: 'Cost distribution' })
+  const legend = section.getByRole('button')
+  await expect(legend.first()).toBeVisible()
+  // At rest the centre shows the committed total; no row is pressed.
+  await expect(section.getByText('Committed', { exact: true })).toBeVisible()
+  await expect(legend.first()).toHaveAttribute('aria-pressed', 'false')
+  // Hovering a legend entry focuses that segment: the row becomes pressed and the
+  // centre readout switches to its share of spend.
+  await legend.first().hover()
+  await expect(legend.first()).toHaveAttribute('aria-pressed', 'true')
+  await expect(section.getByText(/% of spend$/)).toBeVisible()
+})
+
 test('project BOQ tab renders codes table and supports add', async ({ page }) => {
   await page.goto('/projects/PRJ-001/boq')
   await expect(page.getByRole('heading', { name: 'BOQ & Budget' })).toBeVisible()
