@@ -7,6 +7,8 @@ import { gstOf, incGst } from '@/lib/money'
 import { formatDate } from '@/lib/formatDate'
 import { useProject } from '../useProject'
 import { codeDocTotals } from '../computeFinancials'
+import { CostDonut } from '../Overview/CostDonut'
+import { donutSegments, type Slice } from '@/lib/pie'
 import { CostCodeForm } from './CostCodeForm'
 import { BoqTemplateImportDialog } from './BoqTemplateImportDialog'
 import { LineItemForm } from './LineItemForm'
@@ -40,6 +42,8 @@ export function BoqTab() {
   // sorted and return when back to manual order.
   const [overBudgetOnly, setOverBudgetOnly] = useState(false)
   const [sortBySpend, setSortBySpend] = useState(false)
+  // Budget-allowance donut ↔ table link (4.8-F): the hovered cost code.
+  const [activeCcId, setActiveCcId] = useState<string | null>(null)
 
   const nextCode = useMemo(() => {
     if (!project) return '001'
@@ -49,6 +53,15 @@ export function BoqTab() {
       .reduce((m, n) => Math.max(m, n), 0)
     return String(max + 1).padStart(3, '0')
   }, [project])
+
+  // Budget-allowance donut over the FULL cost-code index (budget-desc). Only
+  // codes with a budget draw an arc; the rest list at 0% for navigation.
+  const budgetSegments = useMemo(() => {
+    const slices: Slice[] = [...(project?.codes ?? [])]
+      .sort((a, b) => (b.budget || 0) - (a.budget || 0))
+      .map((c) => ({ key: c.id as string, label: c.desc || c.code, value: c.budget || 0 }))
+    return donutSegments(slices, { cx: 60, cy: 60, rOuter: 56, rInner: 34 }, { includeZero: true })
+  }, [project?.codes])
 
   if (!project) return null
   const purchases = state.purchases[project.id as string] ?? []
@@ -132,9 +145,24 @@ export function BoqTab() {
         </div>
       </header>
 
-      {/* BOQ totals summary (4.7-F): cost → margin → contract → GST → total. */}
+      {/* Budget-allowance donut + BOQ totals summary. */}
       {project.codes.length > 0 && (
-        <div className="mb-5 flex justify-end">
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-6">
+          {/* Quick-scroll visibility: what's allowed where across the index (4.8-F). */}
+          <section aria-label="Budget allowance">
+            <div className="mb-2 text-[9px] font-semibold uppercase tracking-[0.1em] text-sw-dim">
+              Budget allowance by code
+            </div>
+            <CostDonut
+              segments={budgetSegments}
+              total={costSubtotal}
+              restLabel="Budget"
+              shareLabel="of budget"
+              ariaLabel="Budget allowance by code"
+              selectedKey={activeCcId}
+              onSelect={setActiveCcId}
+            />
+          </section>
           <div className="w-[300px] border border-sw-rule rounded-[2px] p-4">
             <div className="mb-2.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-sw-dim">
               BOQ Summary
@@ -201,177 +229,194 @@ export function BoqTab() {
         </div>
       )}
 
-      {displayCodes.map((code) => {
-        const items = project.lineItems[code.id as string] ?? []
-        const open = expanded.has(code.id as string)
-        const live = codeDocTotals(code.id as string, project.invoices, purchases)
-        const vos = project.variations.filter((v) => v.status === 'Approved' && v.ccId === code.id)
-        return (
-          <div key={code.id as string} className="border-b border-sw-rule">
-            {/* Code header row */}
-            <div
-              onClick={() => toggle(code.id as string)}
-              className="flex cursor-pointer items-center gap-3 border-b border-sw-rule bg-white py-3.5"
-            >
-              <span className="text-[10px] text-sw-faint">{open ? '−' : '+'}</span>
-              <span className="w-[30px] font-mono text-[11px] text-sw-dim">{code.code}</span>
-              <span className="flex-1 text-[13px] font-semibold text-sw-ink">{code.desc}</span>
-              <EntityLink
-                to={`../invoices?cc=${code.id}`}
-                stopPropagation
-                title="View invoices booked to this code"
-                className="font-mono text-[13px] font-bold"
-                style={{ color: healthColor(code.budget || 0, live.committed) }}
+      <section aria-label="Cost codes">
+        {displayCodes.map((code) => {
+          const items = project.lineItems[code.id as string] ?? []
+          const open = expanded.has(code.id as string)
+          const live = codeDocTotals(code.id as string, project.invoices, purchases)
+          const vos = project.variations.filter(
+            (v) => v.status === 'Approved' && v.ccId === code.id,
+          )
+          return (
+            <div key={code.id as string} className="border-b border-sw-rule">
+              {/* Code header row — hover links to the budget donut (4.8-F). */}
+              <div
+                onClick={() => toggle(code.id as string)}
+                onMouseEnter={() => setActiveCcId(code.id as string)}
+                onMouseLeave={() => setActiveCcId(null)}
+                className="flex cursor-pointer items-center gap-3 border-b border-sw-rule py-3.5 pl-2 transition-colors"
+                style={{
+                  background: activeCcId === (code.id as string) ? 'var(--sw-lilac-bg)' : '#fff',
+                  boxShadow:
+                    activeCcId === (code.id as string)
+                      ? 'inset 3px 0 0 var(--sw-lilac)'
+                      : undefined,
+                }}
               >
-                {formatCurrency(live.committed)}
-              </EntityLink>
-              <span className="font-mono text-[12px] text-sw-dim">
-                / {formatCurrency(code.budget || 0)}
-              </span>
-              <span className="ml-2 flex gap-1" onClick={(e) => e.stopPropagation()}>
-                {manualOrder && (
-                  <>
-                    <button
-                      type="button"
-                      title="Move up"
-                      onClick={() =>
-                        dispatch({ type: 'MOVE_CODE_UP', projectId: project.id, codeId: code.id })
-                      }
-                      className="px-[3px] text-[11px] leading-none text-sw-faint hover:text-sw-ink"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      title="Move down"
-                      onClick={() =>
-                        dispatch({ type: 'MOVE_CODE_DOWN', projectId: project.id, codeId: code.id })
-                      }
-                      className="px-[3px] text-[11px] leading-none text-sw-faint hover:text-sw-ink"
-                    >
-                      ↓
-                    </button>
-                  </>
-                )}
-                <button
-                  type="button"
-                  title="Edit code"
-                  onClick={() => setEditing(code)}
-                  className="px-1 text-[10px] text-sw-dim hover:text-sw-ink"
+                <span className="text-[10px] text-sw-faint">{open ? '−' : '+'}</span>
+                <span className="w-[30px] font-mono text-[11px] text-sw-dim">{code.code}</span>
+                <span className="flex-1 text-[13px] font-semibold text-sw-ink">{code.desc}</span>
+                <EntityLink
+                  to={`../invoices?cc=${code.id}`}
+                  stopPropagation
+                  title="View invoices booked to this code"
+                  className="font-mono text-[13px] font-bold"
+                  style={{ color: healthColor(code.budget || 0, live.committed) }}
                 >
-                  ✎
-                </button>
-                <button
-                  type="button"
-                  title="Delete code"
-                  onClick={() => deleteCode(code)}
-                  className="px-1 text-[11px] text-sw-danger"
-                >
-                  ×
-                </button>
-              </span>
-            </div>
-
-            {/* Expanded: line items + approved variations */}
-            {open && (
-              <div className="border-b border-sw-rule py-3 pl-6 pb-4">
-                <table className="sw-table mb-2.5">
-                  <thead>
-                    <tr>
-                      <th>Description</th>
-                      <th className="text-right">Qty</th>
-                      <th>Unit</th>
-                      <th className="text-right">Rate</th>
-                      <th className="text-right">Amount</th>
-                      <th aria-label="Actions" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((li) => (
-                      <tr key={li.id as string} className="border-b border-sw-rule-l">
-                        <td>{li.desc}</td>
-                        <td className="text-right font-mono">{li.qty}</td>
-                        <td className="text-sw-dim">{li.unit}</td>
-                        <td className="text-right font-mono">{formatCurrencyExact(li.rate)}</td>
-                        <td className="text-right font-mono font-semibold">
-                          {formatCurrency(li.qty * li.rate)}
-                        </td>
-                        <td className="whitespace-nowrap text-right">
-                          <button
-                            type="button"
-                            title="Edit line item"
-                            onClick={() => setEditingItem({ ccId: code.id, item: li })}
-                            className="px-1 text-[10px] text-sw-dim hover:text-sw-ink"
-                          >
-                            ✎
-                          </button>
-                          <button
-                            type="button"
-                            title="Delete line item"
-                            onClick={() => deleteLineItem(code.id, li)}
-                            className="px-1 text-[11px] text-sw-danger"
-                          >
-                            ×
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {items.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="px-4 py-2.5 text-[12px] text-sw-faint">
-                          No line items. Add one below.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-                <button
-                  type="button"
-                  onClick={() => setAddingItemFor(code.id)}
-                  className="text-[11px] font-medium text-sw-violet hover:underline"
-                >
-                  + Add Line Item
-                </button>
-
-                {vos.length > 0 && (
-                  <div className="mt-3 border-t border-dashed border-[#E5E7EB] pt-2.5">
-                    <div className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-[#D97706]">
-                      Approved Variations
-                    </div>
-                    <table className="sw-table">
-                      <thead>
-                        <tr>
-                          <th>VO Ref</th>
-                          <th>Description</th>
-                          <th>Date</th>
-                          <th className="text-right">Variation Cost</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {vos.map((v) => (
-                          <tr key={v.id as string} className="bg-[#FFFBEB]">
-                            <td className="font-mono text-sw-dim">{v.id as string}</td>
-                            <td>{v.desc}</td>
-                            <td className="text-sw-dim">{v.date ? formatDate(v.date) : '—'}</td>
-                            <td className="text-right font-mono font-semibold text-[#D97706]">
-                              {formatCurrency(v.amount)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <div className="flex justify-end pt-1.5 pr-4">
-                      <span className="font-mono text-[11px] font-semibold text-[#D97706]">
-                        Total Variations: {formatCurrency(vos.reduce((s, v) => s + v.amount, 0))}
-                      </span>
-                    </div>
-                  </div>
-                )}
+                  {formatCurrency(live.committed)}
+                </EntityLink>
+                <span className="font-mono text-[12px] text-sw-dim">
+                  / {formatCurrency(code.budget || 0)}
+                </span>
+                <span className="ml-2 flex gap-1" onClick={(e) => e.stopPropagation()}>
+                  {manualOrder && (
+                    <>
+                      <button
+                        type="button"
+                        title="Move up"
+                        onClick={() =>
+                          dispatch({ type: 'MOVE_CODE_UP', projectId: project.id, codeId: code.id })
+                        }
+                        className="px-[3px] text-[11px] leading-none text-sw-faint hover:text-sw-ink"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        title="Move down"
+                        onClick={() =>
+                          dispatch({
+                            type: 'MOVE_CODE_DOWN',
+                            projectId: project.id,
+                            codeId: code.id,
+                          })
+                        }
+                        className="px-[3px] text-[11px] leading-none text-sw-faint hover:text-sw-ink"
+                      >
+                        ↓
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    title="Edit code"
+                    onClick={() => setEditing(code)}
+                    className="px-1 text-[10px] text-sw-dim hover:text-sw-ink"
+                  >
+                    ✎
+                  </button>
+                  <button
+                    type="button"
+                    title="Delete code"
+                    onClick={() => deleteCode(code)}
+                    className="px-1 text-[11px] text-sw-danger"
+                  >
+                    ×
+                  </button>
+                </span>
               </div>
-            )}
-          </div>
-        )
-      })}
+
+              {/* Expanded: line items + approved variations */}
+              {open && (
+                <div className="border-b border-sw-rule py-3 pl-6 pb-4">
+                  <table className="sw-table mb-2.5">
+                    <thead>
+                      <tr>
+                        <th>Description</th>
+                        <th className="text-right">Qty</th>
+                        <th>Unit</th>
+                        <th className="text-right">Rate</th>
+                        <th className="text-right">Amount</th>
+                        <th aria-label="Actions" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((li) => (
+                        <tr key={li.id as string} className="border-b border-sw-rule-l">
+                          <td>{li.desc}</td>
+                          <td className="text-right font-mono">{li.qty}</td>
+                          <td className="text-sw-dim">{li.unit}</td>
+                          <td className="text-right font-mono">{formatCurrencyExact(li.rate)}</td>
+                          <td className="text-right font-mono font-semibold">
+                            {formatCurrency(li.qty * li.rate)}
+                          </td>
+                          <td className="whitespace-nowrap text-right">
+                            <button
+                              type="button"
+                              title="Edit line item"
+                              onClick={() => setEditingItem({ ccId: code.id, item: li })}
+                              className="px-1 text-[10px] text-sw-dim hover:text-sw-ink"
+                            >
+                              ✎
+                            </button>
+                            <button
+                              type="button"
+                              title="Delete line item"
+                              onClick={() => deleteLineItem(code.id, li)}
+                              className="px-1 text-[11px] text-sw-danger"
+                            >
+                              ×
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {items.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="px-4 py-2.5 text-[12px] text-sw-faint">
+                            No line items. Add one below.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                  <button
+                    type="button"
+                    onClick={() => setAddingItemFor(code.id)}
+                    className="text-[11px] font-medium text-sw-violet hover:underline"
+                  >
+                    + Add Line Item
+                  </button>
+
+                  {vos.length > 0 && (
+                    <div className="mt-3 border-t border-dashed border-[#E5E7EB] pt-2.5">
+                      <div className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-[#D97706]">
+                        Approved Variations
+                      </div>
+                      <table className="sw-table">
+                        <thead>
+                          <tr>
+                            <th>VO Ref</th>
+                            <th>Description</th>
+                            <th>Date</th>
+                            <th className="text-right">Variation Cost</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {vos.map((v) => (
+                            <tr key={v.id as string} className="bg-[#FFFBEB]">
+                              <td className="font-mono text-sw-dim">{v.id as string}</td>
+                              <td>{v.desc}</td>
+                              <td className="text-sw-dim">{v.date ? formatDate(v.date) : '—'}</td>
+                              <td className="text-right font-mono font-semibold text-[#D97706]">
+                                {formatCurrency(v.amount)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <div className="flex justify-end pt-1.5 pr-4">
+                        <span className="font-mono text-[11px] font-semibold text-[#D97706]">
+                          Total Variations: {formatCurrency(vos.reduce((s, v) => s + v.amount, 0))}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </section>
 
       <CostCodeForm
         open={creating}

@@ -122,11 +122,29 @@ test('Overview cost donut is interactive — hovering a centre focuses it (gap 4
   await expect(section.getByText(/% of spend$/)).toBeVisible()
 })
 
+test('BOQ tab has the budget-allowance donut over the full code index (gap 4.8-F)', async ({
+  page,
+}) => {
+  await page.goto('/projects/PRJ-001/boq')
+  const donut = page.getByRole('region', { name: 'Budget allowance' })
+  await expect(donut).toBeVisible()
+  await expect(donut.getByRole('img', { name: 'Budget allowance by code' })).toBeVisible()
+  // Rest state shows the total budget label.
+  await expect(donut.getByText('Budget', { exact: true })).toBeVisible()
+  // Hovering a legend entry focuses that code: pressed + "% of budget" readout.
+  const legend = donut.getByRole('button')
+  await legend.first().hover()
+  await expect(legend.first()).toHaveAttribute('aria-pressed', 'true')
+  await expect(donut.getByText(/% of budget$/)).toBeVisible()
+})
+
 test('project BOQ tab renders codes table and supports add', async ({ page }) => {
   await page.goto('/projects/PRJ-001/boq')
   await expect(page.getByRole('heading', { name: 'BOQ & Budget' })).toBeVisible()
   await expect(
-    page.getByText('Preliminary Costs, Consultant Fees, Site Establishment'),
+    page
+      .getByRole('region', { name: 'Cost codes' })
+      .getByText('Preliminary Costs, Consultant Fees, Site Establishment'),
   ).toBeVisible()
 
   // Open the cost-code form via the + Cost Code button
@@ -141,7 +159,10 @@ test('BOQ line-item units: m removed, m³ added, custom unit reveals a field (ga
 }) => {
   await page.goto('/projects/PRJ-001/boq')
   // Expand the first code, then open its Add Line Item dialog.
-  await page.getByText('Preliminary Costs, Consultant Fees, Site Establishment').click()
+  await page
+    .getByRole('region', { name: 'Cost codes' })
+    .getByText('Preliminary Costs, Consultant Fees, Site Establishment')
+    .click()
   await page.getByRole('button', { name: '+ Add Line Item' }).first().click()
   const unit = page.getByLabel('Unit')
   await expect(unit.locator('option', { hasText: 'm³' })).toHaveCount(1)
@@ -153,7 +174,9 @@ test('BOQ line-item units: m removed, m³ added, custom unit reveals a field (ga
 test('BOQ budget rolls up from line items; adding one updates it (gap 4.7-E)', async ({ page }) => {
   await page.goto('/projects/PRJ-001/boq')
   // Migrated/reconciled budget of code 001 = its line-item sum.
-  const codeRow = page.getByText('Preliminary Costs, Consultant Fees, Site Establishment')
+  const codeRow = page
+    .getByRole('region', { name: 'Cost codes' })
+    .getByText('Preliminary Costs, Consultant Fees, Site Establishment')
   await expect(page.getByText('/ $7,460')).toBeVisible()
   await codeRow.click() // expand
   await page.getByRole('button', { name: '+ Add Line Item' }).first().click()
@@ -170,7 +193,7 @@ test('BOQ cost-code form has no budget field (gap 4.7-E)', async ({ page }) => {
   await page.goto('/projects/PRJ-001/boq')
   await page.getByRole('button', { name: '+ Cost Code' }).first().click()
   await expect(page.getByRole('heading', { name: 'Add Cost Code' })).toBeVisible()
-  await expect(page.getByLabel(/Budget/)).toHaveCount(0)
+  await expect(page.getByRole('dialog').getByLabel(/Budget/)).toHaveCount(0)
 })
 
 test('BOQ totals summary shows cost → margin → GST → total (gap 4.7-F)', async ({ page }) => {

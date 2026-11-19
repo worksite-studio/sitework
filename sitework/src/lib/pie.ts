@@ -9,6 +9,8 @@
 export interface Slice {
   label: string
   value: number
+  /** Stable identity (e.g. a cost-code id) for controlled selection + React keys. */
+  key?: string
 }
 
 export interface Segment extends Slice {
@@ -68,21 +70,31 @@ export function collapseToTop(slices: Slice[], limit: number, otherLabel = 'Othe
 }
 
 /**
- * Build donut-ring segments for the given slices. Non-positive slices are
- * dropped; order is preserved. Returns `[]` when the total is zero. A lone
- * full-circle slice is rendered as a closed ring (two half-arcs) since a single
- * SVG arc cannot sweep 360°.
+ * Build donut-ring segments for the given slices, in input order. Returns `[]`
+ * when the positive total is zero. A lone full-circle slice is rendered as a
+ * closed ring (two half-arcs) since a single SVG arc cannot sweep 360°.
+ *
+ * By default non-positive slices are dropped. Pass `{ includeZero: true }` to
+ * keep them as degenerate segments (fraction 0, no arc path, `d: ''`) — used
+ * when the donut doubles as a full navigable index (e.g. every cost code,
+ * including those with no spend/budget), so the scroll list can list them all
+ * while only valued slices draw an arc.
  */
-export function donutSegments(slices: Slice[], geom: DonutGeometry): Segment[] {
+export function donutSegments(
+  slices: Slice[],
+  geom: DonutGeometry,
+  opts: { includeZero?: boolean } = {},
+): Segment[] {
   const { cx, cy, rOuter, rInner } = geom
-  const usable = slices.filter((s) => s.value > 0)
-  const total = usable.reduce((s, x) => s + x.value, 0)
+  const usable = opts.includeZero ? slices : slices.filter((s) => s.value > 0)
+  const total = usable.reduce((s, x) => s + Math.max(0, x.value), 0)
   if (total <= 0) return []
 
   const out: Segment[] = []
   let cursor = 0
   for (const s of usable) {
-    const fraction = s.value / total
+    const v = s.value > 0 ? s.value : 0
+    const fraction = v / total
     const startAngle = cursor * 360
     const endAngle = (cursor + fraction) * 360
     cursor += fraction
@@ -91,10 +103,27 @@ export function donutSegments(slices: Slice[], geom: DonutGeometry): Segment[] {
       fraction,
       startAngle: round(startAngle),
       endAngle: round(endAngle),
-      d: ringPath(cx, cy, rOuter, rInner, startAngle, endAngle, fraction),
+      d: v > 0 ? ringPath(cx, cy, rOuter, rInner, startAngle, endAngle, fraction) : '',
     })
   }
   return out
+}
+
+/**
+ * A deep→light violet gradient of `n` colours — the donut's house ramp, scaled
+ * to any slice count so 6 or 46 codes both read as one gradient wheel. Violet
+ * carries no status meaning in SITEWORK, so it won't collide with the
+ * over-budget pink/green signals.
+ */
+export function violetRamp(n: number): string[] {
+  if (n <= 0) return []
+  const L0 = 30 // deep
+  const L1 = 84 // light
+  return Array.from({ length: n }, (_, i) => {
+    const t = n === 1 ? 0.5 : i / (n - 1)
+    const l = L0 + (L1 - L0) * t
+    return `hsl(262 58% ${l.toFixed(1)}%)`
+  })
 }
 
 /** SVG path for one donut-ring wedge between two angles. */
