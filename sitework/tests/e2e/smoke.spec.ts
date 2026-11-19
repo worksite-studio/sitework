@@ -389,6 +389,21 @@ test('Program of Works tracks baseline vs actual — % complete + slippage (gap 
   await expect(pct).toHaveValue('80')
 })
 
+test('Program of Works assigns a subcontractor resource to a task (gap 4.7-S)', async ({
+  page,
+}) => {
+  await page.goto('/projects/PRJ-001/schedule')
+  // Seeded resources render beside their bars.
+  await expect(page.getByText('AquaFlow Plumbing')).toBeVisible()
+  await expect(page.getByText('ElectroPro Services')).toBeVisible()
+
+  // The task dialog carries a Resource picker populated with subs.
+  await page.getByRole('button', { name: '+ Task' }).click()
+  const resource = page.getByLabel('Resource', { exact: true })
+  await expect(resource).toBeVisible()
+  await expect(resource.locator('option', { hasText: 'ElectroPro Services' })).toHaveCount(1)
+})
+
 test('Gantt draws dependency arrows between linked tasks (gap 4.7-Q1)', async ({ page }) => {
   await page.goto('/projects/PRJ-001/schedule')
   const svg = page.locator('svg[aria-hidden="true"]')
