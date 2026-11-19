@@ -252,6 +252,34 @@ export function reducer(state: RootState, action: Action): RootState {
         ),
       }
 
+    // ─── Subcontracts (4.8-E) ─────────────────────────────────────────────
+    case 'ADD_SUBCONTRACT':
+      return {
+        ...state,
+        subcontracts: pushByProject(state.subcontracts, action.projectId, action.subcontract),
+      }
+
+    case 'UPDATE_SUBCONTRACT':
+      return {
+        ...state,
+        subcontracts: patchByProject(
+          state.subcontracts,
+          action.projectId,
+          (sc) => sc.id === action.subcontractId,
+          action.patch,
+        ),
+      }
+
+    case 'DELETE_SUBCONTRACT':
+      return {
+        ...state,
+        subcontracts: filterByProject(
+          state.subcontracts,
+          action.projectId,
+          (sc) => sc.id !== action.subcontractId,
+        ),
+      }
+
     // ─── Progress claims ──────────────────────────────────────────────────
     case 'ADD_CLAIM': {
       // Auto-fill claimNo if missing (session 28 — see WORKFLOW §8 scope note).

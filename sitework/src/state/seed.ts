@@ -2700,6 +2700,41 @@ const RAW = {
       },
     ],
   },
+  subcontracts: {
+    'PRJ-001': [
+      {
+        id: 'SC-001',
+        subId: 'SUB-003',
+        ref: 'SC-001',
+        status: 'awarded',
+        date: '2025-07-15',
+        scope: [
+          {
+            id: 'SL-001',
+            ccId: 'CC-006',
+            desc: 'Drainage — septic, stormwater, AG-drainage',
+            amount: 11800,
+            durationDays: 10,
+          },
+          {
+            id: 'SL-002',
+            ccId: 'CC-022',
+            desc: 'Hydraulic plumbing — rough-in & fit-off',
+            amount: 15200,
+            durationDays: 18,
+          },
+          {
+            id: 'SL-003',
+            ccId: 'CC-023',
+            desc: 'HWS & specialty hydraulic items',
+            amount: 3500,
+            durationDays: 5,
+          },
+        ],
+        notes: 'Whole-of-project plumbing & hydraulic scope per subcontract agreement.',
+      },
+    ],
+  },
   primeCostItems: {
     'PRJ-001': [
       {

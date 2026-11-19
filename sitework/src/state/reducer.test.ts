@@ -87,6 +87,7 @@ function emptyState(overrides: Partial<RootState> = {}): RootState {
     selections: {},
     claims: {},
     purchases: {},
+    subcontracts: {},
     primeCostItems: {},
     provisionalSums: {},
     rfis: {},

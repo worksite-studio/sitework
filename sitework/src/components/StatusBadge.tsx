@@ -39,6 +39,7 @@ const VARIANT_FOR_STATUS: Record<string, Variant> = {
   'in-progress': 'info',
   InProgress: 'info',
   Issued: 'info',
+  awarded: 'info',
   Selected: 'info',
   Procured: 'info',
   prospect: 'info',
@@ -57,6 +58,7 @@ const VARIANT_FOR_STATUS: Record<string, Variant> = {
   declined: 'danger',
   lost: 'danger',
   cancelled: 'danger',
+  terminated: 'danger',
   Over: 'danger',
 }
 

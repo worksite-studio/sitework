@@ -8,12 +8,13 @@ import {
   computeProjectFinancials,
   outstandingInvoiceTotal,
   reconcilePcPs,
+  reconcileSubcontracts,
   retentionRatePct,
 } from './computeFinancials'
 import { formatCurrency } from '@/lib/formatCurrency'
 import { seed } from '@/state/seed'
 import { asId } from '@/types'
-import type { ProjectId } from '@/types'
+import type { CostCode, ProjectId, Subcontract } from '@/types'
 
 /**
  * R0 acceptance (PARITY gaps 17/18): the pinned literals below are the
@@ -165,5 +166,88 @@ describe('computeProjectFinancials (empty project)', () => {
     expect(f.contractValue).toBe(0)
     expect(f.adjustedContractValue).toBe(0)
     expect(f.currentMarginPct).toBe(0)
+  })
+})
+
+describe('reconcileSubcontracts — awarded scope vs BOQ budget (4.8-E)', () => {
+  const codes = [
+    {
+      id: asId('CC-1'),
+      code: '001',
+      desc: 'Drainage',
+      budget: 0,
+      committed: 0,
+      actual: 0,
+      vars: 0,
+    },
+    {
+      id: asId('CC-2'),
+      code: '002',
+      desc: 'Hydraulic',
+      budget: 10000,
+      committed: 0,
+      actual: 0,
+      vars: 0,
+    },
+  ] as CostCode[]
+  const subs = [
+    {
+      id: asId('SC-1'),
+      subId: asId('SUB-1'),
+      ref: 'SC-1',
+      status: 'awarded',
+      date: '2025-01-01',
+      scope: [
+        { id: asId('L1'), ccId: asId('CC-1'), desc: 'drainage', amount: 5000 },
+        { id: asId('L2'), ccId: asId('CC-2'), desc: 'rough-in', amount: 4000 },
+      ],
+    },
+    {
+      id: asId('SC-2'),
+      subId: asId('SUB-1'),
+      ref: 'SC-2',
+      status: 'awarded',
+      date: '2025-02-01',
+      scope: [{ id: asId('L3'), ccId: asId('CC-2'), desc: 'fit-off', amount: 3000 }],
+    },
+  ] as Subcontract[]
+
+  it('rolls awarded up per code across subcontracts', () => {
+    const r = reconcileSubcontracts(subs, codes)
+    const cc2 = r.byCode.find((x) => x.ccId === 'CC-2')!
+    expect(cc2.awarded).toBe(7000) // 4000 + 3000
+    expect(r.totalAwarded).toBe(12000)
+  })
+
+  it('sorts rows by awarded descending and flags over-budget variance', () => {
+    const r = reconcileSubcontracts(subs, codes)
+    expect(r.byCode[0]!.ccId).toBe('CC-2') // 7000 > 5000
+    // CC-1 has $0 budget → awarding 5000 is over budget (+5000)
+    const cc1 = r.byCode.find((x) => x.ccId === 'CC-1')!
+    expect(cc1.variance).toBe(5000)
+    // CC-2: 7000 awarded − 10000 budget = −3000 (within budget)
+    expect(r.byCode[0]!.variance).toBe(-3000)
+  })
+
+  it('labels a scope line whose code no longer exists by its id', () => {
+    const orphan = [
+      {
+        id: asId('SC-3'),
+        subId: asId('SUB-1'),
+        ref: 'SC-3',
+        status: 'awarded',
+        date: '2025-03-01',
+        scope: [{ id: asId('L4'), ccId: asId('CC-GONE'), desc: 'x', amount: 100 }],
+      },
+    ] as Subcontract[]
+    const r = reconcileSubcontracts(orphan, codes)
+    expect(r.byCode[0]!.codeLabel).toBe('CC-GONE')
+    expect(r.byCode[0]!.budget).toBe(0)
+  })
+
+  it('is empty for no subcontracts', () => {
+    const r = reconcileSubcontracts([], codes)
+    expect(r.byCode).toEqual([])
+    expect(r.totalAwarded).toBe(0)
   })
 })

@@ -12,6 +12,7 @@ import type { ProgressClaim } from './progressClaim'
 import type { Project } from './project'
 import type { ProvisionalSum } from './provisionalSum'
 import type { Purchase } from './purchase'
+import type { Subcontract } from './subcontract'
 import type { Retention } from './retention'
 import type { Rfi } from './rfi'
 import type { Selection } from './selection'
@@ -56,6 +57,8 @@ export interface RootState {
   selections: ByProject<Selection>
   claims: ByProject<ProgressClaim>
   purchases: ByProject<Purchase>
+  /** Subcontract agreements (4.8-E) — a sub's whole multi-stage scope per project. */
+  subcontracts: ByProject<Subcontract>
   primeCostItems: ByProject<PrimeCostItem>
   provisionalSums: ByProject<ProvisionalSum>
   rfis: ByProject<Rfi>
@@ -85,6 +88,7 @@ export type {
   ScheduleTask,
   Selection,
   Settings,
+  Subcontract,
   Subcontractor,
   Supplier,
   Timesheet,
