@@ -54,11 +54,12 @@ export function BoqTab() {
     return String(max + 1).padStart(3, '0')
   }, [project])
 
-  // Budget-allowance donut over the FULL cost-code index (budget-desc). Only
-  // codes with a budget draw an arc; the rest list at 0% for navigation.
+  // Budget-allowance donut over the FULL cost-code index, in cost-code number
+  // order so the scroll legend tracks the BOQ list below. Only codes with a
+  // budget draw an arc; the rest list at 0% for navigation.
   const budgetSegments = useMemo(() => {
     const slices: Slice[] = [...(project?.codes ?? [])]
-      .sort((a, b) => (b.budget || 0) - (a.budget || 0))
+      .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }))
       .map((c) => ({ key: c.id as string, label: c.desc || c.code, value: c.budget || 0 }))
     return donutSegments(slices, { cx: 60, cy: 60, rOuter: 56, rInner: 34 }, { includeZero: true })
   }, [project?.codes])
