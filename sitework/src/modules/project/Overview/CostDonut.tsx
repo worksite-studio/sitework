@@ -132,7 +132,7 @@ export function CostDonut({
             x={60}
             y={56}
             textAnchor="middle"
-            className="fill-sw-dim text-[8px] font-semibold uppercase tracking-[0.1em]"
+            className="fill-sw-dim text-[6px] font-semibold uppercase tracking-[0.1em]"
           >
             {activeSeg ? `${(activeSeg.fraction * 100).toFixed(0)}% ${shareLabel}` : restLabel}
           </text>
