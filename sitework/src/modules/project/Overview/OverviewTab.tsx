@@ -44,11 +44,11 @@ export function OverviewTab() {
       code: c,
       committed: codeDocTotals(c.id, invoices, purchases).committed,
     }))
-    // Full cost-code index: every code is in the scroll list (committed-desc,
-    // so spenders lead and the zero-spend balance follows). Only codes with
-    // committed spend draw an arc; the rest list at 0% for navigation.
+    // Full cost-code index: every code is in the scroll list, in cost-code
+    // number order so the legend tracks the BOQ. Only codes with committed
+    // spend draw an arc; the rest list at 0% for navigation.
     const slices: Slice[] = [...codeCommits]
-      .sort((a, b) => b.committed - a.committed)
+      .sort((a, b) => a.code.code.localeCompare(b.code.code, undefined, { numeric: true }))
       .map((x) => ({
         key: x.code.id as string,
         label: x.code.desc || x.code.code,
